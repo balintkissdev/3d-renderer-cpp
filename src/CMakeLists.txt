@@ -1,0 +1,10 @@
+target_sources(${PROJECT_NAME}
+    PRIVATE
+        app.cpp
+        camera.cpp
+        gui.cpp
+        main.cpp
+        model.cpp
+        shader.cpp
+        skybox.cpp
+)
