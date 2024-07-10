@@ -11,6 +11,7 @@
 #include "glad/gl.h"
 
 #include <cstdint>
+#include <filesystem>
 
 Skybox::~Skybox()
 {

@@ -1,6 +1,7 @@
 #include "app.h"
 
 #include "drawproperties.h"
+#include "model.h"
 #include "utils.h"
 
 #include "glad/gl.h"
@@ -9,6 +10,7 @@
 
 #include <chrono>
 #include <iostream>
+#include <filesystem>
 
 App::App()
     : window_(nullptr)
