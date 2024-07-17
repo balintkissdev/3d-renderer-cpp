@@ -1,18 +1,18 @@
 #version 430 core
 
-layout (location = 0) in vec3 position;
-layout (location = 1) in vec3 normal;
+layout (location = 0) in vec3 a_position;
+layout (location = 1) in vec3 a_normal;
 
-out vec3 FragPos;
+uniform mat4 u_model;
+uniform mat4 u_mvp;
+uniform mat3 u_normalMatrix;
+
+out vec3 v_fragPos;
 out vec3 v_normal;
-
-uniform mat4 model;
-uniform mat4 mvp;
-uniform mat3 normalMatrix;
 
 void main()
 {
-    FragPos = vec3(model * vec4(position, 1.0));
-    v_normal = normalMatrix * normal;
-    gl_Position = mvp * vec4(position, 1.0);
+    gl_Position = u_mvp * vec4(a_position, 1.0);
+    v_fragPos = vec3(u_model * vec4(a_position, 1.0));
+    v_normal = u_normalMatrix * a_normal;
 }

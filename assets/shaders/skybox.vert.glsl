@@ -1,14 +1,14 @@
 #version 430 core
 
-layout (location = 0) in vec3 position;
+layout (location = 0) in vec3 a_position;
 
-uniform mat4 projectionView;
+uniform mat4 u_projectionView;
 
-out vec3 TexCoords;
+out vec3 v_texCoords;
 
 void main()
 {
-    TexCoords = position;
-    vec4 pos = projectionView * vec4(position, 1.0);
+    vec4 pos = u_projectionView * vec4(a_position, 1.0);
     gl_Position = pos.xyww;
+    v_texCoords = a_position;
 }

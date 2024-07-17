@@ -97,8 +97,9 @@ void Skybox::draw(const glm::mat4& projection, const Camera& camera)
     // in GLSL. Results would be the same for all vertices.
     const glm::mat4 projectionView = projection * normalizedView;
 
-    shader_->setUniform("projectionView", projectionView);
-    shader_->setUniform("skybox", 0);
+    shader_->setUniform("u_projectionView", projectionView);
+    constexpr int textureUnit0 = 0;
+    shader_->setUniform("u_skyboxTexture", textureUnit0);
 
     glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, nullptr);
     glDepthFunc(GL_LESS);

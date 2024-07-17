@@ -81,6 +81,10 @@ std::unique_ptr<Model> Model::create(std::string_view filePath)
 
     model->shader_ = Shader::createFromFile("assets/shaders/model.vert.glsl",
                                             "assets/shaders/model.frag.glsl");
+    if (!model->shader_)
+    {
+        return nullptr;
+    }
 
     // Vertex Attribute 0: position
     glEnableVertexAttribArray(0);
@@ -142,12 +146,12 @@ void Model::draw(const glm::mat4& projection,
     const glm::mat3 normalMatrix
         = glm::mat3(glm::transpose(glm::inverse(model)));
 
-    shader_->setUniform("model", model);
-    shader_->setUniform("mvp", mvp);
-    shader_->setUniform("normalMatrix", normalMatrix);
+    shader_->setUniform("u_model", model);
+    shader_->setUniform("u_mvp", mvp);
+    shader_->setUniform("u_normalMatrix", normalMatrix);
     shader_->setUniform("u_color", drawProps.modelColor);
-    shader_->setUniform("light.direction", drawProps.lightDirection);
-    shader_->setUniform("viewPos", camera.position());
+    shader_->setUniform("u_light.direction", drawProps.lightDirection);
+    shader_->setUniform("u_viewPos", camera.position());
 
     shader_->updateSubroutines(
         GL_FRAGMENT_SHADER,
