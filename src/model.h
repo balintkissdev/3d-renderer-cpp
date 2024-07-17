@@ -9,7 +9,7 @@
 #include <vector>
 
 class Camera;
-class DrawProperties;
+struct DrawProperties;
 
 class Model
 {

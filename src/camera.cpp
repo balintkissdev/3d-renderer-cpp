@@ -4,7 +4,9 @@
 
 #include "glm/gtc/matrix_transform.hpp"
 
-const glm::vec3 Camera::UP_VECTOR{0.0f, 1.0f, 0.0f};
+#include <algorithm>
+
+const glm::vec3 Camera::UP_VECTOR{0.0F, 1.0F, 0.0F};
 
 Camera::Camera(const glm::vec3& position, const glm::vec2& rotation)
     : rotation_(rotation)
@@ -17,44 +19,44 @@ Camera::Camera(const glm::vec3& position, const glm::vec2& rotation)
 
 void Camera::moveForward(const float deltaTime)
 {
-    position_ += movementSpeed * front_ * deltaTime;
+    position_ += movementSpeed_ * front_ * deltaTime;
 }
 
 void Camera::moveBackward(const float deltaTime)
 {
-    position_ -= movementSpeed * front_ * deltaTime;
+    position_ -= movementSpeed_ * front_ * deltaTime;
 }
 
 void Camera::strafeLeft(const float deltaTime)
 {
     // If you don't normalize, you move fast or slow depending on camera
     // direction.
-    position_ -= glm::normalize(glm::cross(front_, UP_VECTOR)) * movementSpeed
+    position_ -= glm::normalize(glm::cross(front_, UP_VECTOR)) * movementSpeed_
                * deltaTime;
 }
 
 void Camera::strafeRight(const float deltaTime)
 {
-    position_ += glm::normalize(glm::cross(front_, UP_VECTOR)) * movementSpeed
+    position_ += glm::normalize(glm::cross(front_, UP_VECTOR)) * movementSpeed_
                * deltaTime;
 }
 
 void Camera::ascend(const float deltaTime)
 {
-    position_ += movementSpeed * UP_VECTOR * deltaTime;
+    position_ += movementSpeed_ * UP_VECTOR * deltaTime;
 }
 
 void Camera::descend(const float deltaTime)
 {
-    position_ -= movementSpeed * UP_VECTOR * deltaTime;
+    position_ -= movementSpeed_ * UP_VECTOR * deltaTime;
 }
 
 void Camera::look(const float xOffset, const float yOffset)
 {
-    rotation_.x += xOffset * lookSensitivity;
-    utils::wrap(rotation_.x, 0.0f, 359.9f);
-    rotation_.y += yOffset * lookSensitivity;
-    utils::clamp(rotation_.y, -89.0f, 89.0f);
+    rotation_.x += xOffset * lookSensitivity_;
+    utils::wrap(rotation_.x, 0.0F, 359.9F);
+    rotation_.y += yOffset * lookSensitivity_;
+    rotation_.y = std::clamp(rotation_.y, -89.0F, 89.0F);
 
     updateDirection();
 }

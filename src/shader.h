@@ -5,6 +5,7 @@
 #include "glm/mat4x4.hpp"
 #include "glm/vec3.hpp"
 
+#include <array>
 #include <memory>
 #include <string>
 #include <vector>
@@ -21,7 +22,7 @@ public:
 
     ~Shader();
 
-    void use();
+    void use() const;
 
     template <typename T>
     void setUniform(const char* name, const T& v);
@@ -43,7 +44,7 @@ private:
 template <>
 void Shader::setUniform(const char* name, const int& v);
 template <>
-void Shader::setUniform(const char* name, const float (&v)[3]);
+void Shader::setUniform(const char* name, const std::array<float, 3>& v);
 template <>
 void Shader::setUniform(const char* name, const glm::vec3& v);
 template <>

@@ -1,6 +1,7 @@
 #include "app.h"
 
 #include "drawproperties.h"
+#include "gui.h"
 #include "model.h"
 #include "utils.h"
 
@@ -12,12 +13,12 @@
 #include <iostream>
 
 App::App()
-    : window_(nullptr)
+    : window_{nullptr}
     // Positioning and rotation accidentally imitates a right-handed 3D
     // coordinate system with positive Z going farther from model, but this
     // setting is done because of initial orientation of the loaded Stanford
     // Bunny mesh.
-    , camera_({1.7f, 1.3f, 4.0f}, {240.0f, -15.0f})
+    , camera_({1.7F, 1.3F, 4.0F}, {240.0F, -15.0F})
     , windowCallbackData_{.camera = camera_,
                           .lastMousePos{SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2}}
 {
@@ -69,7 +70,7 @@ bool App::init()
         return false;
     }
 
-    gui_.init(window_);
+    Gui::init(window_);
 
     skybox_ = SkyboxBuilder()
                   .setRight("assets/skybox/right.jpg")
@@ -93,7 +94,7 @@ bool App::init()
 
 void App::cleanup()
 {
-    gui_.cleanup();
+    Gui::cleanup();
     glfwDestroyWindow(window_);
     glfwTerminate();
 }
@@ -105,11 +106,11 @@ void App::run()
                                 .diffuseEnabled = true,
                                 .specularEnabled = true,
                                 .selectedModelIndex = 2,
-                                .fov = 60.0f,
-                                .backgroundColor = {0.5f, 0.5f, 0.5f},
-                                .modelRotation = {0.0f, 0.0f, 0.0f},
-                                .modelColor = {0.0f, 0.8f, 1.0f},
-                                .lightDirection = {-0.5f, -1.0f, 0.0f}};
+                                .fov = 60.0F,
+                                .backgroundColor = {0.5F, 0.5F, 0.5F},
+                                .modelRotation = {0.0F, 0.0F, 0.0F},
+                                .modelColor = {0.0F, 0.8F, 1.0F},
+                                .lightDirection = {-0.5F, -1.0F, 0.0F}};
 
     // Frame-rate independent loop with fixed update, variable rendering time.
     //
@@ -119,7 +120,7 @@ void App::run()
     // Prefer steady_clock over high_resolution_clock, because
     // high_resolution_clock could lie.
     auto previousTime = std::chrono::steady_clock::now();
-    float lag = 0.0f;
+    float lag = 0.0F;
     while (!glfwWindowShouldClose(window_))
     {
         const auto currentTime = std::chrono::steady_clock::now();
@@ -135,7 +136,7 @@ void App::run()
             lag -= FIXED_UPDATE_TIMESTEP;
         }
 
-        gui_.preRender(camera_, drawProps);
+        Gui::preRender(camera_, drawProps);
         Model* activeModel = models_[drawProps.selectedModelIndex].get();
 
         int frameBufferWidth = SCREEN_WIDTH;
@@ -144,14 +145,14 @@ void App::run()
         glClearColor(drawProps.backgroundColor[0],
                      drawProps.backgroundColor[1],
                      drawProps.backgroundColor[2],
-                     1.0f);
+                     1.0F);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         const glm::mat4 projection = glm::perspective(
             glm::radians(drawProps.fov),
             (float)frameBufferWidth / (float)frameBufferHeight,
-            0.1f,
-            100.0f);
+            0.1F,
+            100.0F);
 
         // TODO: Abstract away renderer implementation when starting working on
         // Direct3D11 and Vulkan
@@ -160,14 +161,14 @@ void App::run()
         {
             skybox_->draw(projection, camera_);
         }
-        gui_.draw();
+        Gui::draw();
 
         glfwSwapBuffers(window_);
         glfwPollEvents();
     }
 }
 
-void App::ErrorCallback(int error, const char* description)
+void App::ErrorCallback([[maybe_unused]] int error, const char* description)
 {
     utils::errorMessage("GLFW error: ", description);
 }
@@ -175,7 +176,7 @@ void App::ErrorCallback(int error, const char* description)
 void App::MouseButtonCallback(GLFWwindow* window,
                               int button,
                               int action,
-                              int mods)
+                              [[maybe_unused]] int mods)
 {
     if (button == GLFW_MOUSE_BUTTON_RIGHT)
     {
@@ -201,22 +202,26 @@ void App::MouseCursorCallback(GLFWwindow* window,
                               double currentMousePosX,
                               double currentMousePosY)
 {
+    const glm::vec2 currentMousePosFloat = {
+        static_cast<float>(currentMousePosX),
+        static_cast<float>(currentMousePosY),
+    };
     auto* callbackData
         = static_cast<WindowCallbackData*>(glfwGetWindowUserPointer(window));
     glm::vec2& lastMousePos = callbackData->lastMousePos;
     if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_RELEASE)
     {
         // Avoid sudden jumps when initiating turning
-        lastMousePos.x = currentMousePosX;
-        lastMousePos.y = currentMousePosY;
+        lastMousePos.x = currentMousePosFloat.x;
+        lastMousePos.y = currentMousePosFloat.y;
         return;
     }
 
-    float xOffset = currentMousePosX - lastMousePos.x;
+    const float xOffset = currentMousePosFloat.x - lastMousePos.x;
     // Reversed because y is bottom to up
-    float yOffset = lastMousePos.y - currentMousePosY;
-    lastMousePos.x = currentMousePosX;
-    lastMousePos.y = currentMousePosY;
+    const float yOffset = lastMousePos.y - currentMousePosFloat.y;
+    lastMousePos.x = currentMousePosFloat.x;
+    lastMousePos.y = currentMousePosFloat.y;
 
     callbackData->camera.look(xOffset, yOffset);
 }

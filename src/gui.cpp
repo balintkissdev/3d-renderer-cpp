@@ -17,7 +17,7 @@ void Gui::init(GLFWwindow* window)
 
     auto& style = ImGui::GetStyle();
     ImVec4* colors = style.Colors;
-    const ImVec4 transparentBackgroundColor = ImVec4(0.1, 0.1, 0.1, 0.5);
+    const ImVec4 transparentBackgroundColor = ImVec4(0.1F, 0.1F, 0.1F, 0.5F);
     colors[ImGuiCol_WindowBg] = transparentBackgroundColor;
     colors[ImGuiCol_ChildBg] = transparentBackgroundColor;
     colors[ImGuiCol_TitleBg] = transparentBackgroundColor;
@@ -51,59 +51,59 @@ void Gui::preRender(const Camera& camera, DrawProperties& drawProps)
                     cameraRotation.y);
         ImGui::SliderFloat("##FOV",
                            &drawProps.fov,
-                           45.0f,
-                           120.0f,
+                           45.0F,
+                           120.0F,
                            "FOV = %.1f°");
         ImGui::Checkbox("Skybox", &drawProps.skyboxEnabled);
         if (!drawProps.skyboxEnabled)
         {
-            ImGui::ColorEdit3("Background", drawProps.backgroundColor);
+            ImGui::ColorEdit3("Background", drawProps.backgroundColor.data());
         }
     }
 
     if (ImGui::CollapsingHeader("Model", ImGuiTreeNodeFlags_DefaultOpen))
     {
-        static const char* modelItems[]
+        static const std::array modelItems
             = {"Blender Cube", "Utah Teapot", "Stanford Bunny"};
         ImGui::Combo("##Selected Model",
                      &drawProps.selectedModelIndex,
-                     modelItems,
-                     IM_ARRAYSIZE(modelItems));
+                     modelItems.data(),
+                     static_cast<int>(modelItems.size()));
         ImGui::Checkbox("Wireframe mode", &drawProps.wireframeModeEnabled);
     }
 
     if (ImGui::CollapsingHeader("Transform", ImGuiTreeNodeFlags_DefaultOpen))
     {
-        static constexpr float MIN_MODEL_ROTATION = 0.0f;
-        static constexpr float MAX_MODEL_ROTATION = 360.0f;
+        static constexpr float minModelRotation = 0.0F;
+        static constexpr float maxModelRotation = 360.0F;
         ImGui::SliderFloat("##Rotate X",
-                           &drawProps.modelRotation[0],
-                           MIN_MODEL_ROTATION,
-                           MAX_MODEL_ROTATION,
+                           drawProps.modelRotation.data(),
+                           minModelRotation,
+                           maxModelRotation,
                            "X rotation = %.0f°");
         ImGui::SliderFloat("##Rotate Y",
                            &drawProps.modelRotation[1],
-                           MIN_MODEL_ROTATION,
-                           MAX_MODEL_ROTATION,
+                           minModelRotation,
+                           maxModelRotation,
                            "Y rotation = %.0f°");
         ImGui::SliderFloat("##Rotate Z",
                            &drawProps.modelRotation[2],
-                           MIN_MODEL_ROTATION,
-                           MAX_MODEL_ROTATION,
+                           minModelRotation,
+                           maxModelRotation,
                            "Z rotation = %.0f°");
     }
 
     if (ImGui::CollapsingHeader("Material", ImGuiTreeNodeFlags_DefaultOpen))
     {
-        ImGui::ColorEdit3("##Solid Color", drawProps.modelColor);
+        ImGui::ColorEdit3("##Solid Color", drawProps.modelColor.data());
     }
 
     if (ImGui::CollapsingHeader("Lighting", ImGuiTreeNodeFlags_DefaultOpen))
     {
         ImGui::SliderFloat3("Sun direction",
-                            drawProps.lightDirection,
-                            -1.0f,
-                            1.0f);
+                            drawProps.lightDirection.data(),
+                            -1.0F,
+                            1.0F);
         ImGui::Checkbox("Diffuse", &drawProps.diffuseEnabled);
         ImGui::Checkbox("Specular", &drawProps.specularEnabled);
     }

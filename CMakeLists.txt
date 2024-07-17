@@ -13,9 +13,9 @@ set(PROJECT_VERSION_MINOR 0)
 set(PROJECT_VERSION_PATCH 0)
 set(PROJECT_VERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_PATCH})
 
-if(WIN32)
-    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /MT")
-    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /MTd")
+if(MSVC)
+    # Use global flags for building dependencies without MSVCRT DLL
+    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 endif()
 
 include(FetchContent)
@@ -58,10 +58,40 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
     CXX_STANDARD 20
     CXX_STANDARD_REQUIRED YES
 )
-if(WIN32)
-    set_target_properties(${PROJECT_NAME} PROPERTIES
-        LINK_FLAGS "/SUBSYSTEM:WINDOWS"
+if(MSVC)
+    target_compile_options(${PROJECT_NAME} PRIVATE
+        # TODO: Find a way to disable exceptions on MSVC without breaking build
+        /GR-                  # Disable RTTI
+        /W3                   # Warning level 3
+        /WX                   # Treat all warnings as errors
     )
+    set_target_properties(${PROJECT_NAME} PROPERTIES
+        LINK_FLAGS /SUBSYSTEM:WINDOWS
+    )
+else()
+    target_compile_options(${PROJECT_NAME} PRIVATE
+        -fno-exceptions        # Disable exceptions
+        -fno-rtti              # Disable RTTI
+        -Wall                  # Enable all warnings
+        -Wextra                # Enable extra warnings
+        -Werror                # Treat all warnings as errors
+        -Wpedantic             # Enable pedantic warnings
+    )
+endif()
+
+find_program(
+    CLANG_TIDY_EXE
+    NAMES clang-tidy
+)
+if(CLANG_TIDY_EXE)
+    message(STATUS "clang-tidy found: ${CLANG_TIDY_EXE}")
+    set(DO_CLANG_TIDY
+        "${CLANG_TIDY_EXE}"
+        "--header-filter=src/*"
+    )
+    set_target_properties(${PROJECT_NAME} PROPERTIES CXX_CLANG_TIDY "${DO_CLANG_TIDY}")
+else()
+    message(STATUS "clang-tidy not found.")
 endif()
 
 set(THIRDPARTY_DIR "${CMAKE_CURRENT_SOURCE_DIR}/thirdparty")
@@ -69,30 +99,29 @@ set(THIRDPARTY_DIR "${CMAKE_CURRENT_SOURCE_DIR}/thirdparty")
 target_include_directories(${PROJECT_NAME}
     PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/src"
+)
+target_include_directories(${PROJECT_NAME}
+    SYSTEM
+    PRIVATE
         "${THIRDPARTY_DIR}"
         "${THIRDPARTY_DIR}/glad/include"
         "${THIRDPARTY_DIR}/imgui"
         "${THIRDPARTY_DIR}/imgui/backends"
+        "${assimp_SOURCE_DIR}/include"
+        "${glfw_SOURCE_DIR}/include"
+        "${glm_SOURCE_DIR}"
 )
-
 add_subdirectory(src)
-target_sources(${PROJECT_NAME}
-    PRIVATE
-    "${THIRDPARTY_DIR}/glad/src/gl.c"
-    "${THIRDPARTY_DIR}/imgui/imgui.cpp"
-    "${THIRDPARTY_DIR}/imgui/imgui_draw.cpp"
-    "${THIRDPARTY_DIR}/imgui/imgui_tables.cpp"
-    "${THIRDPARTY_DIR}/imgui/imgui_widgets.cpp"
-    "${THIRDPARTY_DIR}/imgui/backends/imgui_impl_glfw.cpp"
-    "${THIRDPARTY_DIR}/imgui/backends/imgui_impl_opengl3.cpp"
-)
+add_subdirectory(${THIRDPARTY_DIR})
 
 find_package(OpenGL REQUIRED)
 target_link_libraries(${PROJECT_NAME}
     PRIVATE
         assimp
+        imgui
         glm::glm
         glfw
+        glad
         OpenGL::GL
 )
 

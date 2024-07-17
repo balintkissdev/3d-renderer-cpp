@@ -1,24 +1,26 @@
 #include "shader.h"
 
+#include "utils.h"
+
 #include "glm/gtc/type_ptr.hpp"
 
 #include <cstdio>
 #include <fstream>
+#include <ios>
 
-// TODO: Remove "C-ism"
-#define SHADER_TYPE_VERTEX ("Vertex shader")
-#define SHADER_TYPE_FRAGMENT ("Fragment shader")
-#define SHADER_TYPE_PROGRAM ("Shader program")
-#define SHADER_COMPILE_MESSAGE_MAX_LENGTH (512)
+namespace
+{
+constexpr size_t SHADER_COMPILE_MESSAGE_MAX_LENGTH = 512;
+}
 
 std::string Shader::readFile(const char* shaderPath)
 {
     std::ifstream file(shaderPath, std::ios::binary);
     file.seekg(0, std::istream::end);
-    std::size_t fileSize(file.tellg());
+    std::streamsize fileSize(file.tellg());
     file.seekg(0, std::istream::beg);
     std::string shaderSrc(fileSize, 0);
-    file.read(&shaderSrc[0], fileSize);
+    file.read(shaderSrc.data(), fileSize);
     return shaderSrc;
 }
 
@@ -72,7 +74,7 @@ Shader::~Shader()
     glDeleteShader(shaderProgram_);
 }
 
-void Shader::use()
+void Shader::use() const
 {
     glUseProgram(shaderProgram_);
 }
@@ -84,9 +86,9 @@ void Shader::setUniform(const char* name, const int& v)
 }
 
 template <>
-void Shader::setUniform(const char* name, const float (&v)[3])
+void Shader::setUniform(const char* name, const std::array<float, 3>& v)
 {
-    glUniform3fv(glGetUniformLocation(shaderProgram_, name), 1, v);
+    glUniform3fv(glGetUniformLocation(shaderProgram_, name), 1, v.data());
 }
 
 template <>
@@ -125,25 +127,25 @@ void Shader::updateSubroutines(const GLenum shaderType,
             glGetSubroutineIndex(shaderProgram_, shaderType, name.c_str()));
     }
     glUniformSubroutinesuiv(GL_FRAGMENT_SHADER,
-                            subroutineIndices_.size(),
+                            static_cast<GLsizei>(subroutineIndices_.size()),
                             subroutineIndices_.data());
 }
 
 bool Shader::checkCompileErrors(GLuint shaderID, const GLenum shaderType)
 {
     int success;
-    char message[SHADER_COMPILE_MESSAGE_MAX_LENGTH];
+    std::array<char, SHADER_COMPILE_MESSAGE_MAX_LENGTH> message;
     glGetShaderiv(shaderID, GL_COMPILE_STATUS, &success);
     if (!success)
     {
         glGetShaderInfoLog(shaderID,
                            SHADER_COMPILE_MESSAGE_MAX_LENGTH,
-                           NULL,
-                           message);
-        fprintf(stderr,
-                "%s shader compile error: %s\n",
-                shaderType == GL_VERTEX_SHADER ? "Vertex" : "Fragment",
-                message);
+                           nullptr,
+                           message.data());
+        utils::errorMessage(
+            shaderType == GL_VERTEX_SHADER ? "vertex" : "fragment",
+            " shader compile error: ",
+            message.data());
     }
 
     return success;
@@ -152,15 +154,15 @@ bool Shader::checkCompileErrors(GLuint shaderID, const GLenum shaderType)
 bool Shader::checkLinkerErrors(GLuint shaderID)
 {
     int success;
-    char message[SHADER_COMPILE_MESSAGE_MAX_LENGTH];
+    std::array<char, SHADER_COMPILE_MESSAGE_MAX_LENGTH> message;
     glGetProgramiv(shaderID, GL_LINK_STATUS, &success);
     if (!success)
     {
         glGetProgramInfoLog(shaderID,
                             SHADER_COMPILE_MESSAGE_MAX_LENGTH,
-                            NULL,
-                            message);
-        fprintf(stderr, "Shader link error: %s\n", message);
+                            nullptr,
+                            message.data());
+        utils::errorMessage("shader link error: ", message.data());
     }
 
     return success;

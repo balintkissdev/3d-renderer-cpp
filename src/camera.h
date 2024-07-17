@@ -16,9 +16,9 @@ public:
     void descend(const float deltaTime);
     void look(const float xOffset, const float yOffset);
 
-    glm::mat4 makeViewMatrix() const;
-    glm::vec3 position() const;
-    glm::vec2 rotation() const;
+    [[nodiscard]] glm::mat4 makeViewMatrix() const;
+    [[nodiscard]] glm::vec3 position() const;
+    [[nodiscard]] glm::vec2 rotation() const;
 
 private:
     static const glm::vec3 UP_VECTOR;
@@ -28,8 +28,8 @@ private:
     glm::vec3 position_;
     glm::vec3 front_;
 
-    const float movementSpeed = 2.5f;
-    const float lookSensitivity = 0.1f;
+    const float movementSpeed_ = 2.5F;
+    const float lookSensitivity_ = 0.1F;
 
     void updateDirection();
 };

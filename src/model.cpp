@@ -11,6 +11,8 @@
 #include "glad/gl.h"
 #include "glm/gtc/type_ptr.hpp"
 
+#include <cstddef>
+
 struct Vertex
 {
     glm::vec3 position;
@@ -38,7 +40,6 @@ std::unique_ptr<Model> Model::create(const char* filePath)
     //
     // Sometimes you get a mesh file with just a single mesh and no nodes.
     // The bundled default files are such meshes.
-    aiNode* node = scene->mRootNode;
     auto model = std::make_unique<Model>();
     std::vector<Vertex> vertices;
     for (size_t i = 0; i < scene->mNumMeshes; ++i)
@@ -72,23 +73,29 @@ std::unique_ptr<Model> Model::create(const char* filePath)
     glGenBuffers(1, &model->vertexBuffer_);
     glBindBuffer(GL_ARRAY_BUFFER, model->vertexBuffer_);
     glBufferData(GL_ARRAY_BUFFER,
-                 sizeof(Vertex) * vertices.size(),
+                 static_cast<GLsizeiptr>(sizeof(Vertex) * vertices.size()),
                  vertices.data(),
                  GL_STATIC_DRAW);
 
     glGenBuffers(1, &model->indexBuffer_);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, model->indexBuffer_);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER,
-                 sizeof(GLuint) * model->indices_.size(),
-                 model->indices_.data(),
-                 GL_STATIC_DRAW);
+    glBufferData(
+        GL_ELEMENT_ARRAY_BUFFER,
+        static_cast<GLsizeiptr>(sizeof(GLuint) * model->indices_.size()),
+        model->indices_.data(),
+        GL_STATIC_DRAW);
 
     model->shader_ = Shader::createFromFile("assets/shaders/model.vert.glsl",
                                             "assets/shaders/model.frag.glsl");
 
     // Vertex Attribute 0: position
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (GLvoid*)0);
+    glVertexAttribPointer(0,
+                          3,
+                          GL_FLOAT,
+                          GL_FALSE,
+                          sizeof(Vertex),
+                          reinterpret_cast<GLvoid*>(0));
 
     // Vertex Attribute 1: normal
     glEnableVertexAttribArray(1);
@@ -97,7 +104,8 @@ std::unique_ptr<Model> Model::create(const char* filePath)
                           GL_FLOAT,
                           GL_FALSE,
                           sizeof(Vertex),
-                          (GLvoid*)offsetof(Vertex, normal));
+                          // NOLINTNEXTLINE(performance-no-int-to-ptr)
+                          reinterpret_cast<GLvoid*>(offsetof(Vertex, normal)));
 
     glBindVertexArray(0);
 
@@ -118,18 +126,18 @@ void Model::draw(const glm::mat4& projection,
     shader_->use();
     glBindVertexArray(vertexArray_);
 
-    glm::mat4 model(1.0f);
+    glm::mat4 model(1.0F);
 
     // Avoid Gimbal-lock
     const glm::quat quatX
         = glm::angleAxis(glm::radians(drawProps.modelRotation[0]),
-                         glm::vec3(1.0f, 0.0f, 0.0f));
+                         glm::vec3(1.0F, 0.0F, 0.0F));
     const glm::quat quatY
         = glm::angleAxis(glm::radians(drawProps.modelRotation[1]),
-                         glm::vec3(0.0f, 1.0f, 0.0f));
+                         glm::vec3(0.0F, 1.0F, 0.0F));
     const glm::quat quatZ
         = glm::angleAxis(glm::radians(drawProps.modelRotation[2]),
-                         glm::vec3(0.0f, 0.0f, 1.0f));
+                         glm::vec3(0.0F, 0.0F, 1.0F));
     const glm::quat quat = quatZ * quatY * quatX;
     model = glm::mat4_cast(quat);
 
@@ -155,7 +163,10 @@ void Model::draw(const glm::mat4& projection,
     glPolygonMode(GL_FRONT_AND_BACK,
                   drawProps.wireframeModeEnabled ? GL_LINE : GL_FILL);
 
-    glDrawElements(GL_TRIANGLES, indices_.size(), GL_UNSIGNED_INT, 0);
+    glDrawElements(GL_TRIANGLES,
+                   static_cast<GLsizei>(indices_.size()),
+                   GL_UNSIGNED_INT,
+                   nullptr);
 
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     glBindVertexArray(0);

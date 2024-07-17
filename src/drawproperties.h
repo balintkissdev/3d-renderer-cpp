@@ -1,5 +1,7 @@
 #pragma once
 
+#include <array>
+
 struct DrawProperties
 {
     bool skyboxEnabled;
@@ -8,8 +10,8 @@ struct DrawProperties
     bool specularEnabled;
     int selectedModelIndex;
     float fov;
-    float backgroundColor[3];
-    float modelRotation[3];
-    float modelColor[3];
-    float lightDirection[3];
+    std::array<float, 3> backgroundColor;
+    std::array<float, 3> modelRotation;
+    std::array<float, 3> modelColor;
+    std::array<float, 3> lightDirection;
 };

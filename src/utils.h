@@ -21,28 +21,15 @@ inline void errorMessage(Args... args)
 }
 
 template <typename T>
-inline void wrap(T& x, const T min, const T max)
+inline void wrap(T& v, const T min, const T max)
 {
-    if (max < x)
+    if (max < v)
     {
-        x = min;
+        v = min;
     }
-    else if (x < min)
+    else if (v < min)
     {
-        x = max;
-    }
-}
-
-template <typename T>
-inline void clamp(T& x, const T min, const T max)
-{
-    if (max < x)
-    {
-        x = max;
-    }
-    else if (x < min)
-    {
-        x = min;
+        v = max;
     }
 }
 }  // namespace utils

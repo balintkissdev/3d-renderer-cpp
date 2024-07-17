@@ -1,14 +1,14 @@
 #pragma once
 
 class Camera;
-class DrawProperties;
+struct DrawProperties;
 struct GLFWwindow;
 
 class Gui
 {
 public:
-    void init(GLFWwindow* window);
-    void preRender(const Camera& camera, DrawProperties& drawProps);
-    void draw();
-    void cleanup();
+    static void init(GLFWwindow* window);
+    static void preRender(const Camera& camera, DrawProperties& drawProps);
+    static void draw();
+    static void cleanup();
 };

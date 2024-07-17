@@ -5,7 +5,10 @@
 #ifdef _WIN32
 #include <Windows.h>
 
-int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int)
+int WINAPI WinMain([[maybe_unused]] _In_ HINSTANCE hInstance,
+                   [[maybe_unused]] _In_opt_ HINSTANCE hPrevInstance,
+                   [[maybe_unused]] _In_ LPSTR lpCmdLine,
+                   [[maybe_unused]] _In_ int nShowCmd)
 #else
 int main()
 #endif
