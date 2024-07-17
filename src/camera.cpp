@@ -6,11 +6,12 @@
 
 const glm::vec3 Camera::UP_VECTOR{0.0f, 1.0f, 0.0f};
 
-Camera::Camera(const glm::vec3 &position, const glm::vec2 &rotation)
+Camera::Camera(const glm::vec3& position, const glm::vec2& rotation)
     : rotation_(rotation)
     , position_(position)
 {
-    // Calculate front vector on initialization to avoid jumping camera on first mouselook
+    // Calculate front vector on initialization to avoid jumping camera on first
+    // mouselook
     updateDirection();
 }
 
@@ -26,13 +27,16 @@ void Camera::moveBackward(const float deltaTime)
 
 void Camera::strafeLeft(const float deltaTime)
 {
-    // If you don't normalize, you move fast or slow depending on camera direction.
-    position_ -= glm::normalize(glm::cross(front_, UP_VECTOR)) * movementSpeed * deltaTime;
+    // If you don't normalize, you move fast or slow depending on camera
+    // direction.
+    position_ -= glm::normalize(glm::cross(front_, UP_VECTOR)) * movementSpeed
+               * deltaTime;
 }
 
 void Camera::strafeRight(const float deltaTime)
 {
-    position_ += glm::normalize(glm::cross(front_, UP_VECTOR)) * movementSpeed * deltaTime;
+    position_ += glm::normalize(glm::cross(front_, UP_VECTOR)) * movementSpeed
+               * deltaTime;
 }
 
 void Camera::ascend(const float deltaTime)
@@ -73,8 +77,10 @@ glm::vec2 Camera::rotation() const
 void Camera::updateDirection()
 {
     glm::vec3 direction;
-    direction.x = std::cos(glm::radians(rotation_.x)) * std::cos(glm::radians(rotation_.y));
+    direction.x = std::cos(glm::radians(rotation_.x))
+                * std::cos(glm::radians(rotation_.y));
     direction.y = std::sin(glm::radians(rotation_.y));
-    direction.z = std::sin(glm::radians(rotation_.x)) * std::cos(glm::radians(rotation_.y));
+    direction.z = std::sin(glm::radians(rotation_.x))
+                * std::cos(glm::radians(rotation_.y));
     front_ = glm::normalize(direction);
 }

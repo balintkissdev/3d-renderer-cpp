@@ -14,10 +14,12 @@ class DrawProperties;
 class Model
 {
 public:
-    static std::unique_ptr<Model> create(const char *filePath);
+    static std::unique_ptr<Model> create(const char* filePath);
     ~Model();
 
-    void draw(const glm::mat4 &projection, const Camera &camera, const DrawProperties &drawProps);
+    void draw(const glm::mat4& projection,
+              const Camera& camera,
+              const DrawProperties& drawProps);
 
 private:
     std::unique_ptr<Shader> shader_;

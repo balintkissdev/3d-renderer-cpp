@@ -1,0 +1,36 @@
+---
+Language: Cpp
+BasedOnStyle: Google
+BreakBeforeBraces: Allman
+AccessModifierOffset: -4
+AlignAfterOpenBracket: Align
+AlignOperands: AlignAfterOperator
+AlignTrailingComments: false
+AllowAllArgumentsOnNextLine: false
+AllowAllParametersOfDeclarationOnNextLine: false
+AllowShortFunctionsOnASingleLine: Inline
+BinPackArguments: false
+BinPackParameters: false
+BraceWrapping:
+  BeforeLambdaBody: true
+  AfterStruct: true
+  SplitEmptyRecord: true
+  SplitEmptyFunction: false
+BreakBeforeBinaryOperators: All
+BreakConstructorInitializers: BeforeComma
+DerivePointerAlignment: false
+IncludeCategories:
+  - Regex: '^"(assimp|glad|GLFW|glm|imgui|stb).*"'
+    Priority: 2
+  - Regex: '^<.*'
+    Priority: 3
+  - Regex: '.*'
+    Priority: 1
+IncludeIsMainSourceRegex: ''
+IndentWidth: 4
+InsertNewlineAtEOF: true
+KeepEmptyLinesAtEOF: true
+PackConstructorInitializers: Never
+PenaltyBreakBeforeFirstCallParameter: 1
+...
+

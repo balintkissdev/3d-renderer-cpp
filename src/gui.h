@@ -7,8 +7,8 @@ struct GLFWwindow;
 class Gui
 {
 public:
-    void init(GLFWwindow *window);
-    void preRender(const Camera &camera, DrawProperties &drawProps);
+    void init(GLFWwindow* window);
+    void preRender(const Camera& camera, DrawProperties& drawProps);
     void draw();
     void cleanup();
 };

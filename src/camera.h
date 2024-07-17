@@ -23,7 +23,8 @@ public:
 private:
     static const glm::vec3 UP_VECTOR;
 
-    glm::vec2 rotation_;    // rotation_.x is also known as yaw, while rotation_.y is pitch
+    glm::vec2 rotation_;  // rotation_.x is also known as yaw, while rotation_.y
+                          // is pitch
     glm::vec3 position_;
     glm::vec3 front_;
 

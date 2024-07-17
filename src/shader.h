@@ -1,9 +1,9 @@
 #pragma once
 
 #include "glad/gl.h"
-#include "glm/vec3.hpp"
 #include "glm/mat4x3.hpp"
 #include "glm/mat4x4.hpp"
+#include "glm/vec3.hpp"
 
 #include <memory>
 #include <string>
@@ -12,21 +12,25 @@
 class Shader
 {
 public:
-    static std::unique_ptr<Shader> createFromFile(const char *vertexShaderPath, const char *fragmentShaderPath);
+    static std::unique_ptr<Shader> createFromFile(
+        const char* vertexShaderPath,
+        const char* fragmentShaderPath);
 
-    ~Shader();
     Shader(const Shader&) = delete;
     Shader& operator=(const Shader&) = delete;
+
+    ~Shader();
 
     void use();
 
     template <typename T>
-    void setUniform(const char *name, const T &v);
+    void setUniform(const char* name, const T& v);
 
-    void updateSubroutines(const GLenum shaderType, const std::vector<std::string> &names);
+    void updateSubroutines(const GLenum shaderType,
+                           const std::vector<std::string>& names);
 
 private:
-    static std::string readFile(const char *shaderPath);
+    static std::string readFile(const char* shaderPath);
     static bool checkCompileErrors(GLuint shaderID, const GLenum shaderType);
     static bool checkLinkerErrors(GLuint shaderID);
 
@@ -37,12 +41,12 @@ private:
 };
 
 template <>
-void Shader::setUniform(const char *name, const int &v);
+void Shader::setUniform(const char* name, const int& v);
 template <>
-void Shader::setUniform(const char *name, const float (&v)[3]);
+void Shader::setUniform(const char* name, const float (&v)[3]);
 template <>
-void Shader::setUniform(const char *name, const glm::vec3 &v);
+void Shader::setUniform(const char* name, const glm::vec3& v);
 template <>
-void Shader::setUniform(const char *name, const glm::mat3 &v);
+void Shader::setUniform(const char* name, const glm::mat3& v);
 template <>
-void Shader::setUniform(const char *name, const glm::mat4 &v);
+void Shader::setUniform(const char* name, const glm::mat4& v);

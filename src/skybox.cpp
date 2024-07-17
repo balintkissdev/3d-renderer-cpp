@@ -4,14 +4,15 @@
 #include "shader.h"
 #include "utils.h"
 
-#define STB_IMAGE_IMPLEMENTATION
-#include "stb_image.h"
+#include "glad/gl.h"
 #include "glm/gtc/matrix_transform.hpp"
 #include "glm/gtc/type_ptr.hpp"
-#include "glad/gl.h"
+// clang-format off
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
+// clang-format on
 
 #include <cstdint>
-#include <filesystem>
 
 Skybox::~Skybox()
 {
@@ -21,7 +22,7 @@ Skybox::~Skybox()
     glDeleteBuffers(1, &vertexBuffer_);
 }
 
-void Skybox::draw(const glm::mat4 &projection, const Camera &camera)
+void Skybox::draw(const glm::mat4& projection, const Camera& camera)
 {
     glDepthFunc(GL_LEQUAL);
     shader_->use();
@@ -33,7 +34,8 @@ void Skybox::draw(const glm::mat4 &projection, const Camera &camera)
     // Remove camera position transformations but keep rotation by recreating
     // view matrix, then converting to mat3 and back. If you don't do this,
     // skybox will be shown as a shrinked down cube around model.
-    const glm::mat4 normalizedView = glm::mat4(glm::mat3(camera.makeViewMatrix()));
+    const glm::mat4 normalizedView
+        = glm::mat4(glm::mat3(camera.makeViewMatrix()));
     // Concat matrix transformations on CPU to avoid unnecessary multiplications
     // in GLSL. Results would be the same for all vertices.
     const glm::mat4 projectionView = projection * normalizedView;
@@ -46,37 +48,37 @@ void Skybox::draw(const glm::mat4 &projection, const Camera &camera)
     glBindVertexArray(0);
 }
 
-SkyboxBuilder& SkyboxBuilder::setRight(const std::string &rightFacePath)
+SkyboxBuilder& SkyboxBuilder::setRight(const std::string& rightFacePath)
 {
     rightFacePath_ = rightFacePath;
     return *this;
 }
 
-SkyboxBuilder& SkyboxBuilder::setLeft(const std::string &leftFacePath)
+SkyboxBuilder& SkyboxBuilder::setLeft(const std::string& leftFacePath)
 {
     leftFacePath_ = leftFacePath;
     return *this;
 }
 
-SkyboxBuilder& SkyboxBuilder::setTop(const std::string &topFacePath)
+SkyboxBuilder& SkyboxBuilder::setTop(const std::string& topFacePath)
 {
     topFacePath_ = topFacePath;
     return *this;
 }
 
-SkyboxBuilder& SkyboxBuilder::setBottom(const std::string &bottomFacePath)
+SkyboxBuilder& SkyboxBuilder::setBottom(const std::string& bottomFacePath)
 {
     bottomFacePath_ = bottomFacePath;
     return *this;
 }
 
-SkyboxBuilder& SkyboxBuilder::setFront(const std::string &frontFacePath)
+SkyboxBuilder& SkyboxBuilder::setFront(const std::string& frontFacePath)
 {
     frontFacePath_ = frontFacePath;
     return *this;
 }
 
-SkyboxBuilder& SkyboxBuilder::setBack(const std::string &backFacePath)
+SkyboxBuilder& SkyboxBuilder::setBack(const std::string& backFacePath)
 {
     backFacePath_ = backFacePath;
     return *this;
@@ -85,14 +87,12 @@ SkyboxBuilder& SkyboxBuilder::setBack(const std::string &backFacePath)
 std::unique_ptr<Skybox> SkyboxBuilder::build()
 {
     static constexpr size_t FACE_COUNT = 6;
-    const char *textureFacePaths[FACE_COUNT] = {
-        rightFacePath_.c_str(),
-        leftFacePath_.c_str(),
-        topFacePath_.c_str(),
-        bottomFacePath_.c_str(),
-        frontFacePath_.c_str(),
-        backFacePath_.c_str()
-    };
+    const char* textureFacePaths[FACE_COUNT] = {rightFacePath_.c_str(),
+                                                leftFacePath_.c_str(),
+                                                topFacePath_.c_str(),
+                                                bottomFacePath_.c_str(),
+                                                frontFacePath_.c_str(),
+                                                backFacePath_.c_str()};
 
     auto skybox = std::make_unique<Skybox>();
     glGenTextures(1, &skybox->textureID_);
@@ -101,17 +101,20 @@ std::unique_ptr<Skybox> SkyboxBuilder::build()
     int width, height, channelCount;
     for (size_t i = 0; i < FACE_COUNT; ++i)
     {
-        uint8_t *imageData = stbi_load(textureFacePaths[i], &width, &height, &channelCount, 0);
+        uint8_t* imageData
+            = stbi_load(textureFacePaths[i], &width, &height, &channelCount, 0);
         if (!imageData)
         {
-            utils::errorMessage("Unable to load skybox texture from", textureFacePaths[i]);
+            utils::errorMessage("Unable to load skybox texture from",
+                                textureFacePaths[i]);
             return nullptr;
         }
 
         glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i,
                      0,
                      GL_RGB,
-                     width, height,
+                     width,
+                     height,
                      0,
                      GL_RGB,
                      GL_UNSIGNED_BYTE,
@@ -125,12 +128,14 @@ std::unique_ptr<Skybox> SkyboxBuilder::build()
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
 
-    skybox->shader_ = Shader::createFromFile("assets/shaders/skybox.vert.glsl", "assets/shaders/skybox.frag.glsl");
+    skybox->shader_ = Shader::createFromFile("assets/shaders/skybox.vert.glsl",
+                                             "assets/shaders/skybox.frag.glsl");
     if (!skybox->shader_)
     {
         return nullptr;
     }
 
+    // clang-format off
     const float skyboxVertices[] = {
         -1.0f,  1.0f, -1.0f,
         -1.0f, -1.0f, -1.0f,
@@ -162,20 +167,32 @@ std::unique_ptr<Skybox> SkyboxBuilder::build()
         1, 5, 6,
         6, 2, 1
     };
+    // clang-format on
 
     glGenVertexArrays(1, &skybox->vertexArray_);
     glBindVertexArray(skybox->vertexArray_);
 
     glGenBuffers(1, &skybox->vertexBuffer_);
     glBindBuffer(GL_ARRAY_BUFFER, skybox->vertexBuffer_);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(skyboxVertices), &skyboxVertices, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER,
+                 sizeof(skyboxVertices),
+                 &skyboxVertices,
+                 GL_STATIC_DRAW);
 
     glGenBuffers(1, &skybox->indexBuffer_);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, skybox->indexBuffer_);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(skyboxIndices), &skyboxIndices, GL_STATIC_DRAW);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER,
+                 sizeof(skyboxIndices),
+                 &skyboxIndices,
+                 GL_STATIC_DRAW);
 
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (GLvoid*)0);
+    glVertexAttribPointer(0,
+                          3,
+                          GL_FLOAT,
+                          GL_FALSE,
+                          3 * sizeof(float),
+                          (GLvoid*)0);
 
     return skybox;
 }

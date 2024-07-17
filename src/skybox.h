@@ -16,7 +16,7 @@ public:
     friend class SkyboxBuilder;
 
     ~Skybox();
-    void draw(const glm::mat4 &projection, const Camera &camera);
+    void draw(const glm::mat4& projection, const Camera& camera);
 
 private:
     GLuint textureID_;
@@ -29,12 +29,12 @@ private:
 class SkyboxBuilder
 {
 public:
-    SkyboxBuilder& setRight(const std::string &rightFacePath);
-    SkyboxBuilder& setLeft(const std::string &leftFacePath);
-    SkyboxBuilder& setTop(const std::string &topFacePath);
-    SkyboxBuilder& setBottom(const std::string &bottomFacePath);
-    SkyboxBuilder& setFront(const std::string &frontFacePath);
-    SkyboxBuilder& setBack(const std::string &backFacePath);
+    SkyboxBuilder& setRight(const std::string& rightFacePath);
+    SkyboxBuilder& setLeft(const std::string& leftFacePath);
+    SkyboxBuilder& setTop(const std::string& topFacePath);
+    SkyboxBuilder& setBottom(const std::string& bottomFacePath);
+    SkyboxBuilder& setFront(const std::string& frontFacePath);
+    SkyboxBuilder& setBack(const std::string& backFacePath);
     std::unique_ptr<Skybox> build();
 
 private:

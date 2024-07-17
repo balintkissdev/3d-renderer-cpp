@@ -4,31 +4,33 @@
 #include "model.h"
 #include "utils.h"
 
-#include "glad/gl.h"
 #include "GLFW/glfw3.h"
+#include "glad/gl.h"
 #include "glm/gtc/matrix_transform.hpp"
 
 #include <chrono>
 #include <iostream>
-#include <filesystem>
 
 App::App()
     : window_(nullptr)
-    // Positioning and rotation accidentally imitates a right-handed 3D coordinate
-    // system with positive Z going farther from model, but this setting is done
-    // because of initial orientation of the loaded Stanford Bunny mesh.
+    // Positioning and rotation accidentally imitates a right-handed 3D
+    // coordinate system with positive Z going farther from model, but this
+    // setting is done because of initial orientation of the loaded Stanford
+    // Bunny mesh.
     , camera_({1.7f, 1.3f, 4.0f}, {240.0f, -15.0f})
-    , windowCallbackData_{
-        .camera = camera_,
-        .lastMousePos{SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2}
-    }
-{}
+    , windowCallbackData_{.camera = camera_,
+                          .lastMousePos{SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2}}
+{
+}
 
 bool App::init()
 {
     if (!glfwInit())
     {
-        utils::errorMessage("Unable to initialize windowing system. Graphics card needs to support at least OpenGL 4.3.");
+        utils::errorMessage(
+            "Unable to initialize windowing system. Graphics card needs to "
+            "support "
+            "at least OpenGL 4.3.");
         return false;
     }
     glfwSetErrorCallback(ErrorCallback);
@@ -41,10 +43,16 @@ bool App::init()
 #endif
     glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
 
-    window_ = glfwCreateWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "3D renderer by Bálint Kiss", nullptr, nullptr);
+    window_ = glfwCreateWindow(SCREEN_WIDTH,
+                               SCREEN_HEIGHT,
+                               "3D renderer by Bálint Kiss",
+                               nullptr,
+                               nullptr);
     if (!window_)
     {
-        utils::errorMessage("Unable to create window. Graphics card needs to support at least OpenGL 4.3.");
+        utils::errorMessage(
+            "Unable to create window. Graphics card needs to support at least "
+            "OpenGL 4.3.");
         return false;
     }
     glfwSetWindowUserPointer(window_, &windowCallbackData_);
@@ -54,19 +62,23 @@ bool App::init()
 
     if (!gladLoadGL(glfwGetProcAddress))
     {
-        utils::errorMessage("Unable to load OpenGL extensions. Graphics card needs to support at least OpenGL 4.3.");
+        utils::errorMessage(
+            "Unable to load OpenGL extensions. Graphics card needs to support "
+            "at "
+            "least OpenGL 4.3.");
         return false;
     }
 
     gui_.init(window_);
 
-    skybox_ = SkyboxBuilder().setRight("assets/skybox/right.jpg")
-                             .setLeft("assets/skybox/left.jpg")
-                             .setTop("assets/skybox/top.jpg")
-                             .setBottom("assets/skybox/bottom.jpg")
-                             .setFront("assets/skybox/front.jpg")
-                             .setBack("assets/skybox/back.jpg")
-                             .build();
+    skybox_ = SkyboxBuilder()
+                  .setRight("assets/skybox/right.jpg")
+                  .setLeft("assets/skybox/left.jpg")
+                  .setTop("assets/skybox/top.jpg")
+                  .setBottom("assets/skybox/bottom.jpg")
+                  .setFront("assets/skybox/front.jpg")
+                  .setBack("assets/skybox/back.jpg")
+                  .build();
 
     models_.emplace_back(Model::create("assets/meshes/cube.obj"));
     models_.emplace_back(Model::create("assets/meshes/teapot.obj"));
@@ -88,18 +100,16 @@ void App::cleanup()
 
 void App::run()
 {
-    DrawProperties drawProps = {
-        .skyboxEnabled = true,
-        .wireframeModeEnabled = false,
-        .diffuseEnabled = true,
-        .specularEnabled = true,
-        .selectedModelIndex = 2,
-        .fov = 60.0f,
-        .backgroundColor = {0.5f, 0.5f, 0.5f},
-        .modelRotation = {0.0f, 0.0f, 0.0f},
-        .modelColor = {0.0f, 0.8f, 1.0f},
-        .lightDirection = {-0.5f, -1.0f, 0.0f}
-    };
+    DrawProperties drawProps = {.skyboxEnabled = true,
+                                .wireframeModeEnabled = false,
+                                .diffuseEnabled = true,
+                                .specularEnabled = true,
+                                .selectedModelIndex = 2,
+                                .fov = 60.0f,
+                                .backgroundColor = {0.5f, 0.5f, 0.5f},
+                                .modelRotation = {0.0f, 0.0f, 0.0f},
+                                .modelColor = {0.0f, 0.8f, 1.0f},
+                                .lightDirection = {-0.5f, -1.0f, 0.0f}};
 
     // Frame-rate independent loop with fixed update, variable rendering time.
     //
@@ -113,7 +123,8 @@ void App::run()
     while (!glfwWindowShouldClose(window_))
     {
         const auto currentTime = std::chrono::steady_clock::now();
-        const float elapsedTime = std::chrono::duration<float>(currentTime - previousTime).count();
+        const float elapsedTime
+            = std::chrono::duration<float>(currentTime - previousTime).count();
         previousTime = currentTime;
         lag += elapsedTime;
 
@@ -125,17 +136,25 @@ void App::run()
         }
 
         gui_.preRender(camera_, drawProps);
-        Model *activeModel = models_[drawProps.selectedModelIndex].get();
+        Model* activeModel = models_[drawProps.selectedModelIndex].get();
 
         int frameBufferWidth = SCREEN_WIDTH;
         int frameBufferHeight = SCREEN_HEIGHT;
         glViewport(0, 0, frameBufferWidth, frameBufferHeight);
-        glClearColor(drawProps.backgroundColor[0], drawProps.backgroundColor[1], drawProps.backgroundColor[2], 1.0f);
+        glClearColor(drawProps.backgroundColor[0],
+                     drawProps.backgroundColor[1],
+                     drawProps.backgroundColor[2],
+                     1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        const glm::mat4 projection = glm::perspective(glm::radians(drawProps.fov), (float)frameBufferWidth/(float)frameBufferHeight, 0.1f, 100.0f);
+        const glm::mat4 projection = glm::perspective(
+            glm::radians(drawProps.fov),
+            (float)frameBufferWidth / (float)frameBufferHeight,
+            0.1f,
+            100.0f);
 
-        // TODO: Abstract away renderer implementation when starting working on Direct3D11 and Vulkan
+        // TODO: Abstract away renderer implementation when starting working on
+        // Direct3D11 and Vulkan
         activeModel->draw(projection, camera_, drawProps);
         if (drawProps.skyboxEnabled)
         {
@@ -148,12 +167,15 @@ void App::run()
     }
 }
 
-void App::ErrorCallback(int error, const char *description)
+void App::ErrorCallback(int error, const char* description)
 {
     utils::errorMessage("GLFW error: ", description);
 }
 
-void App::MouseButtonCallback(GLFWwindow* window, int button, int action, int mods)
+void App::MouseButtonCallback(GLFWwindow* window,
+                              int button,
+                              int action,
+                              int mods)
 {
     if (button == GLFW_MOUSE_BUTTON_RIGHT)
     {
@@ -163,7 +185,8 @@ void App::MouseButtonCallback(GLFWwindow* window, int button, int action, int mo
             {
                 // HACK: Prevent cursor flicker at center before disabling
                 glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
-                // Cursor disable is required to temporarily center it for mouselook
+                // Cursor disable is required to temporarily center it for
+                // mouselook
                 glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
             }
         }
@@ -174,10 +197,13 @@ void App::MouseButtonCallback(GLFWwindow* window, int button, int action, int mo
     }
 }
 
-void App::MouseCursorCallback(GLFWwindow* window, double currentMousePosX, double currentMousePosY)
+void App::MouseCursorCallback(GLFWwindow* window,
+                              double currentMousePosX,
+                              double currentMousePosY)
 {
-    auto *callbackData = static_cast<WindowCallbackData*>(glfwGetWindowUserPointer(window));
-    glm::vec2 &lastMousePos = callbackData->lastMousePos;
+    auto* callbackData
+        = static_cast<WindowCallbackData*>(glfwGetWindowUserPointer(window));
+    glm::vec2& lastMousePos = callbackData->lastMousePos;
     if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_RELEASE)
     {
         // Avoid sudden jumps when initiating turning
@@ -187,7 +213,8 @@ void App::MouseCursorCallback(GLFWwindow* window, double currentMousePosX, doubl
     }
 
     float xOffset = currentMousePosX - lastMousePos.x;
-    float yOffset = lastMousePos.y - currentMousePosY;  // Reversed because y is bottom to up
+    // Reversed because y is bottom to up
+    float yOffset = lastMousePos.y - currentMousePosY;
     lastMousePos.x = currentMousePosX;
     lastMousePos.y = currentMousePosY;
 
@@ -227,4 +254,3 @@ void App::handleInput()
         camera_.descend(FIXED_UPDATE_TIMESTEP);
     }
 }
-

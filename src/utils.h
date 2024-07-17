@@ -10,7 +10,8 @@
 namespace utils
 {
 template <typename... Args>
-inline void errorMessage(Args... args) {
+inline void errorMessage(Args... args)
+{
     std::ostringstream oss;
     (oss << ... << args);
     std::cerr << oss.str() << '\n';
@@ -20,7 +21,7 @@ inline void errorMessage(Args... args) {
 }
 
 template <typename T>
-inline void wrap(T &x, const T min, const T max)
+inline void wrap(T& x, const T min, const T max)
 {
     if (max < x)
     {
@@ -33,7 +34,7 @@ inline void wrap(T &x, const T min, const T max)
 }
 
 template <typename T>
-inline void clamp(T &x, const T min, const T max)
+inline void clamp(T& x, const T min, const T max)
 {
     if (max < x)
     {
@@ -44,4 +45,4 @@ inline void clamp(T &x, const T min, const T max)
         x = min;
     }
 }
-}
+}  // namespace utils
