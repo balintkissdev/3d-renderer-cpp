@@ -13,25 +13,19 @@
 
 #include <cstddef>
 
-struct Vertex
-{
-    glm::vec3 position;
-    glm::vec3 normal;
-};
-
-std::unique_ptr<Model> Model::create(const char* filePath)
+std::unique_ptr<Model> Model::create(std::string_view filePath)
 {
     Assimp::Importer importer;
     const aiScene* scene = importer.ReadFile(
-        filePath,
+        filePath.data(),
         aiProcess_Triangulate | aiProcess_GenNormals | aiProcess_FlipUVs);
     if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE
         || !scene->mRootNode)
     {
-        utils::errorMessage("Unable to load 3D model file at ",
-                            filePath,
-                            ": ",
-                            importer.GetErrorString());
+        utils::showErrorMessage("unable to load 3D model file at ",
+                                filePath,
+                                ": ",
+                                importer.GetErrorString());
         return nullptr;
     }
 

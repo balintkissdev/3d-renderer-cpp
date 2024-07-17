@@ -1,9 +1,12 @@
-#pragma once
+#ifndef DRAW_PROPERTIES_H_
+#define DRAW_PROPERTIES_H_
 
 #include <array>
 
 struct DrawProperties
 {
+    static DrawProperties createDefault();
+
     bool skyboxEnabled;
     bool wireframeModeEnabled;
     bool diffuseEnabled;
@@ -15,3 +18,5 @@ struct DrawProperties
     std::array<float, 3> modelColor;
     std::array<float, 3> lightDirection;
 };
+
+#endif

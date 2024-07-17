@@ -1,4 +1,5 @@
-#pragma once
+#ifndef UTILS_H_
+#define UTILS_H_
 
 #include <iostream>
 #include <sstream>
@@ -10,13 +11,13 @@
 namespace utils
 {
 template <typename... Args>
-inline void errorMessage(Args... args)
+inline void showErrorMessage(Args... args)
 {
     std::ostringstream oss;
     (oss << ... << args);
-    std::cerr << oss.str() << '\n';
+    std::cerr << "ERROR: " << oss.str() << '\n';
 #ifdef _WIN32
-    MessageBox(nullptr, oss.str().c_str(), "Error", MB_ICONERROR);
+    MessageBox(nullptr, oss.str().c_str(), "ERROR", MB_ICONERROR);
 #endif
 }
 
@@ -33,3 +34,5 @@ inline void wrap(T& v, const T min, const T max)
     }
 }
 }  // namespace utils
+
+#endif

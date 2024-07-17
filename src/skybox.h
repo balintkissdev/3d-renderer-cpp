@@ -1,4 +1,5 @@
-#pragma once
+#ifndef SKYBOX_H_
+#define SKYBOX_H_
 
 #include "shader.h"
 
@@ -15,10 +16,18 @@ class Skybox
 public:
     friend class SkyboxBuilder;
 
+    Skybox(const Skybox&) = delete;
+    Skybox& operator=(const Skybox&) = delete;
+    Skybox(Skybox&& other) noexcept;
+    Skybox& operator=(Skybox&& other) noexcept;
+
     ~Skybox();
+
     void draw(const glm::mat4& projection, const Camera& camera);
 
 private:
+    Skybox();
+
     GLuint textureID_;
     GLuint vertexArray_;
     GLuint vertexBuffer_;
@@ -45,3 +54,5 @@ private:
     std::string frontFacePath_;
     std::string backFacePath_;
 };
+
+#endif

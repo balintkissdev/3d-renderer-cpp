@@ -10,7 +10,15 @@
 #include "glm/gtc/matrix_transform.hpp"
 
 #include <chrono>
-#include <iostream>
+
+namespace
+{
+constexpr uint16_t SCREEN_WIDTH = 1024;
+constexpr uint16_t SCREEN_HEIGHT = 768;
+
+constexpr float MAX_LOGIC_UPDATE_PER_SECOND = 60.0F;
+constexpr float FIXED_UPDATE_TIMESTEP = 1.0F / MAX_LOGIC_UPDATE_PER_SECOND;
+}  // namespace
 
 App::App()
     : window_{nullptr}
@@ -26,15 +34,16 @@ App::App()
 
 bool App::init()
 {
+    const char* gpuRequirementsMessage
+        = "Graphics card needs to support at least "
+          "OpenGL 4.3";
     if (!glfwInit())
     {
-        utils::errorMessage(
-            "Unable to initialize windowing system. Graphics card needs to "
-            "support "
-            "at least OpenGL 4.3.");
+        utils::showErrorMessage("unable to initialize windowing system. ",
+                                gpuRequirementsMessage);
         return false;
     }
-    glfwSetErrorCallback(ErrorCallback);
+    glfwSetErrorCallback(errorCallback);
 
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
@@ -51,22 +60,19 @@ bool App::init()
                                nullptr);
     if (!window_)
     {
-        utils::errorMessage(
-            "Unable to create window. Graphics card needs to support at least "
-            "OpenGL 4.3.");
+        utils::showErrorMessage("unable to create window. ",
+                                gpuRequirementsMessage);
         return false;
     }
     glfwSetWindowUserPointer(window_, &windowCallbackData_);
-    glfwSetMouseButtonCallback(window_, MouseButtonCallback);
-    glfwSetCursorPosCallback(window_, MouseCursorCallback);
+    glfwSetMouseButtonCallback(window_, mouseButtonCallback);
+    glfwSetCursorPosCallback(window_, mouseCursorCallback);
     glfwMakeContextCurrent(window_);
 
     if (!gladLoadGL(glfwGetProcAddress))
     {
-        utils::errorMessage(
-            "Unable to load OpenGL extensions. Graphics card needs to support "
-            "at "
-            "least OpenGL 4.3.");
+        utils::showErrorMessage("unable to load OpenGL extensions. ",
+                                gpuRequirementsMessage);
         return false;
     }
 
@@ -80,10 +86,25 @@ bool App::init()
                   .setFront("assets/skybox/front.jpg")
                   .setBack("assets/skybox/back.jpg")
                   .build();
+    if (!skybox_)
+    {
+        utils::showErrorMessage("unable to create skybox for application");
+        return false;
+    }
 
-    models_.emplace_back(Model::create("assets/meshes/cube.obj"));
-    models_.emplace_back(Model::create("assets/meshes/teapot.obj"));
-    models_.emplace_back(Model::create("assets/meshes/bunny.obj"));
+    const std::array modelPaths = {"assets/meshes/cube.obj",
+                                   "assets/meshes/teapot.obj",
+                                   "assets/meshes/bunny.obj"};
+    for (std::string_view path : modelPaths)
+    {
+        auto model = Model::create(path);
+        if (!model)
+        {
+            utils::showErrorMessage("unable to create model from path ", path);
+            return false;
+        }
+        models_.emplace_back(std::move(model));
+    }
 
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_BLEND);
@@ -101,16 +122,7 @@ void App::cleanup()
 
 void App::run()
 {
-    DrawProperties drawProps = {.skyboxEnabled = true,
-                                .wireframeModeEnabled = false,
-                                .diffuseEnabled = true,
-                                .specularEnabled = true,
-                                .selectedModelIndex = 2,
-                                .fov = 60.0F,
-                                .backgroundColor = {0.5F, 0.5F, 0.5F},
-                                .modelRotation = {0.0F, 0.0F, 0.0F},
-                                .modelColor = {0.0F, 0.8F, 1.0F},
-                                .lightDirection = {-0.5F, -1.0F, 0.0F}};
+    DrawProperties drawProps = DrawProperties::createDefault();
 
     // Frame-rate independent loop with fixed update, variable rendering time.
     //
@@ -168,12 +180,12 @@ void App::run()
     }
 }
 
-void App::ErrorCallback([[maybe_unused]] int error, const char* description)
+void App::errorCallback([[maybe_unused]] int error, const char* description)
 {
-    utils::errorMessage("GLFW error: ", description);
+    utils::showErrorMessage("GLFW error: ", description);
 }
 
-void App::MouseButtonCallback(GLFWwindow* window,
+void App::mouseButtonCallback(GLFWwindow* window,
                               int button,
                               int action,
                               [[maybe_unused]] int mods)
@@ -198,7 +210,7 @@ void App::MouseButtonCallback(GLFWwindow* window,
     }
 }
 
-void App::MouseCursorCallback(GLFWwindow* window,
+void App::mouseCursorCallback(GLFWwindow* window,
                               double currentMousePosX,
                               double currentMousePosY)
 {

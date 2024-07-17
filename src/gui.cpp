@@ -74,8 +74,8 @@ void Gui::preRender(const Camera& camera, DrawProperties& drawProps)
 
     if (ImGui::CollapsingHeader("Transform", ImGuiTreeNodeFlags_DefaultOpen))
     {
-        static constexpr float minModelRotation = 0.0F;
-        static constexpr float maxModelRotation = 360.0F;
+        constexpr float minModelRotation = 0.0F;
+        constexpr float maxModelRotation = 360.0F;
         ImGui::SliderFloat("##Rotate X",
                            drawProps.modelRotation.data(),
                            minModelRotation,

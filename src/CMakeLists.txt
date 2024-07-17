@@ -4,6 +4,7 @@ target_sources(${PROJECT_NAME}
         app.h
         camera.cpp
         camera.h
+        drawproperties.cpp
         drawproperties.h
         gui.cpp
         gui.h

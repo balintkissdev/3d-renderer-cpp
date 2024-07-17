@@ -13,19 +13,9 @@ namespace
 constexpr size_t SHADER_COMPILE_MESSAGE_MAX_LENGTH = 512;
 }
 
-std::string Shader::readFile(const char* shaderPath)
-{
-    std::ifstream file(shaderPath, std::ios::binary);
-    file.seekg(0, std::istream::end);
-    std::streamsize fileSize(file.tellg());
-    file.seekg(0, std::istream::beg);
-    std::string shaderSrc(fileSize, 0);
-    file.read(shaderSrc.data(), fileSize);
-    return shaderSrc;
-}
-
-std::unique_ptr<Shader> Shader::createFromFile(const char* vertexShaderPath,
-                                               const char* fragmentShaderPath)
+std::unique_ptr<Shader> Shader::createFromFile(
+    std::string_view vertexShaderPath,
+    std::string_view fragmentShaderPath)
 {
     std::string shaderSrc = readFile(vertexShaderPath);
     const GLchar* shaderGlSrc = shaderSrc.c_str();
@@ -80,41 +70,91 @@ void Shader::use() const
 }
 
 template <>
-void Shader::setUniform(const char* name, const int& v)
+void Shader::setUniform(std::string_view name, const int& v)
 {
-    glUniform1i(glGetUniformLocation(shaderProgram_, name), v);
+    glUniform1i(glGetUniformLocation(shaderProgram_, name.data()), v);
 }
 
 template <>
-void Shader::setUniform(const char* name, const std::array<float, 3>& v)
+void Shader::setUniform(std::string_view name, const std::array<float, 3>& v)
 {
-    glUniform3fv(glGetUniformLocation(shaderProgram_, name), 1, v.data());
+    glUniform3fv(glGetUniformLocation(shaderProgram_, name.data()),
+                 1,
+                 v.data());
 }
 
 template <>
-void Shader::setUniform(const char* name, const glm::vec3& v)
+void Shader::setUniform(std::string_view name, const glm::vec3& v)
 {
-    glUniform3fv(glGetUniformLocation(shaderProgram_, name),
+    glUniform3fv(glGetUniformLocation(shaderProgram_, name.data()),
                  1,
                  glm::value_ptr(v));
 }
 
 template <>
-void Shader::setUniform(const char* name, const glm::mat3& v)
+void Shader::setUniform(std::string_view name, const glm::mat3& v)
 {
-    glUniformMatrix3fv(glGetUniformLocation(shaderProgram_, name),
+    glUniformMatrix3fv(glGetUniformLocation(shaderProgram_, name.data()),
                        1,
                        GL_FALSE,
                        glm::value_ptr(v));
 }
 
 template <>
-void Shader::setUniform(const char* name, const glm::mat4& v)
+void Shader::setUniform(std::string_view name, const glm::mat4& v)
 {
-    glUniformMatrix4fv(glGetUniformLocation(shaderProgram_, name),
+    glUniformMatrix4fv(glGetUniformLocation(shaderProgram_, name.data()),
                        1,
                        GL_FALSE,
                        glm::value_ptr(v));
+}
+
+std::string Shader::readFile(std::string_view shaderPath)
+{
+    std::ifstream file(shaderPath.data(), std::ios::binary);
+    file.seekg(0, std::istream::end);
+    std::streamsize fileSize(file.tellg());
+    file.seekg(0, std::istream::beg);
+    std::string shaderSrc(fileSize, 0);
+    file.read(shaderSrc.data(), fileSize);
+    return shaderSrc;
+}
+
+bool Shader::checkCompileErrors(const GLuint shaderID, const GLenum shaderType)
+{
+    int success;
+    std::array<char, SHADER_COMPILE_MESSAGE_MAX_LENGTH> message;
+    glGetShaderiv(shaderID, GL_COMPILE_STATUS, &success);
+    if (!success)
+    {
+        glGetShaderInfoLog(shaderID,
+                           SHADER_COMPILE_MESSAGE_MAX_LENGTH,
+                           nullptr,
+                           message.data());
+        utils::showErrorMessage(
+            shaderType == GL_VERTEX_SHADER ? "vertex" : "fragment",
+            " shader compile error: ",
+            message.data());
+    }
+
+    return success;
+}
+
+bool Shader::checkLinkerErrors(const GLuint shaderID)
+{
+    int success;
+    std::array<char, SHADER_COMPILE_MESSAGE_MAX_LENGTH> message;
+    glGetProgramiv(shaderID, GL_LINK_STATUS, &success);
+    if (!success)
+    {
+        glGetProgramInfoLog(shaderID,
+                            SHADER_COMPILE_MESSAGE_MAX_LENGTH,
+                            nullptr,
+                            message.data());
+        utils::showErrorMessage("shader link error: ", message.data());
+    }
+
+    return success;
 }
 
 void Shader::updateSubroutines(const GLenum shaderType,
@@ -131,39 +171,3 @@ void Shader::updateSubroutines(const GLenum shaderType,
                             subroutineIndices_.data());
 }
 
-bool Shader::checkCompileErrors(GLuint shaderID, const GLenum shaderType)
-{
-    int success;
-    std::array<char, SHADER_COMPILE_MESSAGE_MAX_LENGTH> message;
-    glGetShaderiv(shaderID, GL_COMPILE_STATUS, &success);
-    if (!success)
-    {
-        glGetShaderInfoLog(shaderID,
-                           SHADER_COMPILE_MESSAGE_MAX_LENGTH,
-                           nullptr,
-                           message.data());
-        utils::errorMessage(
-            shaderType == GL_VERTEX_SHADER ? "vertex" : "fragment",
-            " shader compile error: ",
-            message.data());
-    }
-
-    return success;
-}
-
-bool Shader::checkLinkerErrors(GLuint shaderID)
-{
-    int success;
-    std::array<char, SHADER_COMPILE_MESSAGE_MAX_LENGTH> message;
-    glGetProgramiv(shaderID, GL_LINK_STATUS, &success);
-    if (!success)
-    {
-        glGetProgramInfoLog(shaderID,
-                            SHADER_COMPILE_MESSAGE_MAX_LENGTH,
-                            nullptr,
-                            message.data());
-        utils::errorMessage("shader link error: ", message.data());
-    }
-
-    return success;
-}

@@ -14,6 +14,63 @@
 
 #include <cstdint>
 
+Skybox::Skybox()
+    : textureID_{0}
+    , vertexArray_{0}
+    , vertexBuffer_{0}
+    , indexBuffer_{0}
+    , shader_{nullptr}
+{
+}
+
+Skybox::Skybox(Skybox&& other) noexcept
+    : textureID_(other.textureID_)
+    , vertexArray_(other.vertexArray_)
+    , vertexBuffer_(other.vertexBuffer_)
+    , indexBuffer_(other.indexBuffer_)
+    , shader_(std::move(other.shader_))
+{
+    other.textureID_ = 0;
+    other.vertexArray_ = 0;
+    other.vertexBuffer_ = 0;
+    other.indexBuffer_ = 0;
+}
+
+Skybox& Skybox::operator=(Skybox&& other) noexcept
+{
+    if (this != &other)
+    {
+        if (textureID_ != 0)
+        {
+            glDeleteTextures(1, &textureID_);
+        }
+        if (vertexArray_ != 0)
+        {
+            glDeleteVertexArrays(1, &vertexArray_);
+        }
+        if (vertexBuffer_ != 0)
+        {
+            glDeleteBuffers(1, &vertexBuffer_);
+        }
+        if (indexBuffer_ != 0)
+        {
+            glDeleteBuffers(1, &indexBuffer_);
+        }
+
+        textureID_ = other.textureID_;
+        vertexArray_ = other.vertexArray_;
+        vertexBuffer_ = other.vertexBuffer_;
+        indexBuffer_ = other.indexBuffer_;
+        shader_ = std::move(other.shader_);
+
+        other.textureID_ = 0;
+        other.vertexArray_ = 0;
+        other.vertexBuffer_ = 0;
+        other.indexBuffer_ = 0;
+    }
+    return *this;
+}
+
 Skybox::~Skybox()
 {
     glDeleteTextures(1, &textureID_);
@@ -93,7 +150,7 @@ std::unique_ptr<Skybox> SkyboxBuilder::build()
                                          frontFacePath_.c_str(),
                                          backFacePath_.c_str()};
 
-    auto skybox = std::make_unique<Skybox>();
+    auto skybox = std::unique_ptr<Skybox>(new Skybox);
     glGenTextures(1, &skybox->textureID_);
     glBindTexture(GL_TEXTURE_CUBE_MAP, skybox->textureID_);
 
@@ -104,8 +161,8 @@ std::unique_ptr<Skybox> SkyboxBuilder::build()
             = stbi_load(textureFacePaths[i], &width, &height, &channelCount, 0);
         if (!imageData)
         {
-            utils::errorMessage("Unable to load skybox texture from",
-                                textureFacePaths[i]);
+            utils::showErrorMessage("unable to load skybox texture from",
+                                    textureFacePaths[i]);
             return nullptr;
         }
 

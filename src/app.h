@@ -1,10 +1,10 @@
-#pragma once
+#ifndef APP_H_
+#define APP_H_
 
 #include "camera.h"
 #include "model.h"
 #include "skybox.h"
 
-#include <cstdint>
 #include <memory>
 
 struct GLFWwindow;
@@ -13,6 +13,10 @@ class App
 {
 public:
     App();
+    App(const App&) = delete;
+    App& operator=(const App&) = delete;
+    App(App&&) = delete;
+    App& operator=(App&&) = delete;
 
     bool init();
     void run();
@@ -25,18 +29,12 @@ private:
         glm::vec2 lastMousePos;
     };
 
-    static constexpr uint16_t SCREEN_WIDTH = 1024;
-    static constexpr uint16_t SCREEN_HEIGHT = 768;
-    static constexpr float MAX_LOGIC_UPDATE_PER_SECOND = 60.0F;
-    static constexpr float FIXED_UPDATE_TIMESTEP
-        = 1.0F / MAX_LOGIC_UPDATE_PER_SECOND;
-
-    static void ErrorCallback(int error, const char* description);
-    static void MouseButtonCallback(GLFWwindow* window,
+    static void errorCallback(int error, const char* description);
+    static void mouseButtonCallback(GLFWwindow* window,
                                     int button,
                                     int action,
                                     int mods);
-    static void MouseCursorCallback(GLFWwindow* window,
+    static void mouseCursorCallback(GLFWwindow* window,
                                     double currentMousePosX,
                                     double currentMousePosY);
 
@@ -50,3 +48,5 @@ private:
 
     void handleInput();
 };
+
+#endif
