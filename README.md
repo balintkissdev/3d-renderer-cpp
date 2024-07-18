@@ -1,22 +1,24 @@
-# C++ 3D renderer with OpenGL 4.3
+# C++ 3D renderer with OpenGL 4.3 and OpenGL ES 3.0
 
-A hardware accelerated 3D renderer written in C++, using OpenGL 4.3 as graphics API.
+A hardware accelerated 3D renderer written in C++. Runs using OpenGL 4.3  as
+graphics API on desktop and with OpenGL ES 3.0 in web browsers.
 
 ![Demo](doc/img/demo.png)
 
 ## Table of Contents
 
-- [Download](#download)
+- [Try it out!](#try-it-out)
 - [Features](#features)
 - [Requirements](#requirements)
 - [Build Instructions](#build-instructions)
 - [Usage](#usage)
 - [Resources](#resources)
 
-## Download
+## Try it out!
 
-- [Windows 64-bit download](https://github.com/balintkissdev/3d-renderer/releases/download/0.0.0/3DRenderer-0.0.0-win64.zip)
-- [Linux 64-bit download](https://github.com/balintkissdev/3d-renderer/releases/download/0.0.0/3DRenderer-0.0.0-linux-x86_64.AppImage)
+- [Live demo in web browser](https://www.balintkissdev.com/3d-renderer-cpp)
+- [Windows 64-bit download](https://github.com/balintkissdev/3d-renderer-cpp/releases/download/0.0.0/3DRenderer-0.0.0-win64.zip)
+- [Linux 64-bit download](https://github.com/balintkissdev/3d-renderer-cpp/releases/download/0.0.0/3DRenderer-0.0.0-linux-x86_64.AppImage)
 
 ## Features
 
@@ -24,11 +26,16 @@ A hardware accelerated 3D renderer written in C++, using OpenGL 4.3 as graphics 
 - Fly-by FPS camera movement
 - Skybox display using cube map
 - Directional light with ADS (Ambient, Diffuse, Specular) lighting (Phong shading)
-- Graphical user interface with Dear ImGui
+- Graphical user interface with immediate mode GUI using Dear ImGui
+- Live browser demo as WebAssembly by Emscripten compiler
 
 ## Requirements
 
-This project requires an OpenGL 4.3 compatible graphics adapter to run. Check if your hardware supports OpenGL 4.3 and have the latest graphics driver installed.
+Desktop executable requires an OpenGL 4.3 compatible graphics adapter to run.
+Check if your hardware supports OpenGL 4.3 and have the latest graphics driver
+installed.
+
+Web browser live demo requires support for OpenGL ES 3.0 used by WebGL2.
 
 - `std++20` compatible C++ compiler
 - CMake 3.16 or newer
@@ -81,11 +88,38 @@ cmake ..
 cmake --build . --config Release
 ```
 
-5. Generate distributable package (ZIP file on Windows, AppImage on Linux)
+### Generate distributable package
+
+This will be a ZIP file on Windows and AppImage on Linux.
 
 ```sh
 cpack -C "Release"
 ```
+
+### WebAssembly build
+
+Install
+[Emscripten](https://emscripten.org/docs/getting_started/downloads.html) on
+your system then issue the commands for configure and build similar as before,
+but in the Emscripten build environment.
+
+```sh
+source <emsdk install location>/emsdk_env.sh
+
+cd build
+emcmake cmake ..
+emmake make
+```
+
+Opening the resulting `3Drenderer.html` file with the browser will not work because of
+default browser CORS rules. You can either use a live server locally to access
+at `http://localhost:8000`
+
+```sh
+python -m http.server
+```
+
+or alternatively use `emrun 3DRenderer.html`.
 
 ## Usage
 
@@ -106,7 +140,7 @@ Use keyboard and mouse to navigate the 3D environment.
 - Movement: `W`, `A`, `S`, `D`
 - Mouse look: `Right-click` and drag
 - Ascend: `Spacebar`
-- Descend: `Right CTRL`
+- Descend: `C`
 
 Modify UI controls to change properties of the 3D model display.
 

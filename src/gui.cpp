@@ -13,7 +13,13 @@ void Gui::init(GLFWwindow* window)
     ImGui::CreateContext();
     ImGui::StyleColorsDark();
     ImGui_ImplGlfw_InitForOpenGL(window, true);
-    ImGui_ImplOpenGL3_Init();
+#ifdef __EMSCRIPTEN__
+    const char* glslVersion = "#version 300 es";
+    ImGui_ImplGlfw_InstallEmscriptenCanvasResizeCallback("#canvas");
+#else
+    const char* glslVersion = "#version 430 core";
+#endif
+    ImGui_ImplOpenGL3_Init(glslVersion);
 
     auto& style = ImGui::GetStyle();
     ImVec4* colors = style.Colors;
@@ -33,9 +39,9 @@ void Gui::preRender(const Camera& camera, DrawProperties& drawProps)
     if (ImGui::CollapsingHeader("Help", ImGuiTreeNodeFlags_DefaultOpen))
     {
         ImGui::BulletText("Movement: W, A, S, D");
-        ImGui::BulletText("Mouse look: right-click and drag");
+        ImGui::BulletText("Mouse look: Right-click and drag");
         ImGui::BulletText("Ascend: Spacebar");
-        ImGui::BulletText("Descend: Right CTRL");
+        ImGui::BulletText("Descend: C");
     }
 
     if (ImGui::CollapsingHeader("Camera", ImGuiTreeNodeFlags_DefaultOpen))
@@ -69,7 +75,9 @@ void Gui::preRender(const Camera& camera, DrawProperties& drawProps)
                      &drawProps.selectedModelIndex,
                      modelItems.data(),
                      static_cast<int>(modelItems.size()));
+#ifndef __EMSCRIPTEN__
         ImGui::Checkbox("Wireframe mode", &drawProps.wireframeModeEnabled);
+#endif
     }
 
     if (ImGui::CollapsingHeader("Transform", ImGuiTreeNodeFlags_DefaultOpen))
@@ -100,7 +108,7 @@ void Gui::preRender(const Camera& camera, DrawProperties& drawProps)
 
     if (ImGui::CollapsingHeader("Lighting", ImGuiTreeNodeFlags_DefaultOpen))
     {
-        ImGui::SliderFloat3("Sun direction",
+        ImGui::SliderFloat3("Direction",
                             drawProps.lightDirection.data(),
                             -1.0F,
                             1.0F);

@@ -3,7 +3,11 @@
 
 #include "shader.h"
 
+#ifdef __EMSCRIPTEN__
+#include "glad/gles2.h"
+#else
 #include "glad/gl.h"
+#endif
 #include "glm/mat4x4.hpp"
 
 #include <memory>

@@ -76,6 +76,12 @@ void Shader::setUniform(std::string_view name, const int& v)
 }
 
 template <>
+void Shader::setUniform(std::string_view name, const bool& v)
+{
+    glUniform1i(glGetUniformLocation(shaderProgram_, name.data()), v);
+}
+
+template <>
 void Shader::setUniform(std::string_view name, const std::array<float, 3>& v)
 {
     glUniform3fv(glGetUniformLocation(shaderProgram_, name.data()),
@@ -157,6 +163,7 @@ bool Shader::checkLinkerErrors(const GLuint shaderID)
     return success;
 }
 
+#ifndef __EMSCRIPTEN__
 void Shader::updateSubroutines(const GLenum shaderType,
                                const std::vector<std::string>& names)
 {
@@ -170,4 +177,5 @@ void Shader::updateSubroutines(const GLenum shaderType,
                             static_cast<GLsizei>(subroutineIndices_.size()),
                             subroutineIndices_.data());
 }
+#endif
 

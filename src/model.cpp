@@ -8,7 +8,6 @@
 #include "assimp/Importer.hpp"
 #include "assimp/postprocess.h"
 #include "assimp/scene.h"
-#include "glad/gl.h"
 #include "glm/gtc/type_ptr.hpp"
 
 #include <cstddef>
@@ -79,8 +78,15 @@ std::unique_ptr<Model> Model::create(std::string_view filePath)
         model->indices_.data(),
         GL_STATIC_DRAW);
 
-    model->shader_ = Shader::createFromFile("assets/shaders/model.vert.glsl",
-                                            "assets/shaders/model.frag.glsl");
+#ifdef __EMSCRIPTEN__
+    model->shader_
+        = Shader::createFromFile("assets/shaders/model_gles3.vert.glsl",
+                                 "assets/shaders/model_gles3.frag.glsl");
+#else
+    model->shader_
+        = Shader::createFromFile("assets/shaders/model_gl4.vert.glsl",
+                                 "assets/shaders/model_gl4.frag.glsl");
+#endif
     if (!model->shader_)
     {
         return nullptr;
@@ -153,6 +159,12 @@ void Model::draw(const glm::mat4& projection,
     shader_->setUniform("u_light.direction", drawProps.lightDirection);
     shader_->setUniform("u_viewPos", camera.position());
 
+#ifdef __EMSCRIPTEN__
+    shader_->setUniform("u_adsProps.diffuseEnabled", drawProps.diffuseEnabled);
+    shader_->setUniform("u_adsProps.specularEnabled",
+                        drawProps.specularEnabled);
+#else
+    // GLSL subroutines and glPolygonMode are not supported in OpenGL ES3
     shader_->updateSubroutines(
         GL_FRAGMENT_SHADER,
         {drawProps.diffuseEnabled ? "DiffuseEnabled" : "Disabled",
@@ -160,12 +172,15 @@ void Model::draw(const glm::mat4& projection,
 
     glPolygonMode(GL_FRONT_AND_BACK,
                   drawProps.wireframeModeEnabled ? GL_LINE : GL_FILL);
+#endif
 
     glDrawElements(GL_TRIANGLES,
                    static_cast<GLsizei>(indices_.size()),
                    GL_UNSIGNED_INT,
                    nullptr);
 
+#ifndef __EMSCRIPTEN__
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+#endif
     glBindVertexArray(0);
 }

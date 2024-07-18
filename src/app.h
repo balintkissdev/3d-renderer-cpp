@@ -2,6 +2,7 @@
 #define APP_H_
 
 #include "camera.h"
+#include "drawproperties.h"
 #include "model.h"
 #include "skybox.h"
 
@@ -30,6 +31,9 @@ private:
     };
 
     static void errorCallback(int error, const char* description);
+#ifdef __EMSCRIPTEN__
+    static void emscriptenMainLoopCallback(void* arg);
+#endif
     static void mouseButtonCallback(GLFWwindow* window,
                                     int button,
                                     int action,
@@ -40,6 +44,7 @@ private:
 
     // TODO: Abstract away window implementation once starting work on native
     // Win32 window
+    DrawProperties drawProps_;
     GLFWwindow* window_;
     Camera camera_;
     std::unique_ptr<Skybox> skybox_;
@@ -47,6 +52,7 @@ private:
     WindowCallbackData windowCallbackData_;
 
     void handleInput();
+    void render();
 };
 
 #endif

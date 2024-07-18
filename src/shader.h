@@ -1,7 +1,11 @@
 #ifndef SHADER_H_
 #define SHADER_H_
 
+#ifdef __EMSCRIPTEN__
+#include "glad/gles2.h"
+#else
 #include "glad/gl.h"
+#endif
 #include "glm/mat4x3.hpp"
 #include "glm/mat4x4.hpp"
 #include "glm/vec3.hpp"
@@ -25,11 +29,14 @@ public:
 
     void use() const;
 
+
     template <typename T>
     void setUniform(std::string_view name, const T& v);
 
+#ifndef __EMSCRIPTEN__
     void updateSubroutines(const GLenum shaderType,
                            const std::vector<std::string>& names);
+#endif
 
 private:
     static std::string readFile(std::string_view shaderPath);
@@ -40,11 +47,15 @@ private:
     Shader();
 
     GLuint shaderProgram_;
+#ifndef __EMSCRIPTEN__
     std::vector<GLuint> subroutineIndices_;
+#endif
 };
 
 template <>
 void Shader::setUniform(std::string_view name, const int& v);
+template <>
+void Shader::setUniform(std::string_view name, const bool& v);
 template <>
 void Shader::setUniform(std::string_view name, const std::array<float, 3>& v);
 template <>

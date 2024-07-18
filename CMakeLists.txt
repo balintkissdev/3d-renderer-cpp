@@ -13,23 +13,28 @@ set(PROJECT_VERSION_MINOR 0)
 set(PROJECT_VERSION_PATCH 0)
 set(PROJECT_VERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_PATCH})
 
+# Global flags for not just app but dependencies too
 if(MSVC)
-    # Use global flags for building dependencies without MSVCRT DLL
+    # Build without MSVCRT.dll
     set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 endif()
 
 include(FetchContent)
 
-FetchContent_Declare(
-    glfw
-    GIT_REPOSITORY https://github.com/glfw/glfw.git
-    GIT_TAG 3.3.10
-)
-set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
-set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
-set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
-set(GLFW_INSTALL OFF CACHE BOOL "" FORCE)
-FetchContent_MakeAvailable(glfw)
+# Download GLFW for desktop build, otherwise skip this and use bundled
+# Emscripten package
+if(NOT EMSCRIPTEN)
+    FetchContent_Declare(
+        glfw
+        GIT_REPOSITORY https://github.com/glfw/glfw.git
+        GIT_TAG 3.3.10
+    )
+    set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
+    set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+    set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+    set(GLFW_INSTALL OFF CACHE BOOL "" FORCE)
+    FetchContent_MakeAvailable(glfw)
+endif()
 
 FetchContent_Declare(
     glm
@@ -51,6 +56,13 @@ set(ASSIMP_INJECT_DEBUG_POSTFIX OFF CACHE BOOL "" FORCE)
 set(ASSIMP_INSTALL OFF CACHE BOOL "" FORCE)
 set(ASSIMP_NO_EXPORT ON CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(assimp)
+if(EMSCRIPTEN)
+    # zlib implementation required by Assimp
+    set_target_properties(assimp PROPERTIES
+        COMPILE_OPTIONS "-sUSE_ZLIB=1"
+        LINK_OPTIONS "-sUSE_ZLIB=1"
+    )
+endif()
 
 add_executable(${PROJECT_NAME} "")
 
@@ -83,7 +95,8 @@ find_program(
     CLANG_TIDY_EXE
     NAMES clang-tidy
 )
-if(CLANG_TIDY_EXE)
+# FIXME: clang-tidy doesn't work together with Emscripten
+if(CLANG_TIDY_EXE AND NOT EMSCRIPTEN)
     message(STATUS "clang-tidy found: ${CLANG_TIDY_EXE}")
     set(DO_CLANG_TIDY
         "${CLANG_TIDY_EXE}"
@@ -100,30 +113,54 @@ target_include_directories(${PROJECT_NAME}
     PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/src"
 )
-target_include_directories(${PROJECT_NAME}
-    SYSTEM
-    PRIVATE
-        "${THIRDPARTY_DIR}"
-        "${THIRDPARTY_DIR}/glad/include"
-        "${THIRDPARTY_DIR}/imgui"
-        "${THIRDPARTY_DIR}/imgui/backends"
-        "${assimp_SOURCE_DIR}/include"
-        "${glfw_SOURCE_DIR}/include"
-        "${glm_SOURCE_DIR}"
-)
+# TODO: Cleanup to remove duplication
+if(EMSCRIPTEN)
+    target_include_directories(${PROJECT_NAME}
+        SYSTEM
+        PRIVATE
+            "${THIRDPARTY_DIR}"
+            "${THIRDPARTY_DIR}/glad/include"
+            "${THIRDPARTY_DIR}/imgui"
+            "${THIRDPARTY_DIR}/imgui/backends"
+            "${assimp_SOURCE_DIR}/include"
+            "${glm_SOURCE_DIR}"
+    )
+else()
+    target_include_directories(${PROJECT_NAME}
+        SYSTEM
+        PRIVATE
+            "${THIRDPARTY_DIR}"
+            "${THIRDPARTY_DIR}/glad/include"
+            "${THIRDPARTY_DIR}/imgui"
+            "${THIRDPARTY_DIR}/imgui/backends"
+            "${assimp_SOURCE_DIR}/include"
+            "${glfw_SOURCE_DIR}/include"
+            "${glm_SOURCE_DIR}"
+    )
+endif()
 add_subdirectory(src)
 add_subdirectory(${THIRDPARTY_DIR})
 
-find_package(OpenGL REQUIRED)
-target_link_libraries(${PROJECT_NAME}
-    PRIVATE
-        assimp
-        imgui
-        glm::glm
-        glfw
-        glad
-        OpenGL::GL
-)
+if(EMSCRIPTEN)
+    target_link_libraries(${PROJECT_NAME}
+        PRIVATE
+            assimp
+            imgui
+            glm::glm
+            glad
+    )
+else()
+    find_package(OpenGL REQUIRED)
+    target_link_libraries(${PROJECT_NAME}
+        PRIVATE
+            assimp
+            imgui
+            glm::glm
+            glfw
+            glad
+            OpenGL::GL
+    )
+endif()
 
 add_custom_command(
     TARGET ${PROJECT_NAME}
@@ -131,6 +168,22 @@ add_custom_command(
         "${PROJECT_SOURCE_DIR}/assets"
         "$<TARGET_FILE_DIR:${PROJECT_NAME}>/assets"
 )
+
+if(EMSCRIPTEN)
+    set_target_properties(${PROJECT_NAME} PROPERTIES
+        SUFFIX ".html"
+    )
+    target_link_options(${PROJECT_NAME} PRIVATE
+        "-sMIN_WEBGL_VERSION=2"
+        "-sMAX_WEBGL_VERSION=2"
+        # TODO: Consider switching to --use-port=contrib.glfw3 once fixed imgui bug
+        "-sUSE_GLFW=3"
+        "-sALLOW_MEMORY_GROWTH=1"
+        "-sINITIAL_MEMORY=256MB"
+        --preload-file "assets"
+        --shell-file "${PROJECT_SOURCE_DIR}/src/shell_minimal.html"
+    )
+endif()
 
 # Create distributable ZIP file for Windows releases
 if(WIN32)
@@ -148,7 +201,12 @@ if(WIN32)
     install(DIRECTORY "${PROJECT_SOURCE_DIR}/assets/" DESTINATION "assets")
     set(CPACK_GENERATOR ZIP)
     include(CPack)
-# Linux releases are distributed as AppImage files for compatibility
+elseif(EMSCRIPTEN)
+    install(FILES "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.data" DESTINATION ".")
+    install(FILES "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.js" DESTINATION ".")
+    install(FILES "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.wasm" DESTINATION ".")
+    install(FILES "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.html" RENAME "index.html" DESTINATION ".")
+# Linux releases are distributed as AppImage files for compatibility with multiple distros
 else()
     # Keep "assets" and "share" folder separate to avoid packaging icon as asset for the app
     set(ICON "${PROJECT_SOURCE_DIR}/share/icons/appimage.svg")

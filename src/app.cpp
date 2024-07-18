@@ -2,14 +2,21 @@
 
 #include "drawproperties.h"
 #include "gui.h"
-#include "model.h"
 #include "utils.h"
 
-#include "GLFW/glfw3.h"
-#include "glad/gl.h"
 #include "glm/gtc/matrix_transform.hpp"
 
+#ifdef __EMSCRIPTEN__
+#include "glad/gles2.h"
+
+#include <GLFW/glfw3.h>  // Use GLFW port from Emscripten
+#include <emscripten.h>
+#else
+#include "GLFW/glfw3.h"
+#include "glad/gl.h"
+
 #include <chrono>
+#endif
 
 namespace
 {
@@ -21,22 +28,31 @@ constexpr float FIXED_UPDATE_TIMESTEP = 1.0F / MAX_LOGIC_UPDATE_PER_SECOND;
 }  // namespace
 
 App::App()
-    : window_{nullptr}
+    : drawProps_(DrawProperties::createDefault())
+    , window_{nullptr}
     // Positioning and rotation accidentally imitates a right-handed 3D
     // coordinate system with positive Z going farther from model, but this
     // setting is done because of initial orientation of the loaded Stanford
     // Bunny mesh.
     , camera_({1.7F, 1.3F, 4.0F}, {240.0F, -15.0F})
-    , windowCallbackData_{.camera = camera_,
-                          .lastMousePos{SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2}}
+    , windowCallbackData_{
+          .camera = camera_,
+          .lastMousePos{static_cast<float>(SCREEN_WIDTH) / 2.0F,
+                        static_cast<float>(SCREEN_HEIGHT) / 2.0F}}
 {
 }
 
 bool App::init()
 {
+#ifdef __EMSCRIPTEN__
+    const char* gpuRequirementsMessage
+        = "Browser needs to support at least "
+          "OpenGL ES 3.0 (WebGL2)";
+#else
     const char* gpuRequirementsMessage
         = "Graphics card needs to support at least "
           "OpenGL 4.3";
+#endif
     if (!glfwInit())
     {
         utils::showErrorMessage("unable to initialize windowing system. ",
@@ -45,9 +61,15 @@ bool App::init()
     }
     glfwSetErrorCallback(errorCallback);
 
+#ifdef __EMSCRIPTEN__
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
+    glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_ES_API);
+#else
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+#endif
 #ifdef __APPLE__
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 #endif
@@ -69,7 +91,11 @@ bool App::init()
     glfwSetCursorPosCallback(window_, mouseCursorCallback);
     glfwMakeContextCurrent(window_);
 
+#ifdef __EMSCRIPTEN__
+    if (!gladLoadGLES2(glfwGetProcAddress))
+#else
     if (!gladLoadGL(glfwGetProcAddress))
+#endif
     {
         utils::showErrorMessage("unable to load OpenGL extensions. ",
                                 gpuRequirementsMessage);
@@ -122,8 +148,9 @@ void App::cleanup()
 
 void App::run()
 {
-    DrawProperties drawProps = DrawProperties::createDefault();
-
+#ifdef __EMSCRIPTEN__
+    emscripten_set_main_loop_arg(emscriptenMainLoopCallback, this, 0, 1);
+#else
     // Frame-rate independent loop with fixed update, variable rendering time.
     //
     // A naive calculation and passing of deltaTime introduces floating point
@@ -148,42 +175,24 @@ void App::run()
             lag -= FIXED_UPDATE_TIMESTEP;
         }
 
-        Gui::preRender(camera_, drawProps);
-        Model* activeModel = models_[drawProps.selectedModelIndex].get();
-
-        int frameBufferWidth = SCREEN_WIDTH;
-        int frameBufferHeight = SCREEN_HEIGHT;
-        glViewport(0, 0, frameBufferWidth, frameBufferHeight);
-        glClearColor(drawProps.backgroundColor[0],
-                     drawProps.backgroundColor[1],
-                     drawProps.backgroundColor[2],
-                     1.0F);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-        const glm::mat4 projection = glm::perspective(
-            glm::radians(drawProps.fov),
-            (float)frameBufferWidth / (float)frameBufferHeight,
-            0.1F,
-            100.0F);
-
-        // TODO: Abstract away renderer implementation when starting working on
-        // Direct3D11 and Vulkan
-        activeModel->draw(projection, camera_, drawProps);
-        if (drawProps.skyboxEnabled)
-        {
-            skybox_->draw(projection, camera_);
-        }
-        Gui::draw();
-
-        glfwSwapBuffers(window_);
-        glfwPollEvents();
+        render();
     }
+#endif
 }
 
 void App::errorCallback([[maybe_unused]] int error, const char* description)
 {
     utils::showErrorMessage("GLFW error: ", description);
 }
+
+#ifdef __EMSCRIPTEN__
+void App::emscriptenMainLoopCallback(void* arg)
+{
+    auto* app = static_cast<App*>(arg);
+    app->handleInput();
+    app->render();
+}
+#endif
 
 void App::mouseButtonCallback(GLFWwindow* window,
                               int button,
@@ -196,8 +205,13 @@ void App::mouseButtonCallback(GLFWwindow* window,
         {
             if (glfwGetInputMode(window, GLFW_CURSOR) == GLFW_CURSOR_NORMAL)
             {
+#ifndef __EMSCRIPTEN__
                 // HACK: Prevent cursor flicker at center before disabling
+                //
+                // GLFW_CURSOR_HIDDEN is not implemented in JS Emscripten port
+                // of GLFW
                 glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
+#endif
                 // Cursor disable is required to temporarily center it for
                 // mouselook
                 glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
@@ -240,10 +254,14 @@ void App::mouseCursorCallback(GLFWwindow* window,
 
 void App::handleInput()
 {
+    glfwPollEvents();
+
+#ifndef __EMSCRIPTEN__
     if (glfwGetKey(window_, GLFW_KEY_ESCAPE) == GLFW_PRESS)
     {
         glfwSetWindowShouldClose(window_, true);
     }
+#endif
 
     if (glfwGetKey(window_, GLFW_KEY_W) == GLFW_PRESS)
     {
@@ -266,8 +284,39 @@ void App::handleInput()
     {
         camera_.ascend(FIXED_UPDATE_TIMESTEP);
     }
-    if (glfwGetKey(window_, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS)
+    if (glfwGetKey(window_, GLFW_KEY_C) == GLFW_PRESS)
     {
         camera_.descend(FIXED_UPDATE_TIMESTEP);
     }
 }
+
+void App::render()
+{
+    Gui::preRender(camera_, drawProps_);
+    Model* activeModel = models_[drawProps_.selectedModelIndex].get();
+
+    int frameBufferWidth = SCREEN_WIDTH;
+    int frameBufferHeight = SCREEN_HEIGHT;
+    glViewport(0, 0, frameBufferWidth, frameBufferHeight);
+    glClearColor(drawProps_.backgroundColor[0],
+                 drawProps_.backgroundColor[1],
+                 drawProps_.backgroundColor[2],
+                 1.0F);
+
+    const glm::mat4 projection
+        = glm::perspective(glm::radians(drawProps_.fov),
+                           (float)frameBufferWidth / (float)frameBufferHeight,
+                           0.1F,
+                           100.0F);
+
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    activeModel->draw(projection, camera_, drawProps_);
+    if (drawProps_.skyboxEnabled)
+    {
+        skybox_->draw(projection, camera_);
+    }
+    Gui::draw();
+
+    glfwSwapBuffers(window_);
+}
+

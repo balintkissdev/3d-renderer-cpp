@@ -6,6 +6,8 @@
 
 #ifdef _WIN32
 #include <Windows.h>
+#elif __EMSCRIPTEN__
+#include <emscripten.h>
 #endif
 
 namespace utils
@@ -13,11 +15,18 @@ namespace utils
 template <typename... Args>
 inline void showErrorMessage(Args... args)
 {
-    std::ostringstream oss;
-    (oss << ... << args);
-    std::cerr << "ERROR: " << oss.str() << '\n';
+    std::ostringstream messageStream;
+    messageStream << "ERROR: ";
+    (messageStream << ... << args);
+    const std::string errorMessage = messageStream.str();
+    std::cerr << errorMessage << '\n';
+
 #ifdef _WIN32
-    MessageBox(nullptr, oss.str().c_str(), "ERROR", MB_ICONERROR);
+    MessageBox(nullptr, errorMessage.c_str(), "ERROR", MB_ICONERROR);
+#elif __EMSCRIPTEN__
+    std::ostringstream alertStream;
+    alertStream << "alert('" << errorMessage << "');";
+    emscripten_run_script(alertStream.str().c_str());
 #endif
 }
 

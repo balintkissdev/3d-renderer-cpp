@@ -57,3 +57,4 @@ jobs:
         with:
           files: |
             3DRenderer-*.AppImage
+

@@ -4,7 +4,6 @@
 #include "shader.h"
 #include "utils.h"
 
-#include "glad/gl.h"
 #include "glm/gtc/matrix_transform.hpp"
 #include "glm/gtc/type_ptr.hpp"
 // clang-format off
@@ -185,8 +184,15 @@ std::unique_ptr<Skybox> SkyboxBuilder::build()
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
 
-    skybox->shader_ = Shader::createFromFile("assets/shaders/skybox.vert.glsl",
-                                             "assets/shaders/skybox.frag.glsl");
+#ifdef __EMSCRIPTEN__
+    skybox->shader_
+        = Shader::createFromFile("assets/shaders/skybox_gles3.vert.glsl",
+                                 "assets/shaders/skybox_gles3.frag.glsl");
+#else
+    skybox->shader_
+        = Shader::createFromFile("assets/shaders/skybox_gl4.vert.glsl",
+                                 "assets/shaders/skybox_gl4.frag.glsl");
+#endif
     if (!skybox->shader_)
     {
         return nullptr;
