@@ -4,6 +4,7 @@
 #include "camera.h"
 #include "drawproperties.h"
 #include "model.h"
+#include "renderer.h"
 #include "skybox.h"
 
 #include <memory>
@@ -44,9 +45,10 @@ private:
 
     // TODO: Abstract away window implementation once starting work on native
     // Win32 window
-    DrawProperties drawProps_;
     GLFWwindow* window_;
+    DrawProperties drawProps_;
     Camera camera_;
+    Renderer renderer_;
     std::unique_ptr<Skybox> skybox_;
     std::vector<std::unique_ptr<Model>> models_;
     WindowCallbackData windowCallbackData_;

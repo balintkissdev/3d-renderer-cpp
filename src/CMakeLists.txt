@@ -11,6 +11,8 @@ target_sources(${PROJECT_NAME}
         main.cpp
         model.cpp
         model.h
+        renderer.cpp
+        renderer.h
         shader.cpp
         shader.h
         skybox.cpp

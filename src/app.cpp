@@ -28,13 +28,14 @@ constexpr float FIXED_UPDATE_TIMESTEP = 1.0F / MAX_LOGIC_UPDATE_PER_SECOND;
 }  // namespace
 
 App::App()
-    : drawProps_(DrawProperties::createDefault())
-    , window_{nullptr}
+    : window_{nullptr}
+    , drawProps_(DrawProperties::createDefault())
     // Positioning and rotation accidentally imitates a right-handed 3D
     // coordinate system with positive Z going farther from model, but this
     // setting is done because of initial orientation of the loaded Stanford
     // Bunny mesh.
     , camera_({1.7F, 1.3F, 4.0F}, {240.0F, -15.0F})
+    , renderer_(drawProps_, camera_)
     , windowCallbackData_{
           .camera = camera_,
           .lastMousePos{static_cast<float>(SCREEN_WIDTH) / 2.0F,
@@ -91,18 +92,14 @@ bool App::init()
     glfwSetCursorPosCallback(window_, mouseCursorCallback);
     glfwMakeContextCurrent(window_);
 
-#ifdef __EMSCRIPTEN__
-    if (!gladLoadGLES2(glfwGetProcAddress))
-#else
-    if (!gladLoadGL(glfwGetProcAddress))
-#endif
+    Gui::init(window_);
+
+    if (!renderer_.init(window_))
     {
-        utils::showErrorMessage("unable to load OpenGL extensions. ",
+        utils::showErrorMessage("unable to initialize renderer. ",
                                 gpuRequirementsMessage);
         return false;
     }
-
-    Gui::init(window_);
 
     skybox_ = SkyboxBuilder()
                   .setRight("assets/skybox/right.jpg")
@@ -131,10 +128,6 @@ bool App::init()
         }
         models_.emplace_back(std::move(model));
     }
-
-    glEnable(GL_DEPTH_TEST);
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     return true;
 }
@@ -292,28 +285,13 @@ void App::handleInput()
 
 void App::render()
 {
-    Gui::preRender(camera_, drawProps_);
-    Model* activeModel = models_[drawProps_.selectedModelIndex].get();
-
-    int frameBufferWidth = SCREEN_WIDTH;
-    int frameBufferHeight = SCREEN_HEIGHT;
-    glViewport(0, 0, frameBufferWidth, frameBufferHeight);
-    glClearColor(drawProps_.backgroundColor[0],
-                 drawProps_.backgroundColor[1],
-                 drawProps_.backgroundColor[2],
-                 1.0F);
-
-    const glm::mat4 projection
-        = glm::perspective(glm::radians(drawProps_.fov),
-                           (float)frameBufferWidth / (float)frameBufferHeight,
-                           0.1F,
-                           100.0F);
-
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    activeModel->draw(projection, camera_, drawProps_);
+    Gui::prepareDraw(camera_, drawProps_);
+    const Model& activeModel = *models_[drawProps_.selectedModelIndex];
+    renderer_.prepareDraw();
+    renderer_.drawModel(activeModel);
     if (drawProps_.skyboxEnabled)
     {
-        skybox_->draw(projection, camera_);
+        renderer_.drawSkybox(*skybox_);
     }
     Gui::draw();
 

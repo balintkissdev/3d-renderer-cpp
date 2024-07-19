@@ -1,36 +1,31 @@
 #include "skybox.h"
 
-#include "camera.h"
-#include "shader.h"
 #include "utils.h"
 
-#include "glm/gtc/matrix_transform.hpp"
-#include "glm/gtc/type_ptr.hpp"
 // clang-format off
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 // clang-format on
 
+#include <array>
 #include <cstdint>
 
 Skybox::Skybox()
-    : textureID_{0}
-    , vertexArray_{0}
+    : textureID{0}
+    , vertexArray{0}
     , vertexBuffer_{0}
     , indexBuffer_{0}
-    , shader_{nullptr}
 {
 }
 
 Skybox::Skybox(Skybox&& other) noexcept
-    : textureID_(other.textureID_)
-    , vertexArray_(other.vertexArray_)
+    : textureID(other.textureID)
+    , vertexArray(other.vertexArray)
     , vertexBuffer_(other.vertexBuffer_)
     , indexBuffer_(other.indexBuffer_)
-    , shader_(std::move(other.shader_))
 {
-    other.textureID_ = 0;
-    other.vertexArray_ = 0;
+    other.textureID = 0;
+    other.vertexArray = 0;
     other.vertexBuffer_ = 0;
     other.indexBuffer_ = 0;
 }
@@ -39,13 +34,13 @@ Skybox& Skybox::operator=(Skybox&& other) noexcept
 {
     if (this != &other)
     {
-        if (textureID_ != 0)
+        if (textureID != 0)
         {
-            glDeleteTextures(1, &textureID_);
+            glDeleteTextures(1, &textureID);
         }
-        if (vertexArray_ != 0)
+        if (vertexArray != 0)
         {
-            glDeleteVertexArrays(1, &vertexArray_);
+            glDeleteVertexArrays(1, &vertexArray);
         }
         if (vertexBuffer_ != 0)
         {
@@ -56,14 +51,13 @@ Skybox& Skybox::operator=(Skybox&& other) noexcept
             glDeleteBuffers(1, &indexBuffer_);
         }
 
-        textureID_ = other.textureID_;
-        vertexArray_ = other.vertexArray_;
+        textureID = other.textureID;
+        vertexArray = other.vertexArray;
         vertexBuffer_ = other.vertexBuffer_;
         indexBuffer_ = other.indexBuffer_;
-        shader_ = std::move(other.shader_);
 
-        other.textureID_ = 0;
-        other.vertexArray_ = 0;
+        other.textureID = 0;
+        other.vertexArray = 0;
         other.vertexBuffer_ = 0;
         other.indexBuffer_ = 0;
     }
@@ -72,37 +66,10 @@ Skybox& Skybox::operator=(Skybox&& other) noexcept
 
 Skybox::~Skybox()
 {
-    glDeleteTextures(1, &textureID_);
-    glDeleteVertexArrays(1, &vertexArray_);
+    glDeleteTextures(1, &textureID);
+    glDeleteVertexArrays(1, &vertexArray);
     glDeleteBuffers(1, &indexBuffer_);
     glDeleteBuffers(1, &vertexBuffer_);
-}
-
-void Skybox::draw(const glm::mat4& projection, const Camera& camera)
-{
-    glDepthFunc(GL_LEQUAL);
-    shader_->use();
-    glBindVertexArray(vertexArray_);
-
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_CUBE_MAP, textureID_);
-
-    // Remove camera position transformations but keep rotation by recreating
-    // view matrix, then converting to mat3 and back. If you don't do this,
-    // skybox will be shown as a shrinked down cube around model.
-    const glm::mat4 normalizedView
-        = glm::mat4(glm::mat3(camera.makeViewMatrix()));
-    // Concat matrix transformations on CPU to avoid unnecessary multiplications
-    // in GLSL. Results would be the same for all vertices.
-    const glm::mat4 projectionView = projection * normalizedView;
-
-    shader_->setUniform("u_projectionView", projectionView);
-    constexpr int textureUnit0 = 0;
-    shader_->setUniform("u_skyboxTexture", textureUnit0);
-
-    glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, nullptr);
-    glDepthFunc(GL_LESS);
-    glBindVertexArray(0);
 }
 
 SkyboxBuilder& SkyboxBuilder::setRight(const std::string& rightFacePath)
@@ -151,8 +118,8 @@ std::unique_ptr<Skybox> SkyboxBuilder::build()
                                          backFacePath_.c_str()};
 
     auto skybox = std::unique_ptr<Skybox>(new Skybox);
-    glGenTextures(1, &skybox->textureID_);
-    glBindTexture(GL_TEXTURE_CUBE_MAP, skybox->textureID_);
+    glGenTextures(1, &skybox->textureID);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, skybox->textureID);
 
     for (size_t i = 0; i < textureFacePaths.size(); ++i)
     {
@@ -183,20 +150,6 @@ std::unique_ptr<Skybox> SkyboxBuilder::build()
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
-
-#ifdef __EMSCRIPTEN__
-    skybox->shader_
-        = Shader::createFromFile("assets/shaders/skybox_gles3.vert.glsl",
-                                 "assets/shaders/skybox_gles3.frag.glsl");
-#else
-    skybox->shader_
-        = Shader::createFromFile("assets/shaders/skybox_gl4.vert.glsl",
-                                 "assets/shaders/skybox_gl4.frag.glsl");
-#endif
-    if (!skybox->shader_)
-    {
-        return nullptr;
-    }
 
     // clang-format off
     const std::array skyboxVertices = {
@@ -232,8 +185,8 @@ std::unique_ptr<Skybox> SkyboxBuilder::build()
     };
     // clang-format on
 
-    glGenVertexArrays(1, &skybox->vertexArray_);
-    glBindVertexArray(skybox->vertexArray_);
+    glGenVertexArrays(1, &skybox->vertexArray);
+    glBindVertexArray(skybox->vertexArray);
 
     glGenBuffers(1, &skybox->vertexBuffer_);
     glBindBuffer(GL_ARRAY_BUFFER, skybox->vertexBuffer_);

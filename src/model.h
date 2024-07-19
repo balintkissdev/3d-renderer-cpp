@@ -1,21 +1,16 @@
 #ifndef MODEL_H_
 #define MODEL_H_
 
-#include "shader.h"
-
 #ifdef __EMSCRIPTEN__
 #include "glad/gles2.h"
 #else
 #include "glad/gl.h"
 #endif
-#include "glm/mat4x4.hpp"
+#include "glm/vec3.hpp"
 
 #include <memory>
 #include <string_view>
 #include <vector>
-
-class Camera;
-struct DrawProperties;
 
 class Model
 {
@@ -27,9 +22,8 @@ public:
 
     ~Model();
 
-    void draw(const glm::mat4& projection,
-              const Camera& camera,
-              const DrawProperties& drawProps);
+    GLuint vertexArray;
+    std::vector<GLuint> indices;
 
 private:
     struct Vertex
@@ -38,11 +32,7 @@ private:
         glm::vec3 normal;
     };
 
-    std::unique_ptr<Shader> shader_;
     GLuint vertexBuffer_;
     GLuint indexBuffer_;
-    GLuint vertexArray_;
-    std::vector<GLuint> indices_;
 };
-
 #endif

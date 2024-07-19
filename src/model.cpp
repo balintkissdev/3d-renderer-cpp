@@ -1,14 +1,10 @@
 #include "model.h"
 
-#include "camera.h"
-#include "drawproperties.h"
-#include "shader.h"
 #include "utils.h"
 
 #include "assimp/Importer.hpp"
 #include "assimp/postprocess.h"
 #include "assimp/scene.h"
-#include "glm/gtc/type_ptr.hpp"
 
 #include <cstddef>
 
@@ -55,13 +51,13 @@ std::unique_ptr<Model> Model::create(std::string_view filePath)
             aiFace face = mesh->mFaces[j];
             for (size_t k = 0; k < face.mNumIndices; ++k)
             {
-                model->indices_.push_back(face.mIndices[k]);
+                model->indices.push_back(face.mIndices[k]);
             }
         }
     }
 
-    glGenVertexArrays(1, &model->vertexArray_);
-    glBindVertexArray(model->vertexArray_);
+    glGenVertexArrays(1, &model->vertexArray);
+    glBindVertexArray(model->vertexArray);
 
     glGenBuffers(1, &model->vertexBuffer_);
     glBindBuffer(GL_ARRAY_BUFFER, model->vertexBuffer_);
@@ -74,23 +70,9 @@ std::unique_ptr<Model> Model::create(std::string_view filePath)
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, model->indexBuffer_);
     glBufferData(
         GL_ELEMENT_ARRAY_BUFFER,
-        static_cast<GLsizeiptr>(sizeof(GLuint) * model->indices_.size()),
-        model->indices_.data(),
+        static_cast<GLsizeiptr>(sizeof(GLuint) * model->indices.size()),
+        model->indices.data(),
         GL_STATIC_DRAW);
-
-#ifdef __EMSCRIPTEN__
-    model->shader_
-        = Shader::createFromFile("assets/shaders/model_gles3.vert.glsl",
-                                 "assets/shaders/model_gles3.frag.glsl");
-#else
-    model->shader_
-        = Shader::createFromFile("assets/shaders/model_gl4.vert.glsl",
-                                 "assets/shaders/model_gl4.frag.glsl");
-#endif
-    if (!model->shader_)
-    {
-        return nullptr;
-    }
 
     // Vertex Attribute 0: position
     glEnableVertexAttribArray(0);
@@ -118,69 +100,8 @@ std::unique_ptr<Model> Model::create(std::string_view filePath)
 
 Model::~Model()
 {
-    glDeleteVertexArrays(1, &vertexArray_);
+    glDeleteVertexArrays(1, &vertexArray);
     glDeleteBuffers(1, &indexBuffer_);
     glDeleteBuffers(1, &vertexBuffer_);
 }
 
-void Model::draw(const glm::mat4& projection,
-                 const Camera& camera,
-                 const DrawProperties& drawProps)
-{
-    shader_->use();
-    glBindVertexArray(vertexArray_);
-
-    glm::mat4 model(1.0F);
-
-    // Avoid Gimbal-lock
-    const glm::quat quatX
-        = glm::angleAxis(glm::radians(drawProps.modelRotation[0]),
-                         glm::vec3(1.0F, 0.0F, 0.0F));
-    const glm::quat quatY
-        = glm::angleAxis(glm::radians(drawProps.modelRotation[1]),
-                         glm::vec3(0.0F, 1.0F, 0.0F));
-    const glm::quat quatZ
-        = glm::angleAxis(glm::radians(drawProps.modelRotation[2]),
-                         glm::vec3(0.0F, 0.0F, 1.0F));
-    const glm::quat quat = quatZ * quatY * quatX;
-    model = glm::mat4_cast(quat);
-
-    // Concat matrix transformations on CPU to avoid unnecessary multiplications
-    // in GLSL. Results would be the same for all vertices.
-    const glm::mat4 view = camera.makeViewMatrix();
-    const glm::mat4 mvp = projection * view * model;
-    const glm::mat3 normalMatrix
-        = glm::mat3(glm::transpose(glm::inverse(model)));
-
-    shader_->setUniform("u_model", model);
-    shader_->setUniform("u_mvp", mvp);
-    shader_->setUniform("u_normalMatrix", normalMatrix);
-    shader_->setUniform("u_color", drawProps.modelColor);
-    shader_->setUniform("u_light.direction", drawProps.lightDirection);
-    shader_->setUniform("u_viewPos", camera.position());
-
-#ifdef __EMSCRIPTEN__
-    shader_->setUniform("u_adsProps.diffuseEnabled", drawProps.diffuseEnabled);
-    shader_->setUniform("u_adsProps.specularEnabled",
-                        drawProps.specularEnabled);
-#else
-    // GLSL subroutines and glPolygonMode are not supported in OpenGL ES3
-    shader_->updateSubroutines(
-        GL_FRAGMENT_SHADER,
-        {drawProps.diffuseEnabled ? "DiffuseEnabled" : "Disabled",
-         drawProps.specularEnabled ? "SpecularEnabled" : "Disabled"});
-
-    glPolygonMode(GL_FRONT_AND_BACK,
-                  drawProps.wireframeModeEnabled ? GL_LINE : GL_FILL);
-#endif
-
-    glDrawElements(GL_TRIANGLES,
-                   static_cast<GLsizei>(indices_.size()),
-                   GL_UNSIGNED_INT,
-                   nullptr);
-
-#ifndef __EMSCRIPTEN__
-    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-#endif
-    glBindVertexArray(0);
-}

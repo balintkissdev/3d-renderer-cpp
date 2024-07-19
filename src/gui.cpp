@@ -29,7 +29,7 @@ void Gui::init(GLFWwindow* window)
     colors[ImGuiCol_TitleBg] = transparentBackgroundColor;
 }
 
-void Gui::preRender(const Camera& camera, DrawProperties& drawProps)
+void Gui::prepareDraw(const Camera& camera, DrawProperties& drawProps)
 {
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplGlfw_NewFrame();

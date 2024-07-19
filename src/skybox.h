@@ -1,19 +1,14 @@
 #ifndef SKYBOX_H_
 #define SKYBOX_H_
 
-#include "shader.h"
-
 #ifdef __EMSCRIPTEN__
 #include "glad/gles2.h"
 #else
 #include "glad/gl.h"
 #endif
-#include "glm/mat4x4.hpp"
 
 #include <memory>
 #include <string>
-
-class Camera;
 
 class Skybox
 {
@@ -27,16 +22,14 @@ public:
 
     ~Skybox();
 
-    void draw(const glm::mat4& projection, const Camera& camera);
+    GLuint textureID;
+    GLuint vertexArray;
 
 private:
     Skybox();
 
-    GLuint textureID_;
-    GLuint vertexArray_;
     GLuint vertexBuffer_;
     GLuint indexBuffer_;
-    std::unique_ptr<Shader> shader_;
 };
 
 class SkyboxBuilder
