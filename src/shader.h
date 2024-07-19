@@ -12,7 +12,9 @@
 
 #include <array>
 #include <memory>
+#include <optional>
 #include <string_view>
+#include <unordered_map>
 #include <vector>
 
 class Shader
@@ -29,9 +31,8 @@ public:
 
     void use() const;
 
-
     template <typename T>
-    void setUniform(std::string_view name, const T& v);
+    void setUniform(const std::string& name, const T& v);
 
 #ifndef __EMSCRIPTEN__
     void updateSubroutines(const GLenum shaderType,
@@ -39,6 +40,8 @@ public:
 #endif
 
 private:
+    static std::optional<GLuint> compile(std::string_view shaderPath,
+                                         const GLenum shaderTpye);
     static std::string readFile(std::string_view shaderPath);
     static bool checkCompileErrors(const GLuint shaderID,
                                    const GLenum shaderType);
@@ -47,22 +50,39 @@ private:
     Shader();
 
     GLuint shaderProgram_;
+    std::unordered_map<std::string, GLint> uniformCache_;
 #ifndef __EMSCRIPTEN__
     std::vector<GLuint> subroutineIndices_;
+#endif
+
+    /// Query all active uniforms on shader creation and cache uniform locations
+    /// for access by name. This is done to avoid repeated calls to
+    /// glGetUniformLocation during rendering loop.
+    ///
+    /// Can only be done once shader linking was successful. Only active
+    /// uniforms are cached, meaning only uniforms that are actually used by
+    /// shader during calculations. Because GPU optimizes shader compilation,
+    /// only those uniforms are compiled into the shader program and unused
+    /// uniforms are discarded.
+    void cacheUniforms();
+#ifndef NDEBUG
+    /// Avoid overhead of uniform existence checks in release build, catch
+    /// errors during development in debug.
+    void assertUniform(const std::string& name);
 #endif
 };
 
 template <>
-void Shader::setUniform(std::string_view name, const int& v);
+void Shader::setUniform(const std::string& name, const int& v);
 template <>
-void Shader::setUniform(std::string_view name, const bool& v);
+void Shader::setUniform(const std::string& name, const bool& v);
 template <>
-void Shader::setUniform(std::string_view name, const std::array<float, 3>& v);
+void Shader::setUniform(const std::string& name, const std::array<float, 3>& v);
 template <>
-void Shader::setUniform(std::string_view name, const glm::vec3& v);
+void Shader::setUniform(const std::string& name, const glm::vec3& v);
 template <>
-void Shader::setUniform(std::string_view name, const glm::mat3& v);
+void Shader::setUniform(const std::string& name, const glm::mat3& v);
 template <>
-void Shader::setUniform(std::string_view name, const glm::mat4& v);
+void Shader::setUniform(const std::string& name, const glm::mat4& v);
 
 #endif

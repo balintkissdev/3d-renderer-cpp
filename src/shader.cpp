@@ -8,6 +8,12 @@
 #include <fstream>
 #include <ios>
 
+#ifndef NDEBUG
+#define ASSERT_UNIFORM(name) assertUniform((name))
+#else
+#define ASSERT_UNIFORM(name)
+#endif
+
 namespace
 {
 constexpr size_t SHADER_COMPILE_MESSAGE_MAX_LENGTH = 512;
@@ -17,32 +23,24 @@ std::unique_ptr<Shader> Shader::createFromFile(
     std::string_view vertexShaderPath,
     std::string_view fragmentShaderPath)
 {
-    std::string shaderSrc = readFile(vertexShaderPath);
-    const GLchar* shaderGlSrc = shaderSrc.c_str();
-    GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vertexShader, 1, &shaderGlSrc, nullptr);
-    glCompileShader(vertexShader);
-    if (!checkCompileErrors(vertexShader, GL_VERTEX_SHADER))
+    const auto vertexShader = compile(vertexShaderPath, GL_VERTEX_SHADER);
+    if (!vertexShader)
     {
         return nullptr;
     }
 
-    shaderSrc = readFile(fragmentShaderPath);
-    shaderGlSrc = shaderSrc.c_str();
-    GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fragmentShader, 1, &shaderGlSrc, nullptr);
-    glCompileShader(fragmentShader);
-    if (!checkCompileErrors(fragmentShader, GL_FRAGMENT_SHADER))
+    const auto fragmentShader = compile(fragmentShaderPath, GL_FRAGMENT_SHADER);
+    if (!fragmentShader)
     {
         return nullptr;
     }
 
     GLuint shaderProgram = glCreateProgram();
-    glAttachShader(shaderProgram, vertexShader);
-    glAttachShader(shaderProgram, fragmentShader);
+    glAttachShader(shaderProgram, vertexShader.value());
+    glAttachShader(shaderProgram, fragmentShader.value());
     glLinkProgram(shaderProgram);
-    glDeleteShader(vertexShader);
-    glDeleteShader(fragmentShader);
+    glDeleteShader(vertexShader.value());
+    glDeleteShader(fragmentShader.value());
 
     if (!checkLinkerErrors(shaderProgram))
     {
@@ -51,11 +49,12 @@ std::unique_ptr<Shader> Shader::createFromFile(
 
     auto shader = std::unique_ptr<Shader>(new Shader);
     shader->shaderProgram_ = shaderProgram;
+    shader->cacheUniforms();
     return shader;
 }
 
 Shader::Shader()
-    : shaderProgram_(0)
+    : shaderProgram_{0}
 {
 }
 
@@ -70,49 +69,58 @@ void Shader::use() const
 }
 
 template <>
-void Shader::setUniform(std::string_view name, const int& v)
+void Shader::setUniform(const std::string& name, const int& v)
 {
-    glUniform1i(glGetUniformLocation(shaderProgram_, name.data()), v);
+    ASSERT_UNIFORM(name);
+    glUniform1i(uniformCache_.at(name), v);
 }
 
 template <>
-void Shader::setUniform(std::string_view name, const bool& v)
+void Shader::setUniform(const std::string& name, const bool& v)
 {
-    glUniform1i(glGetUniformLocation(shaderProgram_, name.data()), v);
+    ASSERT_UNIFORM(name);
+    glUniform1i(uniformCache_.at(name), v);
 }
 
 template <>
-void Shader::setUniform(std::string_view name, const std::array<float, 3>& v)
+void Shader::setUniform(const std::string& name, const std::array<float, 3>& v)
 {
-    glUniform3fv(glGetUniformLocation(shaderProgram_, name.data()),
-                 1,
-                 v.data());
+    ASSERT_UNIFORM(name);
+    glUniform3fv(uniformCache_.at(name), 1, v.data());
 }
 
 template <>
-void Shader::setUniform(std::string_view name, const glm::vec3& v)
+void Shader::setUniform(const std::string& name, const glm::vec3& v)
 {
-    glUniform3fv(glGetUniformLocation(shaderProgram_, name.data()),
-                 1,
-                 glm::value_ptr(v));
+    ASSERT_UNIFORM(name);
+    glUniform3fv(uniformCache_.at(name), 1, glm::value_ptr(v));
 }
 
 template <>
-void Shader::setUniform(std::string_view name, const glm::mat3& v)
+void Shader::setUniform(const std::string& name, const glm::mat3& v)
 {
-    glUniformMatrix3fv(glGetUniformLocation(shaderProgram_, name.data()),
-                       1,
-                       GL_FALSE,
-                       glm::value_ptr(v));
+    ASSERT_UNIFORM(name);
+    glUniformMatrix3fv(uniformCache_.at(name), 1, GL_FALSE, glm::value_ptr(v));
 }
 
 template <>
-void Shader::setUniform(std::string_view name, const glm::mat4& v)
+void Shader::setUniform(const std::string& name, const glm::mat4& v)
 {
-    glUniformMatrix4fv(glGetUniformLocation(shaderProgram_, name.data()),
-                       1,
-                       GL_FALSE,
-                       glm::value_ptr(v));
+    ASSERT_UNIFORM(name);
+    glUniformMatrix4fv(uniformCache_.at(name), 1, GL_FALSE, glm::value_ptr(v));
+}
+
+std::optional<GLuint> Shader::compile(std::string_view shaderPath,
+                                      const GLenum shaderTpye)
+{
+    const std::string shaderSrc = readFile(shaderPath);
+    const GLchar* shaderGlSrc = shaderSrc.c_str();
+    const GLuint shader = glCreateShader(shaderTpye);
+    glShaderSource(shader, 1, &shaderGlSrc, nullptr);
+    glCompileShader(shader);
+    return checkCompileErrors(shader, shaderTpye)
+             ? std::optional<GLuint>{shader}
+             : std::nullopt;
 }
 
 std::string Shader::readFile(std::string_view shaderPath)
@@ -179,3 +187,45 @@ void Shader::updateSubroutines(const GLenum shaderType,
 }
 #endif
 
+void Shader::cacheUniforms()
+{
+    GLint uniformCount = 0;
+    glGetProgramiv(shaderProgram_, GL_ACTIVE_UNIFORMS, &uniformCount);
+    if (uniformCount <= 0)
+    {
+        // No uniforms present, skip
+        return;
+    }
+
+    constexpr size_t maxBufferSize = 64;
+    std::array<char, maxBufferSize> uniformNameBuffer;
+    uniformCache_.reserve(uniformCount);
+    for (GLint i = 0; i < uniformCount; ++i)
+    {
+        GLsizei bufferSize;
+        GLsizei uniformVarSize;
+        GLenum uniformDataType;
+        glGetActiveUniform(shaderProgram_,
+                           i,
+                           maxBufferSize,
+                           &bufferSize,
+                           &uniformVarSize,
+                           &uniformDataType,
+                           uniformNameBuffer.data());
+        const GLint uniformLocation
+            = glGetUniformLocation(shaderProgram_, uniformNameBuffer.data());
+        uniformCache_.emplace(std::string(uniformNameBuffer.data(), bufferSize),
+                              uniformLocation);
+    }
+}
+
+#ifndef NDEBUG
+void Shader::assertUniform(const std::string& name)
+{
+    if (!uniformCache_.contains(name))
+    {
+        std::cerr << "uniform is not in compiled shader code: " << name << '\n';
+        assert(false);
+    }
+}
+#endif
