@@ -110,6 +110,7 @@ SkyboxBuilder& SkyboxBuilder::setBack(const std::string& backFacePath)
 
 std::unique_ptr<Skybox> SkyboxBuilder::build()
 {
+    // Load textures
     const std::array textureFacePaths = {rightFacePath_.c_str(),
                                          leftFacePath_.c_str(),
                                          topFacePath_.c_str(),
@@ -151,6 +152,8 @@ std::unique_ptr<Skybox> SkyboxBuilder::build()
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
 
+    // Create buffers
+
     // clang-format off
     const std::array skyboxVertices = {
         -1.0F,  1.0F, -1.0F,
@@ -185,9 +188,11 @@ std::unique_ptr<Skybox> SkyboxBuilder::build()
     };
     // clang-format on
 
+    // Create vertex array
     glGenVertexArrays(1, &skybox->vertexArray);
     glBindVertexArray(skybox->vertexArray);
 
+    // Create vertex buffer
     glGenBuffers(1, &skybox->vertexBuffer_);
     glBindBuffer(GL_ARRAY_BUFFER, skybox->vertexBuffer_);
     glBufferData(GL_ARRAY_BUFFER,
@@ -195,6 +200,7 @@ std::unique_ptr<Skybox> SkyboxBuilder::build()
                  skyboxVertices.data(),
                  GL_STATIC_DRAW);
 
+    // Create index buffer
     glGenBuffers(1, &skybox->indexBuffer_);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, skybox->indexBuffer_);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER,
@@ -202,6 +208,7 @@ std::unique_ptr<Skybox> SkyboxBuilder::build()
                  skyboxIndices.data(),
                  GL_STATIC_DRAW);
 
+    // Setup vertex array layout (just vertex positions)
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0,
                           3,
@@ -212,3 +219,4 @@ std::unique_ptr<Skybox> SkyboxBuilder::build()
 
     return skybox;
 }
+

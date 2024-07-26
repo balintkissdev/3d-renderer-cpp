@@ -11,6 +11,8 @@
 
 struct GLFWwindow;
 
+/// Encapsulation of renderer application lifecycle and logic update to avoid
+/// polluting main().
 class App
 {
 public:
@@ -20,17 +22,17 @@ public:
     App(App&&) = delete;
     App& operator=(App&&) = delete;
 
+    /// Controlled initialization for explicit error handling.
     bool init();
+
+    /// Execute main loop until user exits application.
     void run();
+
+    /// Controlled deinitialization instead of relying on RAII to avoid
+    /// surprises.
     void cleanup();
 
 private:
-    struct WindowCallbackData
-    {
-        Camera& camera;
-        glm::vec2 lastMousePos;
-    };
-
     static void errorCallback(int error, const char* description);
 #ifdef __EMSCRIPTEN__
     static void emscriptenMainLoopCallback(void* arg);
@@ -39,19 +41,19 @@ private:
                                     int button,
                                     int action,
                                     int mods);
-    static void mouseCursorCallback(GLFWwindow* window,
-                                    double currentMousePosX,
-                                    double currentMousePosY);
+    static void mouseMoveCallback(GLFWwindow* window,
+                                  double currentMousePosX,
+                                  double currentMousePosY);
 
     // TODO: Abstract away window implementation once starting work on native
     // Win32 window
     GLFWwindow* window_;
-    DrawProperties drawProps_;
-    Camera camera_;
     Renderer renderer_;
+    Camera camera_;
+    DrawProperties drawProps_;
+    glm::vec2 lastMousePos_;
     std::unique_ptr<Skybox> skybox_;
     std::vector<std::unique_ptr<Model>> models_;
-    WindowCallbackData windowCallbackData_;
 
     void handleInput();
     void render();

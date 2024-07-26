@@ -10,6 +10,15 @@
 #include <memory>
 #include <string>
 
+/// Skybox containing cube-mapped texture and vertex positions for skybox
+/// cube.
+///
+/// Cube-map is represented by six subtextures that must be square and the same
+/// size. Sampling from cube-map is done as direction from origin. Skybox is an
+/// application of cube-mapping where entire scene is wrapped in a large cube
+/// surrounding the viewer and model. A unit cube is rendered centered
+/// at the origin and uses the object space position as a texture coordinate
+/// from which to sample the cube map texture.
 class Skybox
 {
 public:
@@ -32,6 +41,8 @@ private:
     GLuint indexBuffer_;
 };
 
+/// Builder pattern for skybox creation, avoiding mistakes from specifying
+/// skybox face texture parameters.
 class SkyboxBuilder
 {
 public:
@@ -41,6 +52,8 @@ public:
     SkyboxBuilder& setBottom(const std::string& bottomFacePath);
     SkyboxBuilder& setFront(const std::string& frontFacePath);
     SkyboxBuilder& setBack(const std::string& backFacePath);
+
+    /// Load texture faces and generate vertex and index buffers.
     std::unique_ptr<Skybox> build();
 
 private:
@@ -51,5 +64,4 @@ private:
     std::string frontFacePath_;
     std::string backFacePath_;
 };
-
 #endif

@@ -5,14 +5,14 @@ in vec3 v_normal;
 
 struct Light
 {
-    vec3 direction;
+    vec3 direction; // Light direction vector is determined from origin (0,0,0)
 };
 
 uniform vec3 u_color;
 uniform Light u_light;
 uniform vec3 u_viewPos;
 
-out vec4 o_FragColor;
+layout (location = 0) out vec4 o_FragColor;
 
 subroutine vec3 CreateDiffuse(vec3 norm, vec3 lightDir);
 subroutine uniform CreateDiffuse createDiffuse;

@@ -6,7 +6,7 @@ in vec3 v_normal;
 
 struct Light
 {
-    vec3 direction;
+    vec3 direction; // Light direction vector is determined from origin (0,0,0)
 };
 
 struct AdsProperties
@@ -20,7 +20,7 @@ uniform Light u_light;
 uniform vec3 u_viewPos;
 uniform AdsProperties u_adsProps;
 
-out vec4 o_FragColor;
+layout (location = 0) out vec4 o_FragColor;
 
 vec3 createDiffuse(vec3 norm, vec3 lightDir)
 {

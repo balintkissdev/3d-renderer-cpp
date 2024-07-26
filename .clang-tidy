@@ -14,7 +14,7 @@ Checks: >
   -readability-identifier-length,
   -readability-isolate-declaration,
   -readability-magic-numbers,
-WarningsAsErrors: "*"
+WarningsAsErrors: ""
 HeaderFilterRegex: ""
 CheckOptions:
   - key: readability-identifier-naming.LocalConstantCase

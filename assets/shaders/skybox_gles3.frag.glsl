@@ -5,7 +5,7 @@ in vec3 v_texCoords;
 
 uniform samplerCube u_skyboxTexture;
 
-out vec4 v_fragColor;
+layout (location = 0) out vec4 v_fragColor;
 
 void main()
 {

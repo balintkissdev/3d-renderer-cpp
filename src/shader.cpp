@@ -23,33 +23,39 @@ std::unique_ptr<Shader> Shader::createFromFile(
     std::string_view vertexShaderPath,
     std::string_view fragmentShaderPath)
 {
+    // Compile vertex shader
     const auto vertexShader = compile(vertexShaderPath, GL_VERTEX_SHADER);
     if (!vertexShader)
     {
         return nullptr;
     }
 
+    // Compile fragment shader
     const auto fragmentShader = compile(fragmentShaderPath, GL_FRAGMENT_SHADER);
     if (!fragmentShader)
     {
+        glDeleteShader(vertexShader.value());
         return nullptr;
     }
 
+    // Link shader program
     GLuint shaderProgram = glCreateProgram();
     glAttachShader(shaderProgram, vertexShader.value());
     glAttachShader(shaderProgram, fragmentShader.value());
     glLinkProgram(shaderProgram);
+    // Vertex and fragment shader not needed anymore after linked as part for
+    // program.
     glDeleteShader(vertexShader.value());
     glDeleteShader(fragmentShader.value());
-
     if (!checkLinkerErrors(shaderProgram))
     {
         return nullptr;
     }
 
+    // Shader creation successful
     auto shader = std::unique_ptr<Shader>(new Shader);
     shader->shaderProgram_ = shaderProgram;
-    shader->cacheUniforms();
+    shader->cacheActiveUniforms();
     return shader;
 }
 
@@ -175,6 +181,7 @@ bool Shader::checkLinkerErrors(const GLuint shaderID)
 void Shader::updateSubroutines(const GLenum shaderType,
                                const std::vector<std::string>& names)
 {
+    // TODO: Clearing subroutine indices on every frame update is slow
     subroutineIndices_.clear();
     for (const std::string& name : names)
     {
@@ -187,13 +194,13 @@ void Shader::updateSubroutines(const GLenum shaderType,
 }
 #endif
 
-void Shader::cacheUniforms()
+void Shader::cacheActiveUniforms()
 {
     GLint uniformCount = 0;
     glGetProgramiv(shaderProgram_, GL_ACTIVE_UNIFORMS, &uniformCount);
     if (uniformCount <= 0)
     {
-        // No uniforms present, skip
+        // No active uniforms present, skip
         return;
     }
 
@@ -224,7 +231,11 @@ void Shader::assertUniform(const std::string& name)
 {
     if (!uniformCache_.contains(name))
     {
-        std::cerr << "uniform is not in compiled shader code: " << name << '\n';
+        std::cerr
+            << "uniform is not present in compiled shader code. Either "
+               "does not exists in original GLSL source code or the uniform is "
+               "not active and was optimized out by shader compiler: "
+            << name << '\n';
         assert(false);
     }
 }

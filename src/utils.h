@@ -10,8 +10,11 @@
 #include <emscripten.h>
 #endif
 
+/// Collection of miscellaneous utility operations shared to all components
 namespace utils
 {
+/// Log a formatted error message accepting any number of arguments to console.
+/// An error message box is displayed on Windows and WebAssembly builds.
 template <typename... Args>
 inline void showErrorMessage(Args... args)
 {
@@ -30,6 +33,7 @@ inline void showErrorMessage(Args... args)
 #endif
 }
 
+/// Wrap around value to min if overflows max and to max if underflows min.
 template <typename T>
 inline void wrap(T& v, const T min, const T max)
 {

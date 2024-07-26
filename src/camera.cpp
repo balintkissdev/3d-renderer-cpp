@@ -19,33 +19,32 @@ Camera::Camera(const glm::vec3& position, const glm::vec2& rotation)
     : position_(position)
     , rotation_(rotation)
 {
-    // Calculate front vector on initialization to avoid jumping camera on first
-    // mouselook
+    // Avoid camera jump on first mouselook.
     updateDirection();
 }
 
 void Camera::moveForward(const float deltaTime)
 {
-    position_ += MOVEMENT_SPEED * front_ * deltaTime;
+    position_ += MOVEMENT_SPEED * direction_ * deltaTime;
 }
 
 void Camera::moveBackward(const float deltaTime)
 {
-    position_ -= MOVEMENT_SPEED * front_ * deltaTime;
+    position_ -= MOVEMENT_SPEED * direction_ * deltaTime;
 }
 
 void Camera::strafeLeft(const float deltaTime)
 {
     // If you don't normalize, you move fast or slow depending on camera
     // direction.
-    position_ -= glm::normalize(glm::cross(front_, UP_VECTOR)) * MOVEMENT_SPEED
-               * deltaTime;
+    position_ -= glm::normalize(glm::cross(direction_, UP_VECTOR))
+               * MOVEMENT_SPEED * deltaTime;
 }
 
 void Camera::strafeRight(const float deltaTime)
 {
-    position_ += glm::normalize(glm::cross(front_, UP_VECTOR)) * MOVEMENT_SPEED
-               * deltaTime;
+    position_ += glm::normalize(glm::cross(direction_, UP_VECTOR))
+               * MOVEMENT_SPEED * deltaTime;
 }
 
 void Camera::ascend(const float deltaTime)
@@ -61,25 +60,26 @@ void Camera::descend(const float deltaTime)
 void Camera::look(const float xOffset, const float yOffset)
 {
     rotation_.x += xOffset * LOOK_SENSITIVITY;
+    // Wrap to keep rotation degrees displayed between 0 and 360 on debug UI
     utils::wrap(rotation_.x, 0.0F, 359.9F);
     rotation_.y += yOffset * LOOK_SENSITIVITY;
+    // Avoid user to do a backflip
     rotation_.y = std::clamp(rotation_.y, -89.0F, 89.0F);
 
     updateDirection();
 }
 
-glm::mat4 Camera::makeViewMatrix() const
+glm::mat4 Camera::calculateViewMatrix() const
 {
-    return glm::lookAt(position_, position_ + front_, UP_VECTOR);
+    return glm::lookAt(position_, position_ + direction_, UP_VECTOR);
 }
 
 void Camera::updateDirection()
 {
-    glm::vec3 direction;
-    direction.x = std::cos(glm::radians(rotation_.x))
-                * std::cos(glm::radians(rotation_.y));
-    direction.y = std::sin(glm::radians(rotation_.y));
-    direction.z = std::sin(glm::radians(rotation_.x))
-                * std::cos(glm::radians(rotation_.y));
-    front_ = glm::normalize(direction);
+    direction_.x = std::cos(glm::radians(rotation_.x))
+                 * std::cos(glm::radians(rotation_.y));
+    direction_.y = std::sin(glm::radians(rotation_.y));
+    direction_.z = std::sin(glm::radians(rotation_.x))
+                 * std::cos(glm::radians(rotation_.y));
+    direction_ = glm::normalize(direction_);
 }

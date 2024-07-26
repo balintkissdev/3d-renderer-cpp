@@ -14,6 +14,7 @@ class Model;
 struct DrawProperties;
 struct GLFWwindow;
 
+/// Separation of graphics API-dependent rendering mechanisms.
 class Renderer
 {
 public:
@@ -23,22 +24,26 @@ public:
     Renderer(Renderer&&) noexcept = delete;
     Renderer& operator=(Renderer&&) noexcept = delete;
 
+    /// Load OpenGL function addresses, required shaders and set OpenGL capabilities.
     bool init(GLFWwindow* window);
+    /// Setup viewport and clear screen
     void prepareDraw();
     void drawModel(const Model& model);
     void drawSkybox(const Skybox& skybox);
 
+    // Screen update and buffer swap is responsibility of window
+
 private:
-    enum class ShaderInstance : std::uint8_t
+    enum class ShaderInstance : uint8_t
     {
         ModelShader,
         SkyboxShader,
     };
 
     GLFWwindow* window_;
+    glm::mat4 projection_;
+    std::array<std::unique_ptr<Shader>, 2> shaders_;
     const DrawProperties& drawProps_;
     const Camera& camera_;
-    std::array<std::unique_ptr<Shader>, 2> shaders_;
-    glm::mat4 projection_;
 };
 #endif

@@ -20,13 +20,15 @@
 #endif
 
 Renderer::Renderer(const DrawProperties& drawProps, const Camera& camera)
-    : drawProps_(drawProps)
+    : window_{nullptr}
+    , drawProps_(drawProps)
     , camera_(camera)
 {
 }
 
 bool Renderer::init(GLFWwindow* window)
 {
+    // Set OpenGL function addresses
 #ifdef __EMSCRIPTEN__
     if (!gladLoadGLES2(glfwGetProcAddress))
 #else
@@ -37,6 +39,7 @@ bool Renderer::init(GLFWwindow* window)
         return false;
     }
 
+    // Load shaders
 #ifdef __EMSCRIPTEN__
     shaders_[static_cast<size_t>(ShaderInstance::ModelShader)]
         = Shader::createFromFile("assets/shaders/model_gles3.vert.glsl",
@@ -65,6 +68,7 @@ bool Renderer::init(GLFWwindow* window)
         return false;
     }
 
+    // Customize OpenGL capabilities
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -76,6 +80,7 @@ bool Renderer::init(GLFWwindow* window)
 
 void Renderer::prepareDraw()
 {
+    // Viewport setup
     int frameBufferWidth, frameBufferHeight;
     glfwGetFramebufferSize(window_, &frameBufferWidth, &frameBufferHeight);
     glViewport(0, 0, frameBufferWidth, frameBufferHeight);
@@ -85,6 +90,7 @@ void Renderer::prepareDraw()
                                    0.1F,
                                    100.0F);
 
+    // Clear screen
     glClearColor(drawProps_.backgroundColor[0],
                  drawProps_.backgroundColor[1],
                  drawProps_.backgroundColor[2],
@@ -94,12 +100,15 @@ void Renderer::prepareDraw()
 
 void Renderer::drawModel(const Model& model)
 {
+    // Set model draw shader
     const auto& shader
         = shaders_[static_cast<std::uint8_t>(ShaderInstance::ModelShader)];
     shader->use();
+    // Set vertex input
     glBindVertexArray(model.vertexArray);
 
-    // Avoid Gimbal-lock
+    // Model transform
+    // Avoid Gimbal-lock by converting Euler angles to quaternions
     const glm::quat quatX
         = glm::angleAxis(glm::radians(drawProps_.modelRotation[0]),
                          glm::vec3(1.0F, 0.0F, 0.0F));
@@ -114,37 +123,39 @@ void Renderer::drawModel(const Model& model)
 
     // Concat matrix transformations on CPU to avoid unnecessary multiplications
     // in GLSL. Results would be the same for all vertices.
-    const glm::mat4 view = camera_.makeViewMatrix();
+    const glm::mat4 view = camera_.calculateViewMatrix();
     const glm::mat4 mvp = projection_ * view * modelMatrix;
     const glm::mat3 normalMatrix
         = glm::mat3(glm::transpose(glm::inverse(modelMatrix)));
 
+    // Transfer uniforms
     shader->setUniform("u_model", modelMatrix);
     shader->setUniform("u_mvp", mvp);
     shader->setUniform("u_normalMatrix", normalMatrix);
     shader->setUniform("u_color", drawProps_.modelColor);
     shader->setUniform("u_light.direction", drawProps_.lightDirection);
     shader->setUniform("u_viewPos", camera_.position());
-
 #ifdef __EMSCRIPTEN__
-    shader->setUniform("u_adsProps.diffuseEnabled", drawProps.diffuseEnabled);
-    shader->setUniform("u_adsProps.specularEnabled", drawProps.specularEnabled);
+    // GLSL subroutines are not supported in OpenGL ES 3.0
+    shader->setUniform("u_adsProps.diffuseEnabled", drawProps_.diffuseEnabled);
+    shader->setUniform("u_adsProps.specularEnabled", drawProps_.specularEnabled);
 #else
-    // GLSL subroutines and glPolygonMode are not supported in OpenGL ES3
     shader->updateSubroutines(
         GL_FRAGMENT_SHADER,
         {drawProps_.diffuseEnabled ? "DiffuseEnabled" : "Disabled",
          drawProps_.specularEnabled ? "SpecularEnabled" : "Disabled"});
-
+    // glPolygonMode is not supported in OpenGL ES 3.0
     glPolygonMode(GL_FRONT_AND_BACK,
                   drawProps_.wireframeModeEnabled ? GL_LINE : GL_FILL);
 #endif
 
+    // Issue draw call
     glDrawElements(GL_TRIANGLES,
                    static_cast<GLsizei>(model.indices.size()),
                    GL_UNSIGNED_INT,
                    nullptr);
 
+    // Reset state
 #ifndef __EMSCRIPTEN__
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 #endif
@@ -153,12 +164,21 @@ void Renderer::drawModel(const Model& model)
 
 void Renderer::drawSkybox(const Skybox& skybox)
 {
+    // Skybox needs to be drawn at the end of the rendering pipeline for
+    // efficiency, not the other way around before objects (like in Painter's
+    // Algorithm).
+    //
+    // Allow skybox pixel depths to pass depth test even when depth buffer is
+    // filled with maximum 1.0 depth values. Everything drawn before skybox
+    // will be displayed in front of skybox.
     glDepthFunc(GL_LEQUAL);
+    // Set skybox shader
     const auto& shader
         = shaders_[static_cast<std::uint8_t>(ShaderInstance::SkyboxShader)];
     shader->use();
     glBindVertexArray(skybox.vertexArray);
 
+    // Set skybox texture
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_CUBE_MAP, skybox.textureID);
 
@@ -166,16 +186,20 @@ void Renderer::drawSkybox(const Skybox& skybox)
     // view matrix, then converting to mat3 and back. If you don't do this,
     // skybox will be shown as a shrinked down cube around model.
     const glm::mat4 normalizedView
-        = glm::mat4(glm::mat3(camera_.makeViewMatrix()));
+        = glm::mat4(glm::mat3(camera_.calculateViewMatrix()));
     // Concat matrix transformations on CPU to avoid unnecessary multiplications
     // in GLSL. Results would be the same for all vertices.
     const glm::mat4 projectionView = projection_ * normalizedView;
 
+    // Transfer uniforms
     shader->setUniform("u_projectionView", projectionView);
-    constexpr int textureUnit0 = 0;
-    shader->setUniform("u_skyboxTexture", textureUnit0);
+    constexpr int textureUnit = 0;
+    shader->setUniform("u_skyboxTexture", textureUnit);
 
+    // Issue draw call
     glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, nullptr);
-    glDepthFunc(GL_LESS);
+
+    // Reset state
     glBindVertexArray(0);
+    glDepthFunc(GL_LESS);  // Reset depth testing to default
 }

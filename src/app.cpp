@@ -23,37 +23,45 @@ namespace
 constexpr uint16_t SCREEN_WIDTH = 1024;
 constexpr uint16_t SCREEN_HEIGHT = 768;
 
+// This is the granularity of how often to update logic and not to be confused
+// with framerate limiting or 60 frames per second, because the main loop
+// implementation uses a fixed update, variable framerate timestep algorithm.
+//
+// 60 logic updates per second is a common value used in games.
+// - Higher update rate (120) can lead to smoother gameplay, more precise
+// control, at the cost of CPU load. Keep mobile devices in mind.
+// - Lower update rate (30) reduces CPU load, runs game logic less frequently,
+// but can make game less responsive.
 constexpr float MAX_LOGIC_UPDATE_PER_SECOND = 60.0F;
 constexpr float FIXED_UPDATE_TIMESTEP = 1.0F / MAX_LOGIC_UPDATE_PER_SECOND;
 }  // namespace
 
 App::App()
     : window_{nullptr}
-    , drawProps_(DrawProperties::createDefault())
+    , renderer_(drawProps_, camera_)
     // Positioning and rotation accidentally imitates a right-handed 3D
     // coordinate system with positive Z going farther from model, but this
     // setting is done because of initial orientation of the loaded Stanford
     // Bunny mesh.
     , camera_({1.7F, 1.3F, 4.0F}, {240.0F, -15.0F})
-    , renderer_(drawProps_, camera_)
-    , windowCallbackData_{
-          .camera = camera_,
-          .lastMousePos{static_cast<float>(SCREEN_WIDTH) / 2.0F,
-                        static_cast<float>(SCREEN_HEIGHT) / 2.0F}}
+    , drawProps_(DrawProperties::createDefault())
+    , lastMousePos_{static_cast<float>(SCREEN_WIDTH) / 2.0F,
+                    static_cast<float>(SCREEN_HEIGHT) / 2.0F}
 {
 }
 
 bool App::init()
 {
-#ifdef __EMSCRIPTEN__
     const char* gpuRequirementsMessage
+#ifdef __EMSCRIPTEN__
         = "Browser needs to support at least "
           "OpenGL ES 3.0 (WebGL2)";
 #else
-    const char* gpuRequirementsMessage
         = "Graphics card needs to support at least "
           "OpenGL 4.3";
 #endif
+
+    // Initialize windowing system
     if (!glfwInit())
     {
         utils::showErrorMessage("unable to initialize windowing system. ",
@@ -62,6 +70,7 @@ bool App::init()
     }
     glfwSetErrorCallback(errorCallback);
 
+    // Create window
 #ifdef __EMSCRIPTEN__
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
@@ -74,8 +83,8 @@ bool App::init()
 #ifdef __APPLE__
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 #endif
+    // TODO: Make window and OpenGL framebuffer resizable
     glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
-
     window_ = glfwCreateWindow(SCREEN_WIDTH,
                                SCREEN_HEIGHT,
                                "3D renderer by Bálint Kiss",
@@ -87,13 +96,17 @@ bool App::init()
                                 gpuRequirementsMessage);
         return false;
     }
-    glfwSetWindowUserPointer(window_, &windowCallbackData_);
+
+    // Setup event callbacks
+    glfwSetWindowUserPointer(window_, this);
     glfwSetMouseButtonCallback(window_, mouseButtonCallback);
-    glfwSetCursorPosCallback(window_, mouseCursorCallback);
+    glfwSetCursorPosCallback(window_, mouseMoveCallback);
     glfwMakeContextCurrent(window_);
 
+    // Init GUI
     Gui::init(window_);
 
+    // Init renderer
     if (!renderer_.init(window_))
     {
         utils::showErrorMessage("unable to initialize renderer. ",
@@ -101,6 +114,7 @@ bool App::init()
         return false;
     }
 
+    // Load resources
     skybox_ = SkyboxBuilder()
                   .setRight("assets/skybox/right.jpg")
                   .setLeft("assets/skybox/left.jpg")
@@ -142,16 +156,25 @@ void App::cleanup()
 void App::run()
 {
 #ifdef __EMSCRIPTEN__
+    // Web build main loop does not rely on a timestep algorithm or passing
+    // deltaTime. Instead, the browser calls and iterates the update function
+    // frequently using the requestAnimationFrame mechanism. This approach
+    // prevents blocking the browser's event loop, allowing the browser thread
+    // to remain responsive to user interactions.
     emscripten_set_main_loop_arg(emscriptenMainLoopCallback, this, 0, 1);
 #else
-    // Frame-rate independent loop with fixed update, variable rendering time.
+    // Frame-rate independent loop with fixed update, variable framerate.
     //
-    // A naive calculation and passing of deltaTime introduces floating point
-    // precision errors, leading to choppy movement even on high framerate.
+    // A naive calculation and passing of a deltaTime introduces floating point
+    // precision errors, leading to choppy camera movement and unstable logic
+    // even on high framerate. Here, think of it as renderer dictating time, and
+    // logic update adapting to it.
     //
     // Prefer steady_clock over high_resolution_clock, because
     // high_resolution_clock could lie.
     auto previousTime = std::chrono::steady_clock::now();
+    // How much application "clock" is behind real time. Also known as
+    // "accumulator"
     float lag = 0.0F;
     while (!glfwWindowShouldClose(window_))
     {
@@ -194,6 +217,7 @@ void App::mouseButtonCallback(GLFWwindow* window,
 {
     if (button == GLFW_MOUSE_BUTTON_RIGHT)
     {
+        // Initiate mouse look on right mouse button press
         if (action == GLFW_PRESS)
         {
             if (glfwGetInputMode(window, GLFW_CURSOR) == GLFW_CURSOR_NORMAL)
@@ -202,7 +226,7 @@ void App::mouseButtonCallback(GLFWwindow* window,
                 // HACK: Prevent cursor flicker at center before disabling
                 //
                 // GLFW_CURSOR_HIDDEN is not implemented in JS Emscripten port
-                // of GLFW
+                // of GLFW, resulting in an error console.log() display.
                 glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
 #endif
                 // Cursor disable is required to temporarily center it for
@@ -210,6 +234,8 @@ void App::mouseButtonCallback(GLFWwindow* window,
                 glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
             }
         }
+        // Stop mouse look on release, give cursor back. Cursor position stays
+        // the same as before mouse look.
         else
         {
             glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
@@ -217,20 +243,20 @@ void App::mouseButtonCallback(GLFWwindow* window,
     }
 }
 
-void App::mouseCursorCallback(GLFWwindow* window,
-                              double currentMousePosX,
-                              double currentMousePosY)
+void App::mouseMoveCallback(GLFWwindow* window,
+                            double currentMousePosX,
+                            double currentMousePosY)
 {
     const glm::vec2 currentMousePosFloat = {
         static_cast<float>(currentMousePosX),
         static_cast<float>(currentMousePosY),
     };
-    auto* callbackData
-        = static_cast<WindowCallbackData*>(glfwGetWindowUserPointer(window));
-    glm::vec2& lastMousePos = callbackData->lastMousePos;
+    auto* impl = static_cast<App*>(glfwGetWindowUserPointer(window));
+    glm::vec2& lastMousePos = impl->lastMousePos_;
     if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_RELEASE)
     {
-        // Avoid sudden jumps when initiating turning
+        // Always save position even when not holding down mouse button to avoid
+        // sudden jumps when initiating turning
         lastMousePos.x = currentMousePosFloat.x;
         lastMousePos.y = currentMousePosFloat.y;
         return;
@@ -242,7 +268,7 @@ void App::mouseCursorCallback(GLFWwindow* window,
     lastMousePos.x = currentMousePosFloat.x;
     lastMousePos.y = currentMousePosFloat.y;
 
-    callbackData->camera.look(xOffset, yOffset);
+    impl->camera_.look(xOffset, yOffset);
 }
 
 void App::handleInput()
@@ -250,6 +276,7 @@ void App::handleInput()
     glfwPollEvents();
 
 #ifndef __EMSCRIPTEN__
+    // No need to quit application from a web browser
     if (glfwGetKey(window_, GLFW_KEY_ESCAPE) == GLFW_PRESS)
     {
         glfwSetWindowShouldClose(window_, true);

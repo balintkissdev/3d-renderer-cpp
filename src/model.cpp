@@ -10,55 +10,18 @@
 
 std::unique_ptr<Model> Model::create(std::string_view filePath)
 {
-    Assimp::Importer importer;
-    const aiScene* scene = importer.ReadFile(
-        filePath.data(),
-        aiProcess_Triangulate | aiProcess_GenNormals | aiProcess_FlipUVs);
-    if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE
-        || !scene->mRootNode)
+    std::vector<Vertex> vertices;
+    auto model = std::make_unique<Model>();
+    if (!loadModelFromFile(filePath, vertices, model->indices))
     {
-        utils::showErrorMessage("unable to load 3D model file at ",
-                                filePath,
-                                ": ",
-                                importer.GetErrorString());
         return nullptr;
     }
 
-    // aiScene contains all mesh vertices themselves.
-    // aiNodes contain indices to meshes in aiScene, but no vertices.
-    //
-    // Sometimes you get a mesh file with just a single mesh and no nodes.
-    // The bundled default files are such meshes.
-    auto model = std::make_unique<Model>();
-    std::vector<Vertex> vertices;
-    for (size_t i = 0; i < scene->mNumMeshes; ++i)
-    {
-        aiMesh* mesh = scene->mMeshes[i];
-        for (size_t j = 0; j < mesh->mNumVertices; ++j)
-        {
-            Vertex vertex;
-            vertex.position.x = mesh->mVertices[j].x;
-            vertex.position.y = mesh->mVertices[j].y;
-            vertex.position.z = mesh->mVertices[j].z;
-            vertex.normal.x = mesh->mNormals[j].x;
-            vertex.normal.y = mesh->mNormals[j].y;
-            vertex.normal.z = mesh->mNormals[j].z;
-            vertices.push_back(vertex);
-        }
-
-        for (size_t j = 0; j < mesh->mNumFaces; ++j)
-        {
-            aiFace face = mesh->mFaces[j];
-            for (size_t k = 0; k < face.mNumIndices; ++k)
-            {
-                model->indices.push_back(face.mIndices[k]);
-            }
-        }
-    }
-
+    // Create vertex array
     glGenVertexArrays(1, &model->vertexArray);
     glBindVertexArray(model->vertexArray);
 
+    // Create vertex buffer
     glGenBuffers(1, &model->vertexBuffer_);
     glBindBuffer(GL_ARRAY_BUFFER, model->vertexBuffer_);
     glBufferData(GL_ARRAY_BUFFER,
@@ -66,6 +29,7 @@ std::unique_ptr<Model> Model::create(std::string_view filePath)
                  vertices.data(),
                  GL_STATIC_DRAW);
 
+    // Create index buffer
     glGenBuffers(1, &model->indexBuffer_);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, model->indexBuffer_);
     glBufferData(
@@ -74,6 +38,7 @@ std::unique_ptr<Model> Model::create(std::string_view filePath)
         model->indices.data(),
         GL_STATIC_DRAW);
 
+    // Setup vertex array layout
     // Vertex Attribute 0: position
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0,
@@ -96,6 +61,57 @@ std::unique_ptr<Model> Model::create(std::string_view filePath)
     glBindVertexArray(0);
 
     return model;
+}
+
+bool Model::loadModelFromFile(std::string_view filePath,
+                              std::vector<Vertex>& outVertices,
+                              std::vector<GLuint>& outIndices)
+{
+    Assimp::Importer importer;
+    const aiScene* scene = importer.ReadFile(
+        filePath.data(),
+        aiProcess_Triangulate | aiProcess_GenNormals | aiProcess_FlipUVs);
+    if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE
+        || !scene->mRootNode)
+    {
+        utils::showErrorMessage("unable to load 3D model file at ",
+                                filePath,
+                                ": ",
+                                importer.GetErrorString());
+        return false;
+    }
+
+    // aiScene contains all mesh vertices themselves.
+    // aiNodes contain indices to meshes in aiScene, but no vertices.
+    //
+    // Sometimes you get a mesh file with just a single mesh and no nodes.
+    // The bundled default files are such meshes.
+    for (size_t i = 0; i < scene->mNumMeshes; ++i)
+    {
+        aiMesh* mesh = scene->mMeshes[i];
+        for (size_t j = 0; j < mesh->mNumVertices; ++j)
+        {
+            Vertex vertex;
+            vertex.position.x = mesh->mVertices[j].x;
+            vertex.position.y = mesh->mVertices[j].y;
+            vertex.position.z = mesh->mVertices[j].z;
+            vertex.normal.x = mesh->mNormals[j].x;
+            vertex.normal.y = mesh->mNormals[j].y;
+            vertex.normal.z = mesh->mNormals[j].z;
+            outVertices.push_back(vertex);
+        }
+
+        for (size_t j = 0; j < mesh->mNumFaces; ++j)
+        {
+            aiFace face = mesh->mFaces[j];
+            for (size_t k = 0; k < face.mNumIndices; ++k)
+            {
+                outIndices.push_back(face.mIndices[k]);
+            }
+        }
+    }
+
+    return true;
 }
 
 Model::~Model()

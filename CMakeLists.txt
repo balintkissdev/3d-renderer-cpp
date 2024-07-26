@@ -1,8 +1,12 @@
+# Manage project source code organization, local download and build of
+# dependencies, executable build customization and distributable packaging.
 cmake_minimum_required(VERSION 3.16 FATAL_ERROR)
 set(PROJECT_NAME 3DRenderer)
 project(${PROJECT_NAME})
 
-# Set default build type to Release
+set(THIRDPARTY_DIR "${CMAKE_CURRENT_SOURCE_DIR}/thirdparty")
+
+# Set default build type to Release if not specified
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
   message(STATUS "Setting build type to 'Release' default.")
   set(CMAKE_BUILD_TYPE Release CACHE STRING "" FORCE)
@@ -13,12 +17,15 @@ set(PROJECT_VERSION_MINOR 0)
 set(PROJECT_VERSION_PATCH 0)
 set(PROJECT_VERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_PATCH})
 
-# Global flags for not just app but dependencies too
+# Global flags for not just app but dependencies built by this project too
 if(MSVC)
     # Build without MSVCRT.dll
     set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 endif()
 
+# Download and build dependencies without requiring the user to manually search
+# the internet to download and copy libraries (Windows) or pollute the user's
+# system with globally installed system packages (Linux).
 include(FetchContent)
 
 # Download GLFW for desktop build, otherwise skip this and use bundled
@@ -57,7 +64,7 @@ set(ASSIMP_INSTALL OFF CACHE BOOL "" FORCE)
 set(ASSIMP_NO_EXPORT ON CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(assimp)
 if(EMSCRIPTEN)
-    # zlib implementation required by Assimp
+    # zlib implementation required to build Assimp with Emscripten
     set_target_properties(assimp PROPERTIES
         COMPILE_OPTIONS "-sUSE_ZLIB=1"
         LINK_OPTIONS "-sUSE_ZLIB=1"
@@ -66,16 +73,28 @@ endif()
 
 add_executable(${PROJECT_NAME} "")
 
+# Set executable compiler flags
 set_target_properties(${PROJECT_NAME} PROPERTIES
     CXX_STANDARD 20
     CXX_STANDARD_REQUIRED YES
 )
+# The idiom for open source projects is NOT to enable build warnings as errors
+# by default. Even if they help the maintainer, different compilers treat same
+# code with different warnings and it would be unfortunate that just because it
+# builds on the maintainer's machine it fails for someone else trying to build
+# the project otherwise.
+option(BUILD_WERROR "Treat compiler warnings as errors")
+if(BUILD_WERROR)
+    target_compile_options(
+        ${PROJECT_NAME} PRIVATE
+        "$<IF:$<CXX_COMPILER_ID:MSVC>,/WX,-Werror>"
+    )
+endif()
 if(MSVC)
     target_compile_options(${PROJECT_NAME} PRIVATE
         # TODO: Find a way to disable exceptions on MSVC without breaking build
         /GR-                  # Disable RTTI
-        /W3                   # Warning level 3
-        /WX                   # Treat all warnings as errors
+        /W4                   # Warning level 4
     )
     set_target_properties(${PROJECT_NAME} PROPERTIES
         LINK_FLAGS /SUBSYSTEM:WINDOWS
@@ -86,11 +105,11 @@ else()
         -fno-rtti              # Disable RTTI
         -Wall                  # Enable all warnings
         -Wextra                # Enable extra warnings
-        -Werror                # Treat all warnings as errors
         -Wpedantic             # Enable pedantic warnings
     )
 endif()
 
+# Execute clang-tidy static code analysis during executable build
 find_program(
     CLANG_TIDY_EXE
     NAMES clang-tidy
@@ -107,61 +126,53 @@ else()
     message(STATUS "clang-tidy not found.")
 endif()
 
-set(THIRDPARTY_DIR "${CMAKE_CURRENT_SOURCE_DIR}/thirdparty")
+# Add sources to build
+add_subdirectory(src)
+add_subdirectory(${THIRDPARTY_DIR})
 
+# Add header include folders
 target_include_directories(${PROJECT_NAME}
     PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/src"
 )
-# TODO: Cleanup to remove duplication
-if(EMSCRIPTEN)
+# Make sure to use system includes to avoid clang-tidy checks on them
+target_include_directories(${PROJECT_NAME}
+    SYSTEM
+    PRIVATE
+        "${THIRDPARTY_DIR}"
+        "${THIRDPARTY_DIR}/glad/include"
+        "${THIRDPARTY_DIR}/imgui"
+        "${THIRDPARTY_DIR}/imgui/backends"
+        "${assimp_SOURCE_DIR}/include"
+        "${glm_SOURCE_DIR}"
+)
+if(NOT EMSCRIPTEN)
     target_include_directories(${PROJECT_NAME}
         SYSTEM
         PRIVATE
-            "${THIRDPARTY_DIR}"
-            "${THIRDPARTY_DIR}/glad/include"
-            "${THIRDPARTY_DIR}/imgui"
-            "${THIRDPARTY_DIR}/imgui/backends"
-            "${assimp_SOURCE_DIR}/include"
-            "${glm_SOURCE_DIR}"
-    )
-else()
-    target_include_directories(${PROJECT_NAME}
-        SYSTEM
-        PRIVATE
-            "${THIRDPARTY_DIR}"
-            "${THIRDPARTY_DIR}/glad/include"
-            "${THIRDPARTY_DIR}/imgui"
-            "${THIRDPARTY_DIR}/imgui/backends"
-            "${assimp_SOURCE_DIR}/include"
             "${glfw_SOURCE_DIR}/include"
-            "${glm_SOURCE_DIR}"
     )
 endif()
-add_subdirectory(src)
-add_subdirectory(${THIRDPARTY_DIR})
 
-if(EMSCRIPTEN)
-    target_link_libraries(${PROJECT_NAME}
-        PRIVATE
-            assimp
-            imgui
-            glm::glm
-            glad
-    )
-else()
+# Link libraries
+target_link_libraries(${PROJECT_NAME}
+    PRIVATE
+        assimp
+        imgui
+        glm::glm
+        glad
+        # "-sUSE_GLFW=3" linker option uses Emscripten GLFW package for WebAssembly
+)
+if(NOT EMSCRIPTEN)
     find_package(OpenGL REQUIRED)
     target_link_libraries(${PROJECT_NAME}
         PRIVATE
-            assimp
-            imgui
-            glm::glm
             glfw
-            glad
             OpenGL::GL
     )
 endif()
 
+# Copy assets
 add_custom_command(
     TARGET ${PROJECT_NAME}
     COMMAND ${CMAKE_COMMAND} -E copy_directory
@@ -169,6 +180,7 @@ add_custom_command(
         "$<TARGET_FILE_DIR:${PROJECT_NAME}>/assets"
 )
 
+# Linker options for WebAssembly build
 if(EMSCRIPTEN)
     set_target_properties(${PROJECT_NAME} PROPERTIES
         SUFFIX ".html"
@@ -201,6 +213,7 @@ if(WIN32)
     install(DIRECTORY "${PROJECT_SOURCE_DIR}/assets/" DESTINATION "assets")
     set(CPACK_GENERATOR ZIP)
     include(CPack)
+# Copy WebAssembly build on "make install" for easy web upload
 elseif(EMSCRIPTEN)
     install(FILES "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.data" DESTINATION ".")
     install(FILES "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.js" DESTINATION ".")

@@ -17,9 +17,12 @@
 #include <unordered_map>
 #include <vector>
 
+/// Representation of shader with helper operations for loading, compiling,
+/// binding, uniform value update and caching.
 class Shader
 {
 public:
+    /// Factory method compiling vertex and fragment shaders from GLSL files.
     static std::unique_ptr<Shader> createFromFile(
         std::string_view vertexShaderPath,
         std::string_view fragmentShaderPath);
@@ -29,12 +32,20 @@ public:
 
     ~Shader();
 
+    /// Bind shader to graphics pipeline to use for draw calls.
     void use() const;
 
     template <typename T>
     void setUniform(const std::string& name, const T& v);
 
 #ifndef __EMSCRIPTEN__
+    /// Change subroutines to use in shader based on list of subroutine names.
+    ///
+    /// Subroutines are analogous to C function pointers and is an efficient way
+    /// to customize parts of the shader program to execute.
+    ///
+    /// Shader subroutines are only supported from OpenGL 4.0+ and are not
+    /// available in OpenGL ES 3.0.
     void updateSubroutines(const GLenum shaderType,
                            const std::vector<std::string>& names);
 #endif
@@ -51,6 +62,7 @@ private:
 
     GLuint shaderProgram_;
     std::unordered_map<std::string, GLint> uniformCache_;
+
 #ifndef __EMSCRIPTEN__
     std::vector<GLuint> subroutineIndices_;
 #endif
@@ -61,10 +73,10 @@ private:
     ///
     /// Can only be done once shader linking was successful. Only active
     /// uniforms are cached, meaning only uniforms that are actually used by
-    /// shader during calculations. Because GPU optimizes shader compilation,
-    /// only those uniforms are compiled into the shader program and unused
+    /// shader operations. Because GPU drivers optimize shader compilation,
+    /// only active uniforms are compiled into the shader program and unused
     /// uniforms are discarded.
-    void cacheUniforms();
+    void cacheActiveUniforms();
 #ifndef NDEBUG
     /// Avoid overhead of uniform existence checks in release build, catch
     /// errors during development in debug.
