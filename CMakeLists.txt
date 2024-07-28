@@ -17,6 +17,8 @@ set(PROJECT_VERSION_MINOR 0)
 set(PROJECT_VERSION_PATCH 0)
 set(PROJECT_VERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_PATCH})
 
+option(WEBBUILD_CI "Specify if an Emscripten build is running in CI" OFF)
+
 # Global flags for not just app but dependencies built by this project too
 if(MSVC)
     # Build without MSVCRT.dll
@@ -59,6 +61,10 @@ set(ASSIMP_BUILD_ALL_IMPORTERS_BY_DEFAULT OFF CACHE BOOL "" FORCE)
 set(ASSIMP_BUILD_OBJ_IMPORTER ON CACHE BOOL "" FORCE)
 set(ASSIMP_BUILD_SAMPLES OFF CACHE BOOL "" FORCE)
 set(ASSIMP_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+# HACK: CI unable to find Emscripten zlib
+if(WEBBUILD_CI)
+    set(ASSIMP_BUILD_ZLIB ON CACHE BOOL "" FORCE)
+endif()
 set(ASSIMP_INJECT_DEBUG_POSTFIX OFF CACHE BOOL "" FORCE)
 set(ASSIMP_INSTALL OFF CACHE BOOL "" FORCE)
 set(ASSIMP_NO_EXPORT ON CACHE BOOL "" FORCE)
@@ -66,8 +72,8 @@ FetchContent_MakeAvailable(assimp)
 if(EMSCRIPTEN)
     # zlib implementation required to build Assimp with Emscripten
     set_target_properties(assimp PROPERTIES
-        COMPILE_OPTIONS "-sUSE_ZLIB=1"
-        LINK_OPTIONS "-sUSE_ZLIB=1"
+        COMPILE_OPTIONS "--use-port=zlib"
+        LINK_OPTIONS "--use-port=zlib"
     )
 endif()
 
