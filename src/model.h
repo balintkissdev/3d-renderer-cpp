@@ -8,8 +8,8 @@
 #endif
 #include "glm/vec3.hpp"
 
+#include <filesystem>
 #include <optional>
-#include <string_view>
 #include <vector>
 
 /// Representation of 3D model (currently mesh only).
@@ -20,7 +20,7 @@ class Model
 {
 public:
     /// Factory method loading a model file and initializing buffers.
-    static std::optional<Model> create(std::string_view filePath);
+    static std::optional<Model> create(const std::filesystem::path& filePath);
 
     Model(const Model& other) = delete;
     Model& operator=(const Model& other) = delete;
@@ -45,7 +45,7 @@ private:
         glm::vec3 normal;
     };
 
-    static bool loadModelFromFile(std::string_view filePath,
+    static bool loadModelFromFile(const std::filesystem::path& filePath,
                                   std::vector<Vertex>& outVertices,
                                   std::vector<GLuint>& outIndices);
 

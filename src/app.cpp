@@ -18,6 +18,10 @@
 #include <chrono>
 #endif
 
+#include <filesystem>
+
+namespace fs = std::filesystem;
+
 namespace
 {
 constexpr uint16_t SCREEN_WIDTH = 1024;
@@ -116,13 +120,13 @@ bool App::init()
 
     // Load resources
     std::optional<Skybox> skybox = SkyboxBuilder()
-                  .setRight("assets/skybox/right.jpg")
-                  .setLeft("assets/skybox/left.jpg")
-                  .setTop("assets/skybox/top.jpg")
-                  .setBottom("assets/skybox/bottom.jpg")
-                  .setFront("assets/skybox/front.jpg")
-                  .setBack("assets/skybox/back.jpg")
-                  .build();
+                                       .setRight("assets/skybox/right.jpg")
+                                       .setLeft("assets/skybox/left.jpg")
+                                       .setTop("assets/skybox/top.jpg")
+                                       .setBottom("assets/skybox/bottom.jpg")
+                                       .setFront("assets/skybox/front.jpg")
+                                       .setBack("assets/skybox/back.jpg")
+                                       .build();
     if (!skybox)
     {
         utils::showErrorMessage("unable to create skybox for application");
@@ -130,10 +134,10 @@ bool App::init()
     }
     skybox_ = std::move(skybox.value());
 
-    const std::array modelPaths{"assets/meshes/cube.obj",
-                                "assets/meshes/teapot.obj",
-                                "assets/meshes/bunny.obj"};
-    for (std::string_view path : modelPaths)
+    const std::array<fs::path, 3> modelPaths{"assets/meshes/cube.obj",
+                                             "assets/meshes/teapot.obj",
+                                             "assets/meshes/bunny.obj"};
+    for (const auto& path : modelPaths)
     {
         std::optional<Model> model = Model::create(path);
         if (!model)

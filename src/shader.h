@@ -11,6 +11,7 @@
 #include "glm/vec3.hpp"
 
 #include <array>
+#include <filesystem>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -28,8 +29,8 @@ class Shader
 public:
     /// Factory method compiling vertex and fragment shaders from GLSL files.
     static std::optional<Shader> createFromFile(
-        std::string_view vertexShaderPath,
-        std::string_view fragmentShaderPath);
+        const std::filesystem::path& vertexShaderPath,
+        const std::filesystem::path& fragmentShaderPath);
 
     Shader(const Shader& other) = delete;
     Shader& operator=(const Shader& other) = delete;
@@ -57,9 +58,10 @@ public:
 #endif
 
 private:
-    static std::optional<GLuint> compile(std::string_view shaderPath,
-                                         const GLenum shaderTpye);
-    static std::string readFile(std::string_view shaderPath);
+    static std::optional<GLuint> compile(
+        const std::filesystem::path& shaderPath,
+        const GLenum shaderTpye);
+    static std::string readFile(const std::filesystem::path& shaderPath);
     static bool checkCompileErrors(const GLuint shaderID,
                                    const GLenum shaderType);
     static bool checkLinkerErrors(const GLuint shaderID);

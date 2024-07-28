@@ -34,7 +34,7 @@ public:
     // Screen update and buffer swap is responsibility of window
 
 private:
-    enum class ShaderInstance : size_t
+    enum class ShaderInstance : uint8_t
     {
         ModelShader,
         SkyboxShader,

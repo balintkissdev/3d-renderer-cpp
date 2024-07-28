@@ -7,8 +7,8 @@
 #include "glad/gl.h"
 #endif
 
+#include <filesystem>
 #include <optional>
-#include <string>
 
 /// Skybox containing cube-mapped texture and vertex positions for skybox
 /// cube.
@@ -26,7 +26,8 @@ class Skybox
 public:
     friend class SkyboxBuilder;
 
-    Skybox();  // HACK: Allowing as member variable in App without std::unique_ptr
+    Skybox();  // HACK: Allowing as member variable in App without
+               // std::unique_ptr
     Skybox(const Skybox&) = delete;
     Skybox& operator=(const Skybox&) = delete;
     Skybox(Skybox&& other) noexcept;
@@ -49,22 +50,22 @@ private:
 class SkyboxBuilder
 {
 public:
-    SkyboxBuilder& setRight(const std::string& rightFacePath);
-    SkyboxBuilder& setLeft(const std::string& leftFacePath);
-    SkyboxBuilder& setTop(const std::string& topFacePath);
-    SkyboxBuilder& setBottom(const std::string& bottomFacePath);
-    SkyboxBuilder& setFront(const std::string& frontFacePath);
-    SkyboxBuilder& setBack(const std::string& backFacePath);
+    SkyboxBuilder& setRight(const std::filesystem::path& rightFacePath);
+    SkyboxBuilder& setLeft(const std::filesystem::path& leftFacePath);
+    SkyboxBuilder& setTop(const std::filesystem::path& topFacePath);
+    SkyboxBuilder& setBottom(const std::filesystem::path& bottomFacePath);
+    SkyboxBuilder& setFront(const std::filesystem::path& frontFacePath);
+    SkyboxBuilder& setBack(const std::filesystem::path& backFacePath);
 
     /// Load texture faces and generate vertex and index buffers.
     std::optional<Skybox> build();
 
 private:
-    std::string rightFacePath_;
-    std::string leftFacePath_;
-    std::string topFacePath_;
-    std::string bottomFacePath_;
-    std::string frontFacePath_;
-    std::string backFacePath_;
+    std::filesystem::path rightFacePath_;
+    std::filesystem::path leftFacePath_;
+    std::filesystem::path topFacePath_;
+    std::filesystem::path bottomFacePath_;
+    std::filesystem::path frontFacePath_;
+    std::filesystem::path backFacePath_;
 };
 #endif

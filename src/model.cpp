@@ -9,7 +9,9 @@
 #include <cstddef>
 #include <utility>
 
-std::optional<Model> Model::create(std::string_view filePath)
+namespace fs = std::filesystem;
+
+std::optional<Model> Model::create(const fs::path& filePath)
 {
     std::vector<Vertex> vertices;
     Model model;
@@ -63,13 +65,13 @@ std::optional<Model> Model::create(std::string_view filePath)
     return model;
 }
 
-bool Model::loadModelFromFile(std::string_view filePath,
+bool Model::loadModelFromFile(const fs::path& filePath,
                               std::vector<Vertex>& outVertices,
                               std::vector<GLuint>& outIndices)
 {
     Assimp::Importer importer;
     const aiScene* scene = importer.ReadFile(
-        filePath.data(),
+        filePath.string().c_str(),
         aiProcess_Triangulate | aiProcess_GenNormals | aiProcess_FlipUVs);
     if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE
         || !scene->mRootNode)

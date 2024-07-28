@@ -11,6 +11,8 @@
 #include <cstdint>
 #include <utility>
 
+namespace fs = std::filesystem;
+
 Skybox::Skybox()
     : textureID{0}
     , vertexArray{0}
@@ -44,37 +46,37 @@ Skybox::~Skybox()
     glDeleteBuffers(1, &vertexBuffer_);
 }
 
-SkyboxBuilder& SkyboxBuilder::setRight(const std::string& rightFacePath)
+SkyboxBuilder& SkyboxBuilder::setRight(const fs::path& rightFacePath)
 {
     rightFacePath_ = rightFacePath;
     return *this;
 }
 
-SkyboxBuilder& SkyboxBuilder::setLeft(const std::string& leftFacePath)
+SkyboxBuilder& SkyboxBuilder::setLeft(const fs::path& leftFacePath)
 {
     leftFacePath_ = leftFacePath;
     return *this;
 }
 
-SkyboxBuilder& SkyboxBuilder::setTop(const std::string& topFacePath)
+SkyboxBuilder& SkyboxBuilder::setTop(const fs::path& topFacePath)
 {
     topFacePath_ = topFacePath;
     return *this;
 }
 
-SkyboxBuilder& SkyboxBuilder::setBottom(const std::string& bottomFacePath)
+SkyboxBuilder& SkyboxBuilder::setBottom(const fs::path& bottomFacePath)
 {
     bottomFacePath_ = bottomFacePath;
     return *this;
 }
 
-SkyboxBuilder& SkyboxBuilder::setFront(const std::string& frontFacePath)
+SkyboxBuilder& SkyboxBuilder::setFront(const fs::path& frontFacePath)
 {
     frontFacePath_ = frontFacePath;
     return *this;
 }
 
-SkyboxBuilder& SkyboxBuilder::setBack(const std::string& backFacePath)
+SkyboxBuilder& SkyboxBuilder::setBack(const fs::path& backFacePath)
 {
     backFacePath_ = backFacePath;
     return *this;
@@ -83,12 +85,12 @@ SkyboxBuilder& SkyboxBuilder::setBack(const std::string& backFacePath)
 std::optional<Skybox> SkyboxBuilder::build()
 {
     // Load textures
-    const std::array textureFacePaths{rightFacePath_.c_str(),
-                                      leftFacePath_.c_str(),
-                                      topFacePath_.c_str(),
-                                      bottomFacePath_.c_str(),
-                                      frontFacePath_.c_str(),
-                                      backFacePath_.c_str()};
+    const std::array textureFacePaths{rightFacePath_,
+                                      leftFacePath_,
+                                      topFacePath_,
+                                      bottomFacePath_,
+                                      frontFacePath_,
+                                      backFacePath_};
 
     Skybox skybox;
     glGenTextures(1, &skybox.textureID);
@@ -97,8 +99,11 @@ std::optional<Skybox> SkyboxBuilder::build()
     for (size_t i = 0; i < textureFacePaths.size(); ++i)
     {
         int width, height, channelCount;
-        uint8_t* imageData
-            = stbi_load(textureFacePaths[i], &width, &height, &channelCount, 0);
+        uint8_t* imageData = stbi_load(textureFacePaths[i].string().c_str(),
+                                       &width,
+                                       &height,
+                                       &channelCount,
+                                       0);
         if (!imageData)
         {
             utils::showErrorMessage("unable to load skybox texture from",

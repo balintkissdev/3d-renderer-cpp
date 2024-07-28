@@ -19,6 +19,10 @@
 #include "glad/gl.h"
 #endif
 
+#include <filesystem>
+
+namespace fs = std::filesystem;
+
 Renderer::Renderer(const DrawProperties& drawProps, const Camera& camera)
     : window_{nullptr}
     , drawProps_(drawProps)
@@ -41,19 +45,22 @@ bool Renderer::init(GLFWwindow* window)
 
     // Load shaders
 #ifdef __EMSCRIPTEN__
-    const char* modelVertexShaderPath = "assets/shaders/model_gles3.vert.glsl";
-    const char* modelFragmentShaderPath
-        = "assets/shaders/model_gles3.frag.glsl";
-    const char* skyboxVertexShaderPath
-        = "assets/shaders/skybox_gles3.vert.glsl";
-    const char* skyboxFragmentShaderPath
-        = "assets/shaders/skybox_gles3.frag.glsl";
+    const fs::path modelVertexShaderPath(
+        "assets/shaders/model_gles3.vert.glsl");
+    const fs::path modelFragmentShaderPath(
+        "assets/shaders/model_gles3.frag.glsl");
+    const fs::path skyboxVertexShaderPath(
+        "assets/shaders/skybox_gles3.vert.glsl");
+    const fs::path skyboxFragmentShaderPath(
+        "assets/shaders/skybox_gles3.frag.glsl");
 #else
-    const char* modelVertexShaderPath = "assets/shaders/model_gl4.vert.glsl";
-    const char* modelFragmentShaderPath = "assets/shaders/model_gl4.frag.glsl";
-    const char* skyboxVertexShaderPath = "assets/shaders/skybox_gl4.vert.glsl";
-    const char* skyboxFragmentShaderPath
-        = "assets/shaders/skybox_gl4.frag.glsl";
+    const fs::path modelVertexShaderPath("assets/shaders/model_gl4.vert.glsl");
+    const fs::path modelFragmentShaderPath(
+        "assets/shaders/model_gl4.frag.glsl");
+    const fs::path skyboxVertexShaderPath(
+        "assets/shaders/skybox_gl4.vert.glsl");
+    const fs::path skyboxFragmentShaderPath(
+        "assets/shaders/skybox_gl4.frag.glsl");
 #endif
     std::optional<Shader> modelShader
         = Shader::createFromFile(modelVertexShaderPath,
