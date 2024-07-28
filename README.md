@@ -1,5 +1,7 @@
 # C++ 3D renderer with OpenGL 4 and OpenGL ES 3
 
+[![Build](https://github.com/balintkissdev/3d-renderer-cpp/actions/workflows/main.yml/badge.svg)](https://github.com/balintkissdev/3d-renderer-cpp/actions/workflows/main.yml)
+
 > A hardware accelerated 3D renderer written in C++. Runs using OpenGL 4.3 as
 graphics API on desktop and with OpenGL ES 3.0 in web browsers.
 

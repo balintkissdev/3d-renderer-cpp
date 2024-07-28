@@ -1,4 +1,4 @@
-name: 3D Renderer CI
+name: Build
 
 on: [push, pull_request]
 
