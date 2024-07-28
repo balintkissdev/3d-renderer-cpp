@@ -23,7 +23,7 @@ void Gui::init(GLFWwindow* window)
 
     auto& style = ImGui::GetStyle();
     ImVec4* colors = style.Colors;
-    const ImVec4 transparentBackgroundColor = ImVec4(0.1F, 0.1F, 0.1F, 0.5F);
+    const ImVec4 transparentBackgroundColor{0.1F, 0.1F, 0.1F, 0.5F};
     colors[ImGuiCol_WindowBg] = transparentBackgroundColor;
     colors[ImGuiCol_ChildBg] = transparentBackgroundColor;
     colors[ImGuiCol_TitleBg] = transparentBackgroundColor;
@@ -69,8 +69,9 @@ void Gui::prepareDraw(const Camera& camera, DrawProperties& drawProps)
 
     if (ImGui::CollapsingHeader("Model", ImGuiTreeNodeFlags_DefaultOpen))
     {
-        static const std::array modelItems
-            = {"Blender Cube", "Utah Teapot", "Stanford Bunny"};
+        static const std::array modelItems{"Blender Cube",
+                                           "Utah Teapot",
+                                           "Stanford Bunny"};
         ImGui::Combo("##Selected Model",
                      &drawProps.selectedModelIndex,
                      modelItems.data(),

@@ -129,9 +129,9 @@ bool App::init()
         return false;
     }
 
-    const std::array modelPaths = {"assets/meshes/cube.obj",
-                                   "assets/meshes/teapot.obj",
-                                   "assets/meshes/bunny.obj"};
+    const std::array modelPaths{"assets/meshes/cube.obj",
+                                "assets/meshes/teapot.obj",
+                                "assets/meshes/bunny.obj"};
     for (std::string_view path : modelPaths)
     {
         auto model = Model::create(path);
@@ -247,7 +247,7 @@ void App::mouseMoveCallback(GLFWwindow* window,
                             double currentMousePosX,
                             double currentMousePosY)
 {
-    const glm::vec2 currentMousePosFloat = {
+    const glm::vec2 currentMousePosFloat{
         static_cast<float>(currentMousePosX),
         static_cast<float>(currentMousePosY),
     };

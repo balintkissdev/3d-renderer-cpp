@@ -111,12 +111,12 @@ SkyboxBuilder& SkyboxBuilder::setBack(const std::string& backFacePath)
 std::unique_ptr<Skybox> SkyboxBuilder::build()
 {
     // Load textures
-    const std::array textureFacePaths = {rightFacePath_.c_str(),
-                                         leftFacePath_.c_str(),
-                                         topFacePath_.c_str(),
-                                         bottomFacePath_.c_str(),
-                                         frontFacePath_.c_str(),
-                                         backFacePath_.c_str()};
+    const std::array textureFacePaths{rightFacePath_.c_str(),
+                                      leftFacePath_.c_str(),
+                                      topFacePath_.c_str(),
+                                      bottomFacePath_.c_str(),
+                                      frontFacePath_.c_str(),
+                                      backFacePath_.c_str()};
 
     auto skybox = std::unique_ptr<Skybox>(new Skybox);
     glGenTextures(1, &skybox->textureID);
@@ -155,7 +155,7 @@ std::unique_ptr<Skybox> SkyboxBuilder::build()
     // Create buffers
 
     // clang-format off
-    const std::array skyboxVertices = {
+    const std::array skyboxVertices{
         -1.0F,  1.0F, -1.0F,
         -1.0F, -1.0F, -1.0F,
          1.0F, -1.0F, -1.0F,
@@ -166,7 +166,7 @@ std::unique_ptr<Skybox> SkyboxBuilder::build()
          1.0F,  1.0F,  1.0F
     };
 
-    const std::array skyboxIndices = {
+    const std::array skyboxIndices{
         // Front face
         0, 1, 2,
         2, 3, 0,
