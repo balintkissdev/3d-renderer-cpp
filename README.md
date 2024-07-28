@@ -17,8 +17,8 @@ graphics API on desktop and with OpenGL ES 3.0 in web browsers.
 ## Try it out!
 
 - [Live demo in web browser](https://www.balintkissdev.com/3d-renderer-cpp)
-- [Windows 64-bit download](https://github.com/balintkissdev/3d-renderer-cpp/releases/download/0.0.0/3DRenderer-0.0.0-win64.zip)
-- [Linux 64-bit download](https://github.com/balintkissdev/3d-renderer-cpp/releases/download/0.0.0/3DRenderer-0.0.0-linux-x86_64.AppImage)
+- [Windows 64-bit download](https://github.com/balintkissdev/3d-renderer-cpp/releases/download/0.0.1/3DRenderer-0.0.1-win64.zip)
+- [Linux 64-bit download](https://github.com/balintkissdev/3d-renderer-cpp/releases/download/0.0.1/3DRenderer-0.0.1-linux-x86_64.AppImage)
 
 ## Motivation
 
