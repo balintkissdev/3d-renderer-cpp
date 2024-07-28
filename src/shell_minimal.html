@@ -51,6 +51,26 @@
         to {transform: rotate(360deg);}
       }
 
+      .mobileMessage {
+        display: none;
+        text-align: center;
+        margin: 2rem;
+        font-size: 24px;
+        color: white;
+        background-color: red;
+        font-family: sans-serif;
+        padding: 1.5rem
+      }
+
+      @media (max-width: 768px) {
+        .spinner,
+        .emscripten {
+          display: none;
+        }
+        .mobileMessage {
+          display: block;
+        }
+      }
     </style>
   </head>
   <body>
@@ -60,6 +80,17 @@
       <progress value="0" max="100" id="progress" hidden=1></progress>
     </div>
     <canvas class="emscripten" id="canvas" oncontextmenu="event.preventDefault()" tabindex=-1></canvas>
+    <div class="mobileMessage">
+      <p>
+      This project is not supported on mobile devices due to small screen
+      size and lack of mouse and keyboard support. Usable mobile port will be a future
+      feature.
+      </p>
+      <p>
+      Please use a desktop browser on PC instead or download and run the
+      native executable on PC.
+      </p>
+    </div>
     <script type='text/javascript'>
       var statusElement = document.getElementById('status');
       var progressElement = document.getElementById('progress');
