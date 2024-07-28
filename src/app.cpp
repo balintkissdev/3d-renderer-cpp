@@ -115,7 +115,7 @@ bool App::init()
     }
 
     // Load resources
-    skybox_ = SkyboxBuilder()
+    std::optional<Skybox> skybox = SkyboxBuilder()
                   .setRight("assets/skybox/right.jpg")
                   .setLeft("assets/skybox/left.jpg")
                   .setTop("assets/skybox/top.jpg")
@@ -123,24 +123,25 @@ bool App::init()
                   .setFront("assets/skybox/front.jpg")
                   .setBack("assets/skybox/back.jpg")
                   .build();
-    if (!skybox_)
+    if (!skybox)
     {
         utils::showErrorMessage("unable to create skybox for application");
         return false;
     }
+    skybox_ = std::move(skybox.value());
 
     const std::array modelPaths{"assets/meshes/cube.obj",
                                 "assets/meshes/teapot.obj",
                                 "assets/meshes/bunny.obj"};
     for (std::string_view path : modelPaths)
     {
-        auto model = Model::create(path);
+        std::optional<Model> model = Model::create(path);
         if (!model)
         {
             utils::showErrorMessage("unable to create model from path ", path);
             return false;
         }
-        models_.emplace_back(std::move(model));
+        models_.emplace_back(std::move(model.value()));
     }
 
     return true;
@@ -313,12 +314,12 @@ void App::handleInput()
 void App::render()
 {
     Gui::prepareDraw(camera_, drawProps_);
-    const Model& activeModel = *models_[drawProps_.selectedModelIndex];
+    const Model& activeModel = models_[drawProps_.selectedModelIndex];
     renderer_.prepareDraw();
     renderer_.drawModel(activeModel);
     if (drawProps_.skyboxEnabled)
     {
-        renderer_.drawSkybox(*skybox_);
+        renderer_.drawSkybox(skybox_);
     }
     Gui::draw();
 

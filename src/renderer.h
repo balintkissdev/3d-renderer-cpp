@@ -5,8 +5,7 @@
 
 #include "glm/mat4x4.hpp"
 
-#include <array>
-#include <memory>
+#include <vector>
 
 class Camera;
 class Skybox;
@@ -24,7 +23,8 @@ public:
     Renderer(Renderer&&) noexcept = delete;
     Renderer& operator=(Renderer&&) noexcept = delete;
 
-    /// Load OpenGL function addresses, required shaders and set OpenGL capabilities.
+    /// Load OpenGL function addresses, required shaders and set OpenGL
+    /// capabilities.
     bool init(GLFWwindow* window);
     /// Setup viewport and clear screen
     void prepareDraw();
@@ -42,7 +42,7 @@ private:
 
     GLFWwindow* window_;
     glm::mat4 projection_;
-    std::array<std::unique_ptr<Shader>, 2> shaders_;
+    std::vector<Shader> shaders_;
     const DrawProperties& drawProps_;
     const Camera& camera_;
 };

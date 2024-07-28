@@ -8,23 +8,29 @@
 #endif
 #include "glm/vec3.hpp"
 
-#include <memory>
+#include <optional>
 #include <string_view>
 #include <vector>
 
 /// Representation of 3D model (currently mesh only).
+///
+/// Non-copyable, move-only. Mesh face vertices reside in GPU memory.
+/// Vertices are referred by indices to avoid storing duplicated vertices.
 class Model
 {
 public:
     /// Factory method loading a model file and initializing buffers.
-    static std::unique_ptr<Model> create(std::string_view filePath);
+    static std::optional<Model> create(std::string_view filePath);
 
-    // TODO: Debug why specifying Rule of Five and private constructor break
-    // mesh display
+    Model(const Model& other) = delete;
+    Model& operator=(const Model& other) = delete;
+    Model(Model&& other) noexcept;
+    Model& operator=(Model&& other) noexcept;
 
     ~Model();
 
-    // (exposed as public due to performance concerns)
+    // (Exposed as public variables instead of getters due to performance
+    // concerns)
     GLuint vertexArray;
     std::vector<GLuint> indices;
 
@@ -42,6 +48,8 @@ private:
     static bool loadModelFromFile(std::string_view filePath,
                                   std::vector<Vertex>& outVertices,
                                   std::vector<GLuint>& outIndices);
+
+    Model();
 
     GLuint vertexBuffer_;
     GLuint indexBuffer_;  /// Index buffer avoids duplication of vertices in

@@ -7,6 +7,7 @@
 #include <cstdio>
 #include <fstream>
 #include <ios>
+#include <utility>
 
 #ifndef NDEBUG
 #define ASSERT_UNIFORM(name) assertUniform((name))
@@ -19,7 +20,7 @@ namespace
 constexpr size_t SHADER_COMPILE_MESSAGE_MAX_LENGTH = 512;
 }
 
-std::unique_ptr<Shader> Shader::createFromFile(
+std::optional<Shader> Shader::createFromFile(
     std::string_view vertexShaderPath,
     std::string_view fragmentShaderPath)
 {
@@ -27,7 +28,7 @@ std::unique_ptr<Shader> Shader::createFromFile(
     const auto vertexShader = compile(vertexShaderPath, GL_VERTEX_SHADER);
     if (!vertexShader)
     {
-        return nullptr;
+        return std::nullopt;
     }
 
     // Compile fragment shader
@@ -35,7 +36,7 @@ std::unique_ptr<Shader> Shader::createFromFile(
     if (!fragmentShader)
     {
         glDeleteShader(vertexShader.value());
-        return nullptr;
+        return std::nullopt;
     }
 
     // Link shader program
@@ -49,14 +50,10 @@ std::unique_ptr<Shader> Shader::createFromFile(
     glDeleteShader(fragmentShader.value());
     if (!checkLinkerErrors(shaderProgram))
     {
-        return nullptr;
+        return std::nullopt;
     }
 
-    // Shader creation successful
-    auto shader = std::unique_ptr<Shader>(new Shader);
-    shader->shaderProgram_ = shaderProgram;
-    shader->cacheActiveUniforms();
-    return shader;
+    return Shader{shaderProgram};
 }
 
 Shader::Shader()
@@ -64,9 +61,37 @@ Shader::Shader()
 {
 }
 
+Shader::Shader(const GLuint shaderProgram)
+    : shaderProgram_{shaderProgram}
+{
+    if (shaderProgram)
+    {
+        cacheActiveUniforms();
+    }
+}
+
 Shader::~Shader()
 {
     glDeleteShader(shaderProgram_);
+}
+
+Shader::Shader(Shader&& other) noexcept
+    : shaderProgram_{std::exchange(other.shaderProgram_, 0)}
+    , uniformCache_{std::move(other.uniformCache_)}
+#ifndef __EMSCRIPTEN__
+    , subroutineIndices_{std::move(other.subroutineIndices_)}
+#endif
+{
+}
+
+Shader& Shader::operator=(Shader&& other) noexcept
+{
+    std::swap(shaderProgram_, other.shaderProgram_);
+    uniformCache_ = std::move(other.uniformCache_);
+#ifndef __EMSCRIPTEN__
+    subroutineIndices_ = std::move(other.subroutineIndices_);
+#endif
+    return *this;
 }
 
 void Shader::use() const

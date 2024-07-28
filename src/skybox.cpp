@@ -9,6 +9,7 @@
 
 #include <array>
 #include <cstdint>
+#include <utility>
 
 Skybox::Skybox()
     : textureID{0}
@@ -19,48 +20,19 @@ Skybox::Skybox()
 }
 
 Skybox::Skybox(Skybox&& other) noexcept
-    : textureID(other.textureID)
-    , vertexArray(other.vertexArray)
-    , vertexBuffer_(other.vertexBuffer_)
-    , indexBuffer_(other.indexBuffer_)
+    : textureID{std::exchange(other.textureID, 0)}
+    , vertexArray{std::exchange(other.vertexArray, 0)}
+    , vertexBuffer_{std::exchange(other.vertexBuffer_, 0)}
+    , indexBuffer_{std::exchange(other.indexBuffer_, 0)}
 {
-    other.textureID = 0;
-    other.vertexArray = 0;
-    other.vertexBuffer_ = 0;
-    other.indexBuffer_ = 0;
 }
 
 Skybox& Skybox::operator=(Skybox&& other) noexcept
 {
-    if (this != &other)
-    {
-        if (textureID != 0)
-        {
-            glDeleteTextures(1, &textureID);
-        }
-        if (vertexArray != 0)
-        {
-            glDeleteVertexArrays(1, &vertexArray);
-        }
-        if (vertexBuffer_ != 0)
-        {
-            glDeleteBuffers(1, &vertexBuffer_);
-        }
-        if (indexBuffer_ != 0)
-        {
-            glDeleteBuffers(1, &indexBuffer_);
-        }
-
-        textureID = other.textureID;
-        vertexArray = other.vertexArray;
-        vertexBuffer_ = other.vertexBuffer_;
-        indexBuffer_ = other.indexBuffer_;
-
-        other.textureID = 0;
-        other.vertexArray = 0;
-        other.vertexBuffer_ = 0;
-        other.indexBuffer_ = 0;
-    }
+    std::swap(textureID, other.textureID);
+    std::swap(vertexArray, other.vertexArray);
+    std::swap(vertexBuffer_, other.vertexBuffer_);
+    std::swap(indexBuffer_, other.indexBuffer_);
     return *this;
 }
 
@@ -108,7 +80,7 @@ SkyboxBuilder& SkyboxBuilder::setBack(const std::string& backFacePath)
     return *this;
 }
 
-std::unique_ptr<Skybox> SkyboxBuilder::build()
+std::optional<Skybox> SkyboxBuilder::build()
 {
     // Load textures
     const std::array textureFacePaths{rightFacePath_.c_str(),
@@ -118,9 +90,9 @@ std::unique_ptr<Skybox> SkyboxBuilder::build()
                                       frontFacePath_.c_str(),
                                       backFacePath_.c_str()};
 
-    auto skybox = std::unique_ptr<Skybox>(new Skybox);
-    glGenTextures(1, &skybox->textureID);
-    glBindTexture(GL_TEXTURE_CUBE_MAP, skybox->textureID);
+    Skybox skybox;
+    glGenTextures(1, &skybox.textureID);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, skybox.textureID);
 
     for (size_t i = 0; i < textureFacePaths.size(); ++i)
     {
@@ -131,7 +103,7 @@ std::unique_ptr<Skybox> SkyboxBuilder::build()
         {
             utils::showErrorMessage("unable to load skybox texture from",
                                     textureFacePaths[i]);
-            return nullptr;
+            return std::nullopt;
         }
 
         glTexImage2D(static_cast<GLenum>(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i),
@@ -189,20 +161,20 @@ std::unique_ptr<Skybox> SkyboxBuilder::build()
     // clang-format on
 
     // Create vertex array
-    glGenVertexArrays(1, &skybox->vertexArray);
-    glBindVertexArray(skybox->vertexArray);
+    glGenVertexArrays(1, &skybox.vertexArray);
+    glBindVertexArray(skybox.vertexArray);
 
     // Create vertex buffer
-    glGenBuffers(1, &skybox->vertexBuffer_);
-    glBindBuffer(GL_ARRAY_BUFFER, skybox->vertexBuffer_);
+    glGenBuffers(1, &skybox.vertexBuffer_);
+    glBindBuffer(GL_ARRAY_BUFFER, skybox.vertexBuffer_);
     glBufferData(GL_ARRAY_BUFFER,
                  sizeof(skyboxVertices),
                  skyboxVertices.data(),
                  GL_STATIC_DRAW);
 
     // Create index buffer
-    glGenBuffers(1, &skybox->indexBuffer_);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, skybox->indexBuffer_);
+    glGenBuffers(1, &skybox.indexBuffer_);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, skybox.indexBuffer_);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER,
                  sizeof(skyboxIndices),
                  skyboxIndices.data(),

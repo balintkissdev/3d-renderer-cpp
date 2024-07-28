@@ -7,7 +7,7 @@
 #include "glad/gl.h"
 #endif
 
-#include <memory>
+#include <optional>
 #include <string>
 
 /// Skybox containing cube-mapped texture and vertex positions for skybox
@@ -19,11 +19,14 @@
 /// surrounding the viewer and model. A unit cube is rendered centered
 /// at the origin and uses the object space position as a texture coordinate
 /// from which to sample the cube map texture.
+///
+/// Non-copyable. Move-only. Texture and vertex data are stored in GPU memory.
 class Skybox
 {
 public:
     friend class SkyboxBuilder;
 
+    Skybox();  // HACK: Allowing as member variable in App without std::unique_ptr
     Skybox(const Skybox&) = delete;
     Skybox& operator=(const Skybox&) = delete;
     Skybox(Skybox&& other) noexcept;
@@ -31,18 +34,18 @@ public:
 
     ~Skybox();
 
+    // (Exposed as public variables instead of getters due to performance
+    // concerns)
     GLuint textureID;
     GLuint vertexArray;
 
 private:
-    Skybox();
-
     GLuint vertexBuffer_;
     GLuint indexBuffer_;
 };
 
 /// Builder pattern for skybox creation, avoiding mistakes from specifying
-/// skybox face texture parameters.
+/// skybox face texture parameters out of order.
 class SkyboxBuilder
 {
 public:
@@ -54,7 +57,7 @@ public:
     SkyboxBuilder& setBack(const std::string& backFacePath);
 
     /// Load texture faces and generate vertex and index buffers.
-    std::unique_ptr<Skybox> build();
+    std::optional<Skybox> build();
 
 private:
     std::string rightFacePath_;

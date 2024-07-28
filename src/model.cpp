@@ -7,36 +7,36 @@
 #include "assimp/scene.h"
 
 #include <cstddef>
+#include <utility>
 
-std::unique_ptr<Model> Model::create(std::string_view filePath)
+std::optional<Model> Model::create(std::string_view filePath)
 {
     std::vector<Vertex> vertices;
-    auto model = std::make_unique<Model>();
-    if (!loadModelFromFile(filePath, vertices, model->indices))
+    Model model;
+    if (!loadModelFromFile(filePath, vertices, model.indices))
     {
-        return nullptr;
+        return std::nullopt;
     }
 
     // Create vertex array
-    glGenVertexArrays(1, &model->vertexArray);
-    glBindVertexArray(model->vertexArray);
+    glGenVertexArrays(1, &model.vertexArray);
+    glBindVertexArray(model.vertexArray);
 
     // Create vertex buffer
-    glGenBuffers(1, &model->vertexBuffer_);
-    glBindBuffer(GL_ARRAY_BUFFER, model->vertexBuffer_);
+    glGenBuffers(1, &model.vertexBuffer_);
+    glBindBuffer(GL_ARRAY_BUFFER, model.vertexBuffer_);
     glBufferData(GL_ARRAY_BUFFER,
                  static_cast<GLsizeiptr>(sizeof(Vertex) * vertices.size()),
                  vertices.data(),
                  GL_STATIC_DRAW);
 
     // Create index buffer
-    glGenBuffers(1, &model->indexBuffer_);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, model->indexBuffer_);
-    glBufferData(
-        GL_ELEMENT_ARRAY_BUFFER,
-        static_cast<GLsizeiptr>(sizeof(GLuint) * model->indices.size()),
-        model->indices.data(),
-        GL_STATIC_DRAW);
+    glGenBuffers(1, &model.indexBuffer_);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, model.indexBuffer_);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER,
+                 static_cast<GLsizeiptr>(sizeof(GLuint) * model.indices.size()),
+                 model.indices.data(),
+                 GL_STATIC_DRAW);
 
     // Setup vertex array layout
     // Vertex Attribute 0: position
@@ -112,6 +112,30 @@ bool Model::loadModelFromFile(std::string_view filePath,
     }
 
     return true;
+}
+
+Model::Model()
+    : vertexArray{0}
+    , vertexBuffer_{0}
+    , indexBuffer_{0}
+{
+}
+
+Model::Model(Model&& other) noexcept
+    : vertexArray{std::exchange(other.vertexArray, 0)}
+    , indices{std::move(other.indices)}
+    , vertexBuffer_{std::exchange(other.vertexBuffer_, 0)}
+    , indexBuffer_{std::exchange(other.indexBuffer_, 0)}
+{
+}
+
+Model& Model::operator=(Model&& other) noexcept
+{
+    std::swap(vertexArray, other.vertexArray);
+    indices = std::move(other.indices);
+    std::swap(vertexBuffer_, other.vertexBuffer_);
+    std::swap(indexBuffer_, other.indexBuffer_);
+    return *this;
 }
 
 Model::~Model()

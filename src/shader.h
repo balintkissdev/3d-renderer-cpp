@@ -11,24 +11,30 @@
 #include "glm/vec3.hpp"
 
 #include <array>
-#include <memory>
 #include <optional>
+#include <string>
 #include <string_view>
 #include <unordered_map>
 #include <vector>
 
-/// Representation of shader with helper operations for loading, compiling,
-/// binding, uniform value update and caching.
+/// Wrapper around shader with helper operations
+/// for loading, compiling, binding, uniform value update.
+///
+/// Non-copyable, move-only. Because this already contains a handle to the
+/// compiled shader binary in GPU memory, there's no point in separate heap
+/// allocation if not necessary.
 class Shader
 {
 public:
     /// Factory method compiling vertex and fragment shaders from GLSL files.
-    static std::unique_ptr<Shader> createFromFile(
+    static std::optional<Shader> createFromFile(
         std::string_view vertexShaderPath,
         std::string_view fragmentShaderPath);
 
-    Shader(const Shader&) = delete;
-    Shader& operator=(const Shader&) = delete;
+    Shader(const Shader& other) = delete;
+    Shader& operator=(const Shader& other) = delete;
+    Shader(Shader&& other) noexcept;
+    Shader& operator=(Shader&& other) noexcept;
 
     ~Shader();
 
@@ -59,6 +65,7 @@ private:
     static bool checkLinkerErrors(const GLuint shaderID);
 
     Shader();
+    explicit Shader(const GLuint shaderProgram);
 
     GLuint shaderProgram_;
     std::unordered_map<std::string, GLint> uniformCache_;
@@ -78,8 +85,9 @@ private:
     /// uniforms are discarded.
     void cacheActiveUniforms();
 #ifndef NDEBUG
-    /// Avoid overhead of uniform existence checks in release build, catch
-    /// errors during development in debug.
+    /// Catch non-existent active uniform
+    /// errors during development in debug build (disabled release build to
+    /// avoid overhead of uniform existence checks).
     void assertUniform(const std::string& name);
 #endif
 };

@@ -41,32 +41,38 @@ bool Renderer::init(GLFWwindow* window)
 
     // Load shaders
 #ifdef __EMSCRIPTEN__
-    shaders_[static_cast<size_t>(ShaderInstance::ModelShader)]
-        = Shader::createFromFile("assets/shaders/model_gles3.vert.glsl",
-                                 "assets/shaders/model_gles3.frag.glsl");
+    const char* modelVertexShaderPath = "assets/shaders/model_gles3.vert.glsl";
+    const char* modelFragmentShaderPath
+        = "assets/shaders/model_gles3.frag.glsl";
+    const char* skyboxVertexShaderPath
+        = "assets/shaders/skybox_gles3.vert.glsl";
+    const char* skyboxFragmentShaderPath
+        = "assets/shaders/skybox_gles3.frag.glsl";
 #else
-    shaders_[static_cast<size_t>(ShaderInstance::ModelShader)]
-        = Shader::createFromFile("assets/shaders/model_gl4.vert.glsl",
-                                 "assets/shaders/model_gl4.frag.glsl");
+    const char* modelVertexShaderPath = "assets/shaders/model_gl4.vert.glsl";
+    const char* modelFragmentShaderPath = "assets/shaders/model_gl4.frag.glsl";
+    const char* skyboxVertexShaderPath = "assets/shaders/skybox_gl4.vert.glsl";
+    const char* skyboxFragmentShaderPath
+        = "assets/shaders/skybox_gl4.frag.glsl";
 #endif
-    if (!shaders_[static_cast<size_t>(ShaderInstance::ModelShader)])
+    std::optional<Shader> modelShader
+        = Shader::createFromFile(modelVertexShaderPath,
+                                 modelFragmentShaderPath);
+    if (!modelShader)
     {
         return false;
     }
 
-#ifdef __EMSCRIPTEN__
-    shaders_[static_cast<size_t>(ShaderInstance::SkyboxShader)]
-        = Shader::createFromFile("assets/shaders/skybox_gles3.vert.glsl",
-                                 "assets/shaders/skybox_gles3.frag.glsl");
-#else
-    shaders_[static_cast<size_t>(ShaderInstance::SkyboxShader)]
-        = Shader::createFromFile("assets/shaders/skybox_gl4.vert.glsl",
-                                 "assets/shaders/skybox_gl4.frag.glsl");
-#endif
-    if (!shaders_[static_cast<size_t>(ShaderInstance::SkyboxShader)])
+    std::optional<Shader> skyboxShader
+        = Shader::createFromFile(skyboxVertexShaderPath,
+                                 skyboxFragmentShaderPath);
+    if (!skyboxShader)
     {
         return false;
     }
+    shaders_.reserve(2);
+    shaders_.emplace_back(std::move(modelShader.value()));
+    shaders_.emplace_back(std::move(skyboxShader.value()));
 
     // Customize OpenGL capabilities
     glEnable(GL_DEPTH_TEST);
@@ -101,9 +107,9 @@ void Renderer::prepareDraw()
 void Renderer::drawModel(const Model& model)
 {
     // Set model draw shader
-    const auto& shader
+    auto& shader
         = shaders_[static_cast<std::uint8_t>(ShaderInstance::ModelShader)];
-    shader->use();
+    shader.use();
     // Set vertex input
     glBindVertexArray(model.vertexArray);
 
@@ -129,18 +135,18 @@ void Renderer::drawModel(const Model& model)
         = glm::mat3(glm::transpose(glm::inverse(modelMatrix)));
 
     // Transfer uniforms
-    shader->setUniform("u_model", modelMatrix);
-    shader->setUniform("u_mvp", mvp);
-    shader->setUniform("u_normalMatrix", normalMatrix);
-    shader->setUniform("u_color", drawProps_.modelColor);
-    shader->setUniform("u_light.direction", drawProps_.lightDirection);
-    shader->setUniform("u_viewPos", camera_.position());
+    shader.setUniform("u_model", modelMatrix);
+    shader.setUniform("u_mvp", mvp);
+    shader.setUniform("u_normalMatrix", normalMatrix);
+    shader.setUniform("u_color", drawProps_.modelColor);
+    shader.setUniform("u_light.direction", drawProps_.lightDirection);
+    shader.setUniform("u_viewPos", camera_.position());
 #ifdef __EMSCRIPTEN__
     // GLSL subroutines are not supported in OpenGL ES 3.0
-    shader->setUniform("u_adsProps.diffuseEnabled", drawProps_.diffuseEnabled);
-    shader->setUniform("u_adsProps.specularEnabled", drawProps_.specularEnabled);
+    shader.setUniform("u_adsProps.diffuseEnabled", drawProps_.diffuseEnabled);
+    shader.setUniform("u_adsProps.specularEnabled", drawProps_.specularEnabled);
 #else
-    shader->updateSubroutines(
+    shader.updateSubroutines(
         GL_FRAGMENT_SHADER,
         {drawProps_.diffuseEnabled ? "DiffuseEnabled" : "Disabled",
          drawProps_.specularEnabled ? "SpecularEnabled" : "Disabled"});
@@ -173,9 +179,9 @@ void Renderer::drawSkybox(const Skybox& skybox)
     // will be displayed in front of skybox.
     glDepthFunc(GL_LEQUAL);
     // Set skybox shader
-    const auto& shader
+    auto& shader
         = shaders_[static_cast<std::uint8_t>(ShaderInstance::SkyboxShader)];
-    shader->use();
+    shader.use();
     glBindVertexArray(skybox.vertexArray);
 
     // Set skybox texture
@@ -187,14 +193,15 @@ void Renderer::drawSkybox(const Skybox& skybox)
     // skybox will be shown as a shrinked down cube around model.
     const glm::mat4 normalizedView
         = glm::mat4(glm::mat3(camera_.calculateViewMatrix()));
-    // Concat matrix transformations on CPU to avoid unnecessary multiplications
+    // Concat matrix transformations on CPU to avoid unnecessary
+    // multiplications
     // in GLSL. Results would be the same for all vertices.
     const glm::mat4 projectionView = projection_ * normalizedView;
 
     // Transfer uniforms
-    shader->setUniform("u_projectionView", projectionView);
+    shader.setUniform("u_projectionView", projectionView);
     constexpr int textureUnit = 0;
-    shader->setUniform("u_skyboxTexture", textureUnit);
+    shader.setUniform("u_skyboxTexture", textureUnit);
 
     // Issue draw call
     glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, nullptr);

@@ -7,8 +7,6 @@
 #include "renderer.h"
 #include "skybox.h"
 
-#include <memory>
-
 struct GLFWwindow;
 
 /// Encapsulation of renderer application lifecycle and logic update to avoid
@@ -52,8 +50,8 @@ private:
     Camera camera_;
     DrawProperties drawProps_;
     glm::vec2 lastMousePos_;
-    std::unique_ptr<Skybox> skybox_;
-    std::vector<std::unique_ptr<Model>> models_;
+    Skybox skybox_;
+    std::vector<Model> models_;
 
     void handleInput();
     void render();
