@@ -1,4 +1,4 @@
-# C++ 3D renderer with OpenGL 4 and OpenGL ES 3
+# Real-time C++ 3D renderer with OpenGL 4 and OpenGL ES 3
 
 [![Build](https://github.com/balintkissdev/3d-renderer-cpp/actions/workflows/main.yml/badge.svg)](https://github.com/balintkissdev/3d-renderer-cpp/actions/workflows/main.yml)
 
@@ -73,11 +73,12 @@ sudo dnf install wayland-devel libxkbcommon-devel libXcursor-devel libXi-devel l
 
 All other dependencies are either included in `thirdparty` folder or automatically downloaded and built by `FetchContent` feature of CMake.
 
+- [Assimp](https://assimp.org/)
+- [Dear ImGui](https://github.com/ocornut/imgui)
 - [GLFW](glfw.org)
 - [OpenGL Mathematics (GLM)](https://github.com/g-truc/glm)
-- [Assimp](https://assimp.org/)
+- [glad](https://gen.glad.sh/)
 - [stb_image](https://github.com/nothings/stb/blob/master/stb_image.h)
-- [Dear ImGui](https://github.com/ocornut/imgui)
 
 ## Build
 
@@ -101,12 +102,12 @@ cd build
 cmake .. # -DBUILD_WERROR=ON
 ```
 
-`-DBUILD_WERROR`: Treating compiler warnings as errors turned off by default,
+`-DBUILD_WERROR`: Treating compiler warnings as errors is turned off by default,
 but can be enabled with `-DBUILD_WERROR=ON` during CMake configure. The reason
-for this is because open source project idiom is to NOT enable build warnigns
+for this is because the open source project idiom is to NOT enable build warnigns
 as errors by default, and to avoid people with different build environments
 finding different warnings unable to build without hacking the
-`CMakeLists.txt`. Warnings as errors is enabled for automated CI builds.
+`CMakeLists.txt` file. Warnings as errors are enabled for automated CI builds.
 
 4. Build the project
 
@@ -145,7 +146,7 @@ at `http://localhost:8000`
 python -m http.server
 ```
 
-or alternatively use `emrun 3DRenderer.html`.
+or alternatively use `emrun 3DRenderer.html --port 8000`.
 
 ## Usage
 
