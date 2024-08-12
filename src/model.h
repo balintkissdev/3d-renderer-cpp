@@ -29,10 +29,8 @@ public:
 
     ~Model();
 
-    // (Exposed as public variables instead of getters due to performance
-    // concerns)
-    GLuint vertexArray;
-    std::vector<GLuint> indices;
+    [[nodiscard]] GLuint vertexArray() const;
+    [[nodiscard]] const std::vector<GLuint>& indices() const;
 
 private:
     /// Per-vertex data containing vertex attributes for each vertex.
@@ -51,8 +49,21 @@ private:
 
     Model();
 
+    GLuint vertexArray_;
+    std::vector<GLuint> indices_;
     GLuint vertexBuffer_;
     GLuint indexBuffer_;  /// Index buffer avoids duplication of vertices in
                           /// vertex buffer
 };
+
+inline GLuint Model::vertexArray() const
+{
+    return vertexArray_;
+}
+
+inline const std::vector<GLuint>& Model::indices() const
+{
+    return indices_;
+}
+
 #endif

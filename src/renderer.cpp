@@ -118,7 +118,7 @@ void Renderer::drawModel(const Model& model)
         = shaders_[static_cast<std::uint8_t>(ShaderInstance::ModelShader)];
     shader.use();
     // Set vertex input
-    glBindVertexArray(model.vertexArray);
+    glBindVertexArray(model.vertexArray());
 
     // Model transform
     // Avoid Gimbal-lock by converting Euler angles to quaternions
@@ -164,7 +164,7 @@ void Renderer::drawModel(const Model& model)
 
     // Issue draw call
     glDrawElements(GL_TRIANGLES,
-                   static_cast<GLsizei>(model.indices.size()),
+                   static_cast<GLsizei>(model.indices().size()),
                    GL_UNSIGNED_INT,
                    nullptr);
 
@@ -189,11 +189,11 @@ void Renderer::drawSkybox(const Skybox& skybox)
     auto& shader
         = shaders_[static_cast<std::uint8_t>(ShaderInstance::SkyboxShader)];
     shader.use();
-    glBindVertexArray(skybox.vertexArray);
+    glBindVertexArray(skybox.vertexArray());
 
     // Set skybox texture
     glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_CUBE_MAP, skybox.textureID);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, skybox.textureID());
 
     // Remove camera position transformations but keep rotation by recreating
     // view matrix, then converting to mat3 and back. If you don't do this,

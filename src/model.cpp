@@ -15,14 +15,14 @@ std::optional<Model> Model::create(const fs::path& filePath)
 {
     std::vector<Vertex> vertices;
     Model model;
-    if (!loadModelFromFile(filePath, vertices, model.indices))
+    if (!loadModelFromFile(filePath, vertices, model.indices_))
     {
         return std::nullopt;
     }
 
     // Create vertex array
-    glGenVertexArrays(1, &model.vertexArray);
-    glBindVertexArray(model.vertexArray);
+    glGenVertexArrays(1, &model.vertexArray_);
+    glBindVertexArray(model.vertexArray_);
 
     // Create vertex buffer
     glGenBuffers(1, &model.vertexBuffer_);
@@ -36,8 +36,8 @@ std::optional<Model> Model::create(const fs::path& filePath)
     glGenBuffers(1, &model.indexBuffer_);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, model.indexBuffer_);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER,
-                 static_cast<GLsizeiptr>(sizeof(GLuint) * model.indices.size()),
-                 model.indices.data(),
+                 static_cast<GLsizeiptr>(sizeof(GLuint) * model.indices_.size()),
+                 model.indices_.data(),
                  GL_STATIC_DRAW);
 
     // Setup vertex array layout
@@ -117,15 +117,15 @@ bool Model::loadModelFromFile(const fs::path& filePath,
 }
 
 Model::Model()
-    : vertexArray{0}
+    : vertexArray_{0}
     , vertexBuffer_{0}
     , indexBuffer_{0}
 {
 }
 
 Model::Model(Model&& other) noexcept
-    : vertexArray{std::exchange(other.vertexArray, 0)}
-    , indices{std::move(other.indices)}
+    : vertexArray_{std::exchange(other.vertexArray_, 0)}
+    , indices_{std::move(other.indices_)}
     , vertexBuffer_{std::exchange(other.vertexBuffer_, 0)}
     , indexBuffer_{std::exchange(other.indexBuffer_, 0)}
 {
@@ -133,8 +133,8 @@ Model::Model(Model&& other) noexcept
 
 Model& Model::operator=(Model&& other) noexcept
 {
-    std::swap(vertexArray, other.vertexArray);
-    indices = std::move(other.indices);
+    std::swap(vertexArray_, other.vertexArray_);
+    indices_ = std::move(other.indices_);
     std::swap(vertexBuffer_, other.vertexBuffer_);
     std::swap(indexBuffer_, other.indexBuffer_);
     return *this;
@@ -142,7 +142,7 @@ Model& Model::operator=(Model&& other) noexcept
 
 Model::~Model()
 {
-    glDeleteVertexArrays(1, &vertexArray);
+    glDeleteVertexArrays(1, &vertexArray_);
     glDeleteBuffers(1, &indexBuffer_);
     glDeleteBuffers(1, &vertexBuffer_);
 }

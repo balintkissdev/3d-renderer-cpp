@@ -14,16 +14,16 @@
 namespace fs = std::filesystem;
 
 Skybox::Skybox()
-    : textureID{0}
-    , vertexArray{0}
+    : textureID_{0}
+    , vertexArray_{0}
     , vertexBuffer_{0}
     , indexBuffer_{0}
 {
 }
 
 Skybox::Skybox(Skybox&& other) noexcept
-    : textureID{std::exchange(other.textureID, 0)}
-    , vertexArray{std::exchange(other.vertexArray, 0)}
+    : textureID_{std::exchange(other.textureID_, 0)}
+    , vertexArray_{std::exchange(other.vertexArray_, 0)}
     , vertexBuffer_{std::exchange(other.vertexBuffer_, 0)}
     , indexBuffer_{std::exchange(other.indexBuffer_, 0)}
 {
@@ -31,8 +31,8 @@ Skybox::Skybox(Skybox&& other) noexcept
 
 Skybox& Skybox::operator=(Skybox&& other) noexcept
 {
-    std::swap(textureID, other.textureID);
-    std::swap(vertexArray, other.vertexArray);
+    std::swap(textureID_, other.textureID_);
+    std::swap(vertexArray_, other.vertexArray_);
     std::swap(vertexBuffer_, other.vertexBuffer_);
     std::swap(indexBuffer_, other.indexBuffer_);
     return *this;
@@ -40,8 +40,8 @@ Skybox& Skybox::operator=(Skybox&& other) noexcept
 
 Skybox::~Skybox()
 {
-    glDeleteTextures(1, &textureID);
-    glDeleteVertexArrays(1, &vertexArray);
+    glDeleteTextures(1, &textureID_);
+    glDeleteVertexArrays(1, &vertexArray_);
     glDeleteBuffers(1, &indexBuffer_);
     glDeleteBuffers(1, &vertexBuffer_);
 }
@@ -93,8 +93,8 @@ std::optional<Skybox> SkyboxBuilder::build()
                                       backFacePath_};
 
     Skybox skybox;
-    glGenTextures(1, &skybox.textureID);
-    glBindTexture(GL_TEXTURE_CUBE_MAP, skybox.textureID);
+    glGenTextures(1, &skybox.textureID_);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, skybox.textureID_);
 
     for (size_t i = 0; i < textureFacePaths.size(); ++i)
     {
@@ -166,8 +166,8 @@ std::optional<Skybox> SkyboxBuilder::build()
     // clang-format on
 
     // Create vertex array
-    glGenVertexArrays(1, &skybox.vertexArray);
-    glBindVertexArray(skybox.vertexArray);
+    glGenVertexArrays(1, &skybox.vertexArray_);
+    glBindVertexArray(skybox.vertexArray_);
 
     // Create vertex buffer
     glGenBuffers(1, &skybox.vertexBuffer_);

@@ -35,15 +35,25 @@ public:
 
     ~Skybox();
 
-    // (Exposed as public variables instead of getters due to performance
-    // concerns)
-    GLuint textureID;
-    GLuint vertexArray;
+    [[nodiscard]] GLuint textureID() const;
+    [[nodiscard]] GLuint vertexArray() const;
 
 private:
+    GLuint textureID_;
+    GLuint vertexArray_;
     GLuint vertexBuffer_;
     GLuint indexBuffer_;
 };
+
+inline GLuint Skybox::textureID() const
+{
+    return textureID_;
+}
+
+inline GLuint Skybox::vertexArray() const
+{
+    return vertexArray_;
+}
 
 /// Builder pattern for skybox creation, avoiding mistakes from specifying
 /// skybox face texture parameters out of order.
