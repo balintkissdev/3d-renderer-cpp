@@ -1,5 +1,5 @@
-#ifndef MODEL_H_
-#define MODEL_H_
+#ifndef MODEL_HPP_
+#define MODEL_HPP_
 
 #ifdef __EMSCRIPTEN__
 #include "glad/gles2.h"

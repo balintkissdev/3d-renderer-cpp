@@ -1,11 +1,11 @@
-#ifndef APP_H_
-#define APP_H_
+#ifndef APP_HPP_
+#define APP_HPP_
 
-#include "camera.h"
-#include "drawproperties.h"
-#include "model.h"
-#include "renderer.h"
-#include "skybox.h"
+#include "camera.hpp"
+#include "drawproperties.hpp"
+#include "model.hpp"
+#include "renderer.hpp"
+#include "skybox.hpp"
 
 struct GLFWwindow;
 

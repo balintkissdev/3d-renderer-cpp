@@ -1,5 +1,5 @@
-#ifndef DRAW_PROPERTIES_H_
-#define DRAW_PROPERTIES_H_
+#ifndef DRAW_PROPERTIES_HPP_
+#define DRAW_PROPERTIES_HPP_
 
 #include <array>
 

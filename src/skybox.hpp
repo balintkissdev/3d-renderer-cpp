@@ -1,5 +1,5 @@
-#ifndef SKYBOX_H_
-#define SKYBOX_H_
+#ifndef SKYBOX_HPP_
+#define SKYBOX_HPP_
 
 #ifdef __EMSCRIPTEN__
 #include "glad/gles2.h"

@@ -1,8 +1,8 @@
-#include "app.h"
+#include "app.hpp"
 
-#include "drawproperties.h"
-#include "gui.h"
-#include "utils.h"
+#include "drawproperties.hpp"
+#include "gui.hpp"
+#include "utils.hpp"
 
 #include "glm/gtc/matrix_transform.hpp"
 

@@ -1,11 +1,11 @@
-#include "renderer.h"
+#include "renderer.hpp"
 
-#include "camera.h"
-#include "drawproperties.h"
-#include "model.h"
-#include "shader.h"
-#include "skybox.h"
-#include "utils.h"
+#include "camera.hpp"
+#include "drawproperties.hpp"
+#include "model.hpp"
+#include "shader.hpp"
+#include "skybox.hpp"
+#include "utils.hpp"
 
 #include "glm/glm.hpp"
 #include "glm/gtc/quaternion.hpp"

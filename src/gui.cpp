@@ -1,7 +1,7 @@
-#include "gui.h"
+#include "gui.hpp"
 
-#include "camera.h"
-#include "drawproperties.h"
+#include "camera.hpp"
+#include "drawproperties.hpp"
 
 #include "imgui.h"
 #include "imgui_impl_glfw.h"

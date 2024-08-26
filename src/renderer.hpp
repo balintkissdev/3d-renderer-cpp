@@ -1,7 +1,7 @@
-#ifndef RENDERER_H_
-#define RENDERER_H_
+#ifndef RENDERER_HPP_
+#define RENDERER_HPP_
 
-#include "shader.h"
+#include "shader.hpp"
 
 #include "glm/mat4x4.hpp"
 

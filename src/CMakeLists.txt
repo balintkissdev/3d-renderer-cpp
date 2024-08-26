@@ -1,21 +1,21 @@
 target_sources(${PROJECT_NAME}
     PRIVATE
         app.cpp
-        app.h
+        app.hpp
         camera.cpp
-        camera.h
+        camera.hpp
         drawproperties.cpp
-        drawproperties.h
+        drawproperties.hpp
         gui.cpp
-        gui.h
+        gui.hpp
         main.cpp
         model.cpp
-        model.h
+        model.hpp
         renderer.cpp
-        renderer.h
+        renderer.hpp
         shader.cpp
-        shader.h
+        shader.hpp
         skybox.cpp
-        skybox.h
-        utils.h
+        skybox.hpp
+        utils.hpp
 )

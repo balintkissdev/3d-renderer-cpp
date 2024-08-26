@@ -1,6 +1,6 @@
-#include "skybox.h"
+#include "skybox.hpp"
 
-#include "utils.h"
+#include "utils.hpp"
 
 // clang-format off
 #define STB_IMAGE_IMPLEMENTATION

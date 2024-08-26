@@ -1,6 +1,6 @@
-#include "model.h"
+#include "model.hpp"
 
-#include "utils.h"
+#include "utils.hpp"
 
 #include "assimp/Importer.hpp"
 #include "assimp/postprocess.h"

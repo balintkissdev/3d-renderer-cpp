@@ -1,5 +1,5 @@
-#ifndef GUI_H_
-#define GUI_H_
+#ifndef GUI_HPP_
+#define GUI_HPP_
 
 class Camera;
 struct DrawProperties;

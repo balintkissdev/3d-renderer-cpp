@@ -1,5 +1,5 @@
-#ifndef SHADER_H_
-#define SHADER_H_
+#ifndef SHADER_HPP_
+#define SHADER_HPP_
 
 #ifdef __EMSCRIPTEN__
 #include "glad/gles2.h"

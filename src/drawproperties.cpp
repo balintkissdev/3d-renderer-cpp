@@ -1,4 +1,4 @@
-#include "drawproperties.h"
+#include "drawproperties.hpp"
 
 #include <cstdlib>
 
