@@ -2,14 +2,17 @@
 
 [![Build](https://github.com/balintkissdev/3d-renderer-cpp/actions/workflows/main.yml/badge.svg)](https://github.com/balintkissdev/3d-renderer-cpp/actions/workflows/main.yml)
 
-> A hardware accelerated 3D renderer written in C++. Runs using OpenGL 4.3 as
+> A hardware-accelerated 3D renderer written in C++. Runs using OpenGL 4.3 as
 graphics API on desktop and with OpenGL ES 3.0 in web browsers.
+
+[Click here for Rust version of this project](https://github.com/balintkissdev/3d-renderer-rust)
 
 ![Demo](doc/img/demo.png)
 
 ## Table of Contents
 
 - [Try it out!](#try-it-out)
+- [Motivation](#motivation)
 - [Features](#features)
 - [Requirements](#requirements)
 - [Build Instructions](#build-instructions)
@@ -25,7 +28,7 @@ graphics API on desktop and with OpenGL ES 3.0 in web browsers.
 ## Motivation
 
 This project is a demonstration of my ability to write cross-platform 3D
-graphical applications. I designed my C++ application to balance the correct
+graphical applications in C++. I designed my application to balance the correct
 level of abstractions and performance optimizations. The project showcases
 confident usage of the following technologies:
 
