@@ -41,18 +41,18 @@ std::optional<Model> Model::create(const fs::path& filePath)
                  GL_STATIC_DRAW);
 
     // Setup vertex array layout
-    // Vertex Attribute 0: position
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0,
+    constexpr GLuint positionVertexAttribute = 0;
+    glEnableVertexAttribArray(positionVertexAttribute);
+    glVertexAttribPointer(positionVertexAttribute,
                           3,
                           GL_FLOAT,
                           GL_FALSE,
                           sizeof(Vertex),
                           reinterpret_cast<GLvoid*>(0));
 
-    // Vertex Attribute 1: normal
-    glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1,
+    constexpr GLuint normalVertexAttribute = 1;
+    glEnableVertexAttribArray(normalVertexAttribute);
+    glVertexAttribPointer(normalVertexAttribute,
                           3,
                           GL_FLOAT,
                           GL_FALSE,

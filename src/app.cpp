@@ -270,8 +270,7 @@ void App::mouseMoveCallback(GLFWwindow* window,
     const float xOffset = currentMousePosFloat.x - lastMousePos.x;
     // Reversed because y is bottom to up
     const float yOffset = lastMousePos.y - currentMousePosFloat.y;
-    lastMousePos.x = currentMousePosFloat.x;
-    lastMousePos.y = currentMousePosFloat.y;
+    lastMousePos = currentMousePosFloat;
 
     impl->camera_.look(xOffset, yOffset);
 }

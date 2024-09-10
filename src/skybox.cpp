@@ -84,18 +84,18 @@ SkyboxBuilder& SkyboxBuilder::setBack(const fs::path& backFacePath)
 
 std::optional<Skybox> SkyboxBuilder::build()
 {
-    // Load textures
+    Skybox skybox;
+    // Create texture
+    glGenTextures(1, &skybox.textureID_);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, skybox.textureID_);
+
+    // Load texture images
     const std::array textureFacePaths{rightFacePath_,
                                       leftFacePath_,
                                       topFacePath_,
                                       bottomFacePath_,
                                       frontFacePath_,
                                       backFacePath_};
-
-    Skybox skybox;
-    glGenTextures(1, &skybox.textureID_);
-    glBindTexture(GL_TEXTURE_CUBE_MAP, skybox.textureID_);
-
     for (size_t i = 0; i < textureFacePaths.size(); ++i)
     {
         int width, height, channelCount;

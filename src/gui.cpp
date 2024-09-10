@@ -21,6 +21,9 @@ void Gui::init(GLFWwindow* window)
 #endif
     ImGui_ImplOpenGL3_Init(glslVersion);
 
+    // Disable ImGUI overriding GLFW cursor appearance for right-click mouselook
+    ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_NoMouseCursorChange;
+
     auto& style = ImGui::GetStyle();
     ImVec4* colors = style.Colors;
     const ImVec4 transparentBackgroundColor{0.1F, 0.1F, 0.1F, 0.5F};
@@ -47,11 +50,11 @@ void Gui::prepareDraw(const Camera& camera, DrawProperties& drawProps)
     if (ImGui::CollapsingHeader("Camera", ImGuiTreeNodeFlags_DefaultOpen))
     {
         const glm::vec3& cameraPosition = camera.position();
-        const glm::vec2& cameraRotation = camera.rotation();
         ImGui::Text("X:%.3f Y:%.3f Z:%.3f",
                     cameraPosition.x,
                     cameraPosition.y,
                     cameraPosition.z);
+        const glm::vec2& cameraRotation = camera.rotation();
         ImGui::Text("Yaw:%.1f° Pitch:%.1f°",
                     cameraRotation.x,
                     cameraRotation.y);

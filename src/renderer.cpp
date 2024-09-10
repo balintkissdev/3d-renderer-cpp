@@ -94,6 +94,11 @@ bool Renderer::init(GLFWwindow* window)
 void Renderer::prepareDraw()
 {
     // Viewport setup
+    //
+    // Always query framebuffer size even if the window is not resizable. You'll
+    // never know how framebuffer size might differ from window size, especially
+    // on high-DPI displays. Not doing so can lead to display bugs like clipping
+    // top part of the view.
     int frameBufferWidth, frameBufferHeight;
     glfwGetFramebufferSize(window_, &frameBufferWidth, &frameBufferHeight);
     glViewport(0, 0, frameBufferWidth, frameBufferHeight);
@@ -195,14 +200,13 @@ void Renderer::drawSkybox(const Skybox& skybox)
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_CUBE_MAP, skybox.textureID());
 
-    // Remove camera position transformations but keep rotation by recreating
-    // view matrix, then converting to mat3 and back. If you don't do this,
-    // skybox will be shown as a shrinked down cube around model.
-    const glm::mat4 normalizedView
-        = glm::mat4(glm::mat3(camera_.calculateViewMatrix()));
+    // Remove camera position transformations by nullifying column 4, but keep
+    // rotation in the view matrix. If you don't do this, skybox will be shown
+    // as a shrinked down cube around model.
+    glm::mat4 normalizedView = camera_.calculateViewMatrix();
+    normalizedView[3] = glm::vec4(0.0F, 0.0F, 0.0F, 0.0F);
     // Concat matrix transformations on CPU to avoid unnecessary
-    // multiplications
-    // in GLSL. Results would be the same for all vertices.
+    // multiplications in GLSL. Results would be the same for all vertices.
     const glm::mat4 projectionView = projection_ * normalizedView;
 
     // Transfer uniforms
