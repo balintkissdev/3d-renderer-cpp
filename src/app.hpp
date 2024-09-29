@@ -53,7 +53,8 @@ private:
     Skybox skybox_;
     std::vector<Model> models_;
 
-    void handleInput();
+    void processInput();
+    void update();
     void render();
 };
 

@@ -189,10 +189,11 @@ void App::run()
         previousTime = currentTime;
         lag += elapsedTime;
 
-        handleInput();
+        processInput();
 
         while (lag >= FIXED_UPDATE_TIMESTEP)
         {
+            update();
             lag -= FIXED_UPDATE_TIMESTEP;
         }
 
@@ -210,7 +211,8 @@ void App::errorCallback([[maybe_unused]] int error, const char* description)
 void App::emscriptenMainLoopCallback(void* arg)
 {
     auto* app = static_cast<App*>(arg);
-    app->handleInput();
+    app->processInput();
+    app->update();
     app->render();
 }
 #endif
@@ -275,18 +277,23 @@ void App::mouseMoveCallback(GLFWwindow* window,
     impl->camera_.look(xOffset, yOffset);
 }
 
-void App::handleInput()
+void App::processInput()
 {
     glfwPollEvents();
-
 #ifndef __EMSCRIPTEN__
-    // No need to quit application from a web browser
+    // Exiting here instead of update() avoids delay.
+    // No need to exit application from a web browser.
     if (glfwGetKey(window_, GLFW_KEY_ESCAPE) == GLFW_PRESS)
     {
         glfwSetWindowShouldClose(window_, true);
     }
 #endif
+}
 
+void App::update()
+{
+    // Update camera here instead of processInput(), otherwise camera movement
+    // will be too fast on fast computers.
     if (glfwGetKey(window_, GLFW_KEY_W) == GLFW_PRESS)
     {
         camera_.moveForward(FIXED_UPDATE_TIMESTEP);
