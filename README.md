@@ -3,7 +3,7 @@
 [![Build](https://github.com/balintkissdev/3d-renderer-cpp/actions/workflows/main.yml/badge.svg)](https://github.com/balintkissdev/3d-renderer-cpp/actions/workflows/main.yml)
 
 > A hardware-accelerated 3D renderer written in C++. Runs using OpenGL 4.3 as
-graphics API on desktop and with OpenGL ES 3.0 in web browsers.
+graphics API on desktop and WebGL2 in web browsers.
 
 [Click here for Rust version of this project](https://github.com/balintkissdev/3d-renderer-rust)
 
@@ -28,13 +28,14 @@ graphics API on desktop and with OpenGL ES 3.0 in web browsers.
 ## Motivation
 
 This project is a demonstration of my ability to write cross-platform 3D
-graphical applications in C++. I designed my application to balance the correct
+graphical applications in C++ that run on both desktop (Windows, Linux) and on
+the web with WebAssembly. I designed my application to balance the correct
 level of abstractions and performance optimizations. The project showcases
 confident usage of the following technologies:
 
 - C++20
+- 3D graphics programming with OpenGL 4.x, WebGL2 (based on OpenGL ES 3.0)
 - Advanced CMake practices (modern CMake targets, FetchContent, CPack)
-- OpenGL 4.x, OpenGL ES 3.x (GLES)
 - Immediate mode overlay GUI using Dear ImGui (as opposed to retained mode GUI frameworks like Qt)
 - Building for WebAssembly using Emscripten
 - Clang Tooling (clang-format, clang-tidy)
@@ -57,7 +58,7 @@ Desktop executable requires an OpenGL 4.3 compatible graphics adapter to run.
 Check if your hardware supports OpenGL 4.3 and have the latest graphics driver
 installed.
 
-Web browser live demo requires support for OpenGL ES 3.0 used by WebGL2.
+Web browser live demo requires support for WebGL2.
 
 - C++20 compiler
 - CMake 3.16 or newer
@@ -83,7 +84,7 @@ All other dependencies are either included in `thirdparty` folder or automatical
 - [glad](https://gen.glad.sh/)
 - [stb_image](https://github.com/nothings/stb/blob/master/stb_image.h)
 
-## Build
+## Build instructions
 
 1. Clone the repository
 
@@ -92,38 +93,44 @@ git clone https://github.com/balintkissdev/3d-renderer-cpp.git
 cd 3d-renderer-cpp
 ```
 
-2. Create `build` directory and navigate into it
+2. Configure the project with CMake. `-B build` also creates a new folder
+   called `build` where the files during build will be generated, avoiding
+   polluting the project root folder.
 
 ```sh
-mkdir build
+cmake -B ./build
+```
+
+Treating compiler warnings as errors is turned off by default
+but can be enabled with `-DBUILD_WERROR=ON` during the CMake configuration.
+This is because the common practice in open-source projects is to **not** enable
+build warnigns as errors by default, avoiding situations where people with
+different build environments encounter warnings that prevent them from building
+without modifying the `CMakeLists.txt` file. Warnings as errors are enabled for
+automated CI builds.
+
+3. Build the project
+
+```sh
+cmake --build ./build --config Release
+```
+
+### Generate Windows release
+
+This will be a ZIP file on Windows.
+
+```sh
+cpack -B ./build -C "Release"
+```
+
+### Generate Linux release
+
+This will be an AppImage file on Linux. Generation requires FUSE version 2 to
+be installed (see https://github.com/AppImage/AppImageKit/wiki/FUSE).
+
+```
 cd build
-```
-
-3. Configure project with CMake
-
-```sh
-cmake .. # -DBUILD_WERROR=ON
-```
-
-`-DBUILD_WERROR`: Treating compiler warnings as errors is turned off by default,
-but can be enabled with `-DBUILD_WERROR=ON` during CMake configure. The reason
-for this is because the open source project idiom is to NOT enable build warnigns
-as errors by default, and to avoid people with different build environments
-finding different warnings unable to build without hacking the
-`CMakeLists.txt` file. Warnings as errors are enabled for automated CI builds.
-
-4. Build the project
-
-```sh
-cmake --build . --config Release
-```
-
-### Generate distributable package
-
-This will be a ZIP file on Windows and AppImage on Linux.
-
-```sh
-cpack -C "Release"
+make install DESTDIR=.
 ```
 
 ### WebAssembly build
@@ -136,9 +143,8 @@ but in the Emscripten build environment.
 ```sh
 source <emsdk install location>/emsdk_env.sh
 
-cd build
-emcmake cmake ..
-emmake make
+emcmake cmake -B ./build
+emcmake cmake --build ./build --config Release
 ```
 
 Opening the resulting `3Drenderer.html` file with the browser will not work because of
@@ -146,6 +152,7 @@ default browser CORS rules. You can either use a live server locally to access
 at `http://localhost:8000`
 
 ```sh
+cd build
 python -m http.server
 ```
 
@@ -156,12 +163,14 @@ or alternatively use `emrun 3DRenderer.html --port 8000`.
 After building, run the executable in the `build` directory. On Windows:
 
 ```cmd
+cd build
 3DRenderer.exe
 ```
 
 On Linux:
 
 ```cmd
+cd build
 ./3DRenderer
 ```
 
