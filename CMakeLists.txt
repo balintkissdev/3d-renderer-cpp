@@ -85,11 +85,13 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
     CXX_STANDARD 20
     CXX_STANDARD_REQUIRED YES
 )
-# The idiom for open source projects is NOT to enable build warnings as errors
-# by default. Even if they help the maintainer, different compilers treat same
-# code with different warnings and it would be unfortunate that just because it
-# builds on the maintainer's machine it fails for someone else trying to build
-# the project otherwise.
+# Treating compiler warnings as errors is turned off by default but can be
+# enabled with `-DBUILD_WERROR=ON` during the CMake configuration. This is
+# because the common practice in open-source projects is to **not** enable
+# build warnigns as errors by default, avoiding situations where people with
+# different build environments encounter warnings that prevent them from
+# building without modifying the `CMakeLists.txt` file. Warnings as errors are
+# enabled for automated CI builds.
 option(BUILD_WERROR "Treat compiler warnings as errors")
 if(BUILD_WERROR)
     target_compile_options(

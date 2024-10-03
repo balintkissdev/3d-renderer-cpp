@@ -1,4 +1,4 @@
-# Real-time C++ 3D renderer with OpenGL 4 and OpenGL ES 3
+# Real-time C++ 3D renderer with OpenGL 4 and WebGL2
 
 [![Build](https://github.com/balintkissdev/3d-renderer-cpp/actions/workflows/main.yml/badge.svg)](https://github.com/balintkissdev/3d-renderer-cpp/actions/workflows/main.yml)
 
