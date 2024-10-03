@@ -3,6 +3,7 @@
 
 class Camera;
 struct DrawProperties;
+struct FrameRateInfo;
 struct GLFWwindow;
 
 /// UI overlay on top of rendered scene to manipulate rendering properties.
@@ -16,7 +17,12 @@ class Gui
 public:
     static void init(GLFWwindow* window);
     /// Setup UI widgets before submitting to draw call.
-    static void prepareDraw(const Camera& camera, DrawProperties& drawProps);
+    static void prepareDraw(
+#ifndef __EMSCRIPTEN__
+        const FrameRateInfo& frameRateInfo,
+#endif
+        const Camera& camera,
+        DrawProperties& drawProps);
     static void draw();
     static void cleanup();
 

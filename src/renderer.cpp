@@ -91,7 +91,7 @@ bool Renderer::init(GLFWwindow* window)
     return true;
 }
 
-void Renderer::prepareDraw()
+void Renderer::draw(const Model& model, const Skybox& skybox)
 {
     // Viewport setup
     //
@@ -102,7 +102,7 @@ void Renderer::prepareDraw()
     int frameBufferWidth, frameBufferHeight;
     glfwGetFramebufferSize(window_, &frameBufferWidth, &frameBufferHeight);
     glViewport(0, 0, frameBufferWidth, frameBufferHeight);
-    projection_ = glm::perspective(glm::radians(drawProps_.fov),
+    projection_ = glm::perspective(glm::radians(drawProps_.fieldOfView),
                                    static_cast<float>(frameBufferWidth)
                                        / static_cast<float>(frameBufferHeight),
                                    0.1F,
@@ -114,6 +114,12 @@ void Renderer::prepareDraw()
                  drawProps_.backgroundColor[2],
                  1.0F);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    drawModel(model);
+    if (drawProps_.skyboxEnabled)
+    {
+        drawSkybox(skybox);
+    }
 }
 
 void Renderer::drawModel(const Model& model)

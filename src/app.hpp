@@ -46,6 +46,10 @@ private:
     // TODO: Abstract away window implementation once starting work on native
     // Win32 window
     GLFWwindow* window_;
+#ifndef __EMSCRIPTEN__
+    bool vsyncEnabled_;
+    FrameRateInfo frameRateInfo_;
+#endif
     Renderer renderer_;
     Camera camera_;
     DrawProperties drawProps_;

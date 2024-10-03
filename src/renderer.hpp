@@ -26,8 +26,7 @@ public:
     /// Load OpenGL function addresses, required shaders and set OpenGL
     /// capabilities.
     bool init(GLFWwindow* window);
-    /// Setup viewport and clear screen
-    void prepareDraw();
+    void draw(const Model& model, const Skybox& skybox);
     void drawModel(const Model& model);
     void drawSkybox(const Skybox& skybox);
 

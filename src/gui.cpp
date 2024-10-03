@@ -32,7 +32,12 @@ void Gui::init(GLFWwindow* window)
     colors[ImGuiCol_TitleBg] = transparentBackgroundColor;
 }
 
-void Gui::prepareDraw(const Camera& camera, DrawProperties& drawProps)
+void Gui::prepareDraw(
+#ifndef __EMSCRIPTEN__
+    const FrameRateInfo& frameRateInfo,
+#endif
+    const Camera& camera,
+    DrawProperties& drawProps)
 {
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplGlfw_NewFrame();
@@ -47,6 +52,16 @@ void Gui::prepareDraw(const Camera& camera, DrawProperties& drawProps)
         ImGui::BulletText("Descend: C");
     }
 
+#ifndef __EMSCRIPTEN__
+    if (ImGui::CollapsingHeader("Renderer", ImGuiTreeNodeFlags_DefaultOpen))
+    {
+        ImGui::Text("%.2F FPS, %.6F ms/frame",
+                    frameRateInfo.framesPerSecond,
+                    frameRateInfo.msPerFrame);
+        ImGui::Checkbox("Vertical sync", &drawProps.vsyncEnabled);
+    }
+#endif
+
     if (ImGui::CollapsingHeader("Camera", ImGuiTreeNodeFlags_DefaultOpen))
     {
         const glm::vec3& cameraPosition = camera.position();
@@ -59,7 +74,7 @@ void Gui::prepareDraw(const Camera& camera, DrawProperties& drawProps)
                     cameraRotation.x,
                     cameraRotation.y);
         ImGui::SliderFloat("##FOV",
-                           &drawProps.fov,
+                           &drawProps.fieldOfView,
                            45.0F,
                            120.0F,
                            "FOV = %.1f°");

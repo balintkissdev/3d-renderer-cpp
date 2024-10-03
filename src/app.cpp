@@ -42,6 +42,10 @@ constexpr float FIXED_UPDATE_TIMESTEP = 1.0F / MAX_LOGIC_UPDATE_PER_SECOND;
 
 App::App()
     : window_{nullptr}
+#ifndef __EMSCRIPTEN__
+    , vsyncEnabled_{false}
+    , frameRateInfo_{0.0F, 0.0F}
+#endif
     , renderer_(drawProps_, camera_)
     // Positioning and rotation accidentally imitates a right-handed 3D
     // coordinate system with positive Z going farther from model, but this
@@ -105,7 +109,13 @@ bool App::init()
     glfwSetWindowUserPointer(window_, this);
     glfwSetMouseButtonCallback(window_, mouseButtonCallback);
     glfwSetCursorPosCallback(window_, mouseMoveCallback);
+
+    // Make GL context current
     glfwMakeContextCurrent(window_);
+#ifndef __EMSCRIPTEN__
+    // Set VSync
+    glfwSwapInterval(vsyncEnabled_);
+#endif
 
     // Init GUI
     Gui::init(window_);
@@ -163,7 +173,7 @@ void App::run()
 #ifdef __EMSCRIPTEN__
     // Web build main loop does not rely on a timestep algorithm or passing
     // deltaTime. Instead, the browser calls and iterates the update function
-    // frequently using the requestAnimationFrame mechanism. This approach
+    // frequently using the requestAnimationFrame() mechanism. This approach
     // prevents blocking the browser's event loop, allowing the browser thread
     // to remain responsive to user interactions.
     emscripten_set_main_loop_arg(emscriptenMainLoopCallback, this, 0, 1);
@@ -174,7 +184,10 @@ void App::run()
     // precision errors, leading to choppy camera movement and unstable logic
     // even on high framerate. Here, think of it as renderer dictating time, and
     // logic update adapting to it.
-    //
+
+    float elapsedFrameTime = 0.0F;
+    int frameCount = 0;
+
     // Prefer steady_clock over high_resolution_clock, because
     // high_resolution_clock could lie.
     auto previousTime = std::chrono::steady_clock::now();
@@ -189,6 +202,10 @@ void App::run()
         previousTime = currentTime;
         lag += elapsedTime;
 
+        // Increment framerate counter
+        elapsedFrameTime += elapsedTime;
+        ++frameCount;
+
         processInput();
 
         while (lag >= FIXED_UPDATE_TIMESTEP)
@@ -198,6 +215,19 @@ void App::run()
         }
 
         render();
+
+        // Display framerate when 1 second is exceeded
+        if (1.0 <= elapsedFrameTime)
+        {
+            frameRateInfo_.framesPerSecond
+                = static_cast<float>(frameCount) / elapsedFrameTime;
+            frameRateInfo_.msPerFrame
+                = 1000.0F / static_cast<float>(frameCount);
+
+            // Reset framerate counter
+            elapsedFrameTime -= 1.0;
+            frameCount = 0;
+        }
     }
 #endif
 }
@@ -319,18 +349,26 @@ void App::update()
     {
         camera_.descend(FIXED_UPDATE_TIMESTEP);
     }
+
+#ifndef __EMSCRIPTEN__
+    if (vsyncEnabled_ != drawProps_.vsyncEnabled)
+    {
+        vsyncEnabled_ = drawProps_.vsyncEnabled;
+        glfwSwapInterval(vsyncEnabled_);
+    }
+#endif
 }
 
 void App::render()
 {
-    Gui::prepareDraw(camera_, drawProps_);
+    Gui::prepareDraw(
+#ifndef __EMSCRIPTEN__
+        frameRateInfo_,
+#endif
+        camera_,
+        drawProps_);
     const Model& activeModel = models_[drawProps_.selectedModelIndex];
-    renderer_.prepareDraw();
-    renderer_.drawModel(activeModel);
-    if (drawProps_.skyboxEnabled)
-    {
-        renderer_.drawSkybox(skybox_);
-    }
+    renderer_.draw(activeModel, skybox_);
     Gui::draw();
 
     glfwSwapBuffers(window_);

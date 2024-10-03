@@ -14,8 +14,11 @@ DrawProperties DrawProperties::createDefault()
         .modelRotation{0.0F, 0.0F, 0.0F},
         .modelColor{0.0F, 0.8F, 1.0F},
         .lightDirection{-0.5F, -1.0F, 0.0F},
-        .fov = 60.0F,
+        .fieldOfView = 60.0F,
         .selectedModelIndex = STANFORD_BUNNY_MODEL_INDEX,
+#ifndef __EMSCRIPTEN__
+        .vsyncEnabled = false,
+#endif
         .skyboxEnabled = true,
         .wireframeModeEnabled = false,
         .diffuseEnabled = true,
