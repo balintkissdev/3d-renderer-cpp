@@ -2,10 +2,17 @@
 
 [![Build](https://github.com/balintkissdev/3d-renderer-cpp/actions/workflows/main.yml/badge.svg)](https://github.com/balintkissdev/3d-renderer-cpp/actions/workflows/main.yml)
 
-> A hardware-accelerated 3D renderer written in C++. Runs using OpenGL 4.3 as
+> A hardware-accelerated 3D renderer written in C++. Runs using OpenGL 4 as
 graphics API on desktop and WebGL2 in web browsers.
 
 [Click here for Rust version of this project](https://github.com/balintkissdev/3d-renderer-rust)
+
+<p align="center">
+  <img src="doc/img/cpp_logo.svg" height="60"/>
+  <img src="doc/img/OpenGL_RGB_June16.svg" height="60"/>
+  <img src="doc/img/WebGL_RGB_June16.svg" height="60"/>
+  <img src="doc/img/web-assembly-logo.png" height="60"/>
+</p>
 
 ![Demo](doc/img/demo.png)
 
@@ -27,14 +34,14 @@ graphics API on desktop and WebGL2 in web browsers.
 
 ## Motivation
 
-This project is a demonstration of my ability to write cross-platform 3D
+This project is a demonstration of my expertise to write cross-platform 3D
 graphical applications in C++ that run on both desktop (Windows, Linux) and on
 the web with WebAssembly. I designed my application to balance the correct
 level of abstractions and performance optimizations. The project showcases
 confident usage of the following technologies:
 
 - C++20
-- 3D graphics programming with OpenGL 4.x, WebGL2 (based on OpenGL ES 3.0)
+- 3D graphics programming with OpenGL, WebGL2 (based on OpenGL ES 3.0)
 - Advanced CMake practices (modern CMake targets, FetchContent, CPack)
 - Immediate mode overlay GUI using Dear ImGui (as opposed to retained mode GUI frameworks like Qt)
 - Building for WebAssembly using Emscripten
