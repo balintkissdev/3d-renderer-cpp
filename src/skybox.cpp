@@ -40,10 +40,20 @@ Skybox& Skybox::operator=(Skybox&& other) noexcept
 
 Skybox::~Skybox()
 {
+    cleanup();
+}
+
+void Skybox::cleanup()
+{
+    // Existing 0s are silently ignored
     glDeleteTextures(1, &textureID_);
     glDeleteVertexArrays(1, &vertexArray_);
     glDeleteBuffers(1, &indexBuffer_);
     glDeleteBuffers(1, &vertexBuffer_);
+    textureID_ = 0;
+    vertexArray_ = 0;
+    vertexBuffer_ = 0;
+    indexBuffer_ = 0;
 }
 
 SkyboxBuilder& SkyboxBuilder::setRight(const fs::path& rightFacePath)

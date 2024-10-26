@@ -41,6 +41,7 @@ public:
 
     /// Bind shader to graphics pipeline to use for draw calls.
     void use() const;
+    void cleanup();
 
     template <typename T>
     void setUniform(const std::string& name, const T& v);

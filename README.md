@@ -1,8 +1,8 @@
-# Real-time C++ 3D renderer with OpenGL 4 and WebGL2
+# Real-time C++ 3D renderer with OpenGL/WebGL
 
 [![Build](https://github.com/balintkissdev/3d-renderer-cpp/actions/workflows/main.yml/badge.svg)](https://github.com/balintkissdev/3d-renderer-cpp/actions/workflows/main.yml)
 
-> A hardware-accelerated 3D renderer written in C++. Runs using OpenGL 4 as
+> A hardware-accelerated 3D renderer written in C++. Runs using OpenGL 4.6 or 3.3 as
 graphics API on desktop and WebGL2 in web browsers.
 
 [Click here for Rust version of this project](https://github.com/balintkissdev/3d-renderer-rust)
@@ -41,7 +41,7 @@ level of abstractions and performance optimizations. The project showcases
 confident usage of the following technologies:
 
 - C++20
-- 3D graphics programming with OpenGL, WebGL2 (based on OpenGL ES 3.0)
+- 3D graphics programming with OpenGL 4.6, OpenGL 3.3, WebGL2 (based on OpenGL ES 3.0)
 - Advanced CMake practices (modern CMake targets, FetchContent, CPack)
 - Immediate mode overlay GUI using Dear ImGui (as opposed to retained mode GUI frameworks like Qt)
 - Building for WebAssembly using Emscripten
@@ -56,16 +56,23 @@ Future additions will include Direct3D, Vulkan rendering backends and additional
 - 3D model display from `OBJ` file format
 - Fly-by FPS camera movement
 - Skybox display using cube-map
+- Runtime selectable rendering backends from a drop-down list
+
+![Drop-down list](doc/img/dropdown.png)
+
 - Directional light with ADS (Ambient, Diffuse, Specular) lighting (Phong shading)
 - Live browser demo
 
 ## Requirements
 
-Desktop executable requires an OpenGL 4.3 compatible graphics adapter to run.
-Check if your hardware supports OpenGL 4.3 and have the latest graphics driver
-installed.
+Desktop executable requires at least an OpenGL 3.3 compatible graphics adapter
+to run. The application attempts to target the highest OpenGL 4.6 version and
+chooses OpenGL 3.3 as fallback. Check if your hardware supports OpenGL and make
+sure to have the latest graphics driver installed to avoid any errors.
 
 Web browser live demo requires support for WebGL2.
+
+Required build tools:
 
 - C++20 compiler
 - CMake 3.16 or newer

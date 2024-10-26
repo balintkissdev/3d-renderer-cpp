@@ -142,8 +142,16 @@ Model& Model::operator=(Model&& other) noexcept
 
 Model::~Model()
 {
+    cleanup();
+}
+
+void Model::cleanup()
+{
+    // Existing 0s are silently ignored
     glDeleteVertexArrays(1, &vertexArray_);
     glDeleteBuffers(1, &indexBuffer_);
     glDeleteBuffers(1, &vertexBuffer_);
+    vertexArray_ = 0;
+    vertexBuffer_ = 0;
+    indexBuffer_ = 0;
 }
-

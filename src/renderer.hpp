@@ -1,6 +1,7 @@
 #ifndef RENDERER_HPP_
 #define RENDERER_HPP_
 
+#include "drawproperties.hpp"
 #include "shader.hpp"
 
 #include "glm/mat4x4.hpp"
@@ -25,7 +26,13 @@ public:
 
     /// Load OpenGL function addresses, required shaders and set OpenGL
     /// capabilities.
-    bool init(GLFWwindow* window);
+    bool init(GLFWwindow* window
+#ifndef __EMSCRIPTEN__
+              ,
+              const RenderingAPI renderingAPI
+#endif
+    );
+    void cleanup();
     void draw(const Model& model, const Skybox& skybox);
     void drawModel(const Model& model);
     void drawSkybox(const Skybox& skybox);
@@ -40,6 +47,9 @@ private:
     };
 
     GLFWwindow* window_;
+#ifndef __EMSCRIPTEN__
+    RenderingAPI renderingAPI_;
+#endif
     glm::mat4 projection_;
     std::vector<Shader> shaders_;
     const DrawProperties& drawProps_;

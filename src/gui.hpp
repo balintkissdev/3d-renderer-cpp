@@ -1,9 +1,9 @@
 #ifndef GUI_HPP_
 #define GUI_HPP_
 
+#include "drawproperties.hpp"
+
 class Camera;
-struct DrawProperties;
-struct FrameRateInfo;
 struct GLFWwindow;
 
 /// UI overlay on top of rendered scene to manipulate rendering properties.
@@ -15,24 +15,50 @@ struct GLFWwindow;
 class Gui
 {
 public:
-    static void init(GLFWwindow* window);
+    Gui();
+    Gui(const Gui&) = delete;
+    Gui& operator=(const Gui&) = delete;
+    Gui(Gui&&) = delete;
+    Gui& operator=(Gui&&) = delete;
+
+    void init(GLFWwindow* window
+#ifndef __EMSCRIPTEN__
+              ,
+              const RenderingAPI renderingAPI
+#endif
+    );
     /// Setup UI widgets before submitting to draw call.
-    static void prepareDraw(
+    void prepareDraw(
 #ifndef __EMSCRIPTEN__
         const FrameRateInfo& frameRateInfo,
 #endif
         const Camera& camera,
         DrawProperties& drawProps);
-    static void draw();
-    static void cleanup();
+    void draw();
+    void cleanup();
 
-    // Kept as class instead of utility function collection like "utils"
-    // namespace, as there might be need for storing state in the future.
-    Gui() = default;
-    Gui(const Gui&) = delete;
-    Gui& operator=(const Gui&) = delete;
-    Gui(Gui&&) = delete;
-    Gui& operator=(Gui&&) = delete;
+#ifndef __EMSCRIPTEN__
+    void disallowRenderingAPIOption(const RenderingAPI renderingAPI);
+#endif
+
+private:
+    void propertiesDialog(
+#ifndef __EMSCRIPTEN__
+        const FrameRateInfo& frameRateInfo,
+#endif
+        const Camera& camera,
+        DrawProperties& drawProps);
+
+#ifndef __EMSCRIPTEN__
+    /// Keeping track which rendering API should be selectable in the dropdown
+    /// list. Opted for enum-indexed array instead of std::map.
+    std::array<bool, 2> supportedRenderingAPIs_;
+
+    RenderingAPI selectedRenderingAPI_;
+    void rendererSection(const FrameRateInfo& frameRateInfo,
+                         DrawProperties& drawProps);
+    void confirmRestartDialog(RenderingAPI& renderingAPI);
+#endif
 };
 
 #endif

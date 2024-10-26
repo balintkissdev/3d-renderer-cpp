@@ -68,7 +68,7 @@ Shader::Shader(const GLuint shaderProgram)
 
 Shader::~Shader()
 {
-    glDeleteShader(shaderProgram_);
+    cleanup();
 }
 
 Shader::Shader(Shader&& other) noexcept
@@ -93,6 +93,15 @@ Shader& Shader::operator=(Shader&& other) noexcept
 void Shader::use() const
 {
     glUseProgram(shaderProgram_);
+}
+
+void Shader::cleanup()
+{
+    if (shaderProgram_ != 0)
+    {
+        glDeleteShader(shaderProgram_);
+        shaderProgram_ = 0;
+    }
 }
 
 template <>

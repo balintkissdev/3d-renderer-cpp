@@ -1,7 +1,6 @@
 #include "renderer.hpp"
 
 #include "camera.hpp"
-#include "drawproperties.hpp"
 #include "model.hpp"
 #include "shader.hpp"
 #include "skybox.hpp"
@@ -28,9 +27,15 @@ Renderer::Renderer(const DrawProperties& drawProps, const Camera& camera)
     , drawProps_(drawProps)
     , camera_(camera)
 {
+    shaders_.reserve(2);
 }
 
-bool Renderer::init(GLFWwindow* window)
+bool Renderer::init(GLFWwindow* window
+#ifndef __EMSCRIPTEN__
+                    ,
+                    const RenderingAPI renderingAPI
+#endif
+)
 {
     // Set OpenGL function addresses
 #ifdef __EMSCRIPTEN__
@@ -54,13 +59,24 @@ bool Renderer::init(GLFWwindow* window)
     const fs::path skyboxFragmentShaderPath(
         "assets/shaders/skybox_gles3.frag.glsl");
 #else
-    const fs::path modelVertexShaderPath("assets/shaders/model_gl4.vert.glsl");
-    const fs::path modelFragmentShaderPath(
-        "assets/shaders/model_gl4.frag.glsl");
-    const fs::path skyboxVertexShaderPath(
-        "assets/shaders/skybox_gl4.vert.glsl");
-    const fs::path skyboxFragmentShaderPath(
-        "assets/shaders/skybox_gl4.frag.glsl");
+    fs::path modelVertexShaderPath;
+    fs::path modelFragmentShaderPath;
+    fs::path skyboxVertexShaderPath;
+    fs::path skyboxFragmentShaderPath;
+    if (renderingAPI == RenderingAPI::OpenGL46)
+    {
+        modelVertexShaderPath = "assets/shaders/model_gl4.vert.glsl";
+        modelFragmentShaderPath = "assets/shaders/model_gl4.frag.glsl";
+        skyboxVertexShaderPath = "assets/shaders/skybox_gl4.vert.glsl";
+        skyboxFragmentShaderPath = "assets/shaders/skybox_gl4.frag.glsl";
+    }
+    else
+    {
+        modelVertexShaderPath = "assets/shaders/model_gl3.vert.glsl";
+        modelFragmentShaderPath = "assets/shaders/model_gl3.frag.glsl";
+        skyboxVertexShaderPath = "assets/shaders/skybox_gl3.vert.glsl";
+        skyboxFragmentShaderPath = "assets/shaders/skybox_gl3.frag.glsl";
+    }
 #endif
     std::optional<Shader> modelShader
         = Shader::createFromFile(modelVertexShaderPath,
@@ -77,7 +93,6 @@ bool Renderer::init(GLFWwindow* window)
     {
         return false;
     }
-    shaders_.reserve(2);
     shaders_.emplace_back(std::move(modelShader.value()));
     shaders_.emplace_back(std::move(skyboxShader.value()));
 
@@ -87,8 +102,16 @@ bool Renderer::init(GLFWwindow* window)
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     window_ = window;
+#ifndef __EMSCRIPTEN__
+    renderingAPI_ = renderingAPI;
+#endif
 
     return true;
+}
+
+void Renderer::cleanup()
+{
+    shaders_.clear();
 }
 
 void Renderer::draw(const Model& model, const Skybox& skybox)
@@ -160,14 +183,25 @@ void Renderer::drawModel(const Model& model)
     shader.setUniform("u_light.direction", drawProps_.lightDirection);
     shader.setUniform("u_viewPos", camera_.position());
 #ifdef __EMSCRIPTEN__
-    // GLSL subroutines are not supported in OpenGL ES 3.0
     shader.setUniform("u_adsProps.diffuseEnabled", drawProps_.diffuseEnabled);
     shader.setUniform("u_adsProps.specularEnabled", drawProps_.specularEnabled);
 #else
-    shader.updateSubroutines(
-        GL_FRAGMENT_SHADER,
-        {drawProps_.diffuseEnabled ? "DiffuseEnabled" : "Disabled",
-         drawProps_.specularEnabled ? "SpecularEnabled" : "Disabled"});
+    if (renderingAPI_ == RenderingAPI::OpenGL46)
+    {
+        // GLSL subroutines only became supported starting from OpenGL 4.0
+        shader.updateSubroutines(
+            GL_FRAGMENT_SHADER,
+            {drawProps_.diffuseEnabled ? "DiffuseEnabled" : "Disabled",
+             drawProps_.specularEnabled ? "SpecularEnabled" : "Disabled"});
+    }
+    else
+    {
+        shader.setUniform("u_adsProps.diffuseEnabled",
+                          drawProps_.diffuseEnabled);
+        shader.setUniform("u_adsProps.specularEnabled",
+                          drawProps_.specularEnabled);
+    }
+
     // glPolygonMode is not supported in OpenGL ES 3.0
     glPolygonMode(GL_FRONT_AND_BACK,
                   drawProps_.wireframeModeEnabled ? GL_LINE : GL_FILL);

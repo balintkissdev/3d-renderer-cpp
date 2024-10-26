@@ -1,7 +1,5 @@
 #include "app.hpp"
 
-#include "drawproperties.hpp"
-#include "gui.hpp"
 #include "utils.hpp"
 
 #include "glm/gtc/matrix_transform.hpp"
@@ -27,6 +25,16 @@ namespace
 constexpr uint16_t SCREEN_WIDTH = 1024;
 constexpr uint16_t SCREEN_HEIGHT = 768;
 
+// NOLINTNEXTLINE(readability-identifier-naming)
+const char* GPU_REQUIREMENTS_MESSAGE =
+#ifdef __EMSCRIPTEN__
+    "Browser needs to support at least "
+    "WebGL2";
+#else
+    "Graphics card needs to support at least "
+    "OpenGL 3.3";
+#endif
+
 // This is the granularity of how often to update logic and not to be confused
 // with framerate limiting or 60 frames per second, because the main loop
 // implementation uses a fixed update, variable framerate timestep algorithm.
@@ -43,8 +51,9 @@ constexpr float FIXED_UPDATE_TIMESTEP = 1.0F / MAX_LOGIC_UPDATE_PER_SECOND;
 App::App()
     : window_{nullptr}
 #ifndef __EMSCRIPTEN__
-    , vsyncEnabled_{false}
     , frameRateInfo_{0.0F, 0.0F}
+    , currentRenderingAPI_(RenderingAPI::OpenGL46)
+    , vsyncEnabled_{false}
 #endif
     , renderer_(drawProps_, camera_)
     // Positioning and rotation accidentally imitates a right-handed 3D
@@ -56,36 +65,125 @@ App::App()
     , lastMousePos_{static_cast<float>(SCREEN_WIDTH) / 2.0F,
                     static_cast<float>(SCREEN_HEIGHT) / 2.0F}
 {
+    models_.reserve(3);
 }
 
 bool App::init()
 {
-    const char* gpuRequirementsMessage
-#ifdef __EMSCRIPTEN__
-        = "Browser needs to support at least "
-          "OpenGL ES 3.0 (WebGL2)";
-#else
-        = "Graphics card needs to support at least "
-          "OpenGL 4.3";
-#endif
-
     // Initialize windowing system
     if (!glfwInit())
     {
         utils::showErrorMessage("unable to initialize windowing system. ",
-                                gpuRequirementsMessage);
+                                GPU_REQUIREMENTS_MESSAGE);
         return false;
     }
     glfwSetErrorCallback(errorCallback);
 
-    // Create window
+    return
 #ifdef __EMSCRIPTEN__
+        initSystems()
+#else
+        initSystems(currentRenderingAPI_)
+#endif
+        && loadAssets();
+}
+
+#ifndef __EMSCRIPTEN__
+bool App::reinit(const RenderingAPI newRenderingAPI)
+{
+    glfwHideWindow(window_);
+    // Important to release resources using current graphics context before
+    // destroying it
+    gui_.cleanup();
+    skybox_.cleanup();
+    models_.clear();
+    renderer_.cleanup();
+
+    glfwDestroyWindow(window_);
+    window_ = nullptr;
+
+    // TODO: Reloading assets on rendering backend change would normally not be
+    // necessary, but in this current architecture the GPU buffer and texture
+    // resources are bound to the assets themselves.
+    return initSystems(newRenderingAPI) && loadAssets();
+}
+
+bool App::initSystems(const RenderingAPI newRenderingAPI)
+{
+    const bool desiredGLVersionSuccess = createWindow(newRenderingAPI);
+    if (desiredGLVersionSuccess)
+    {
+        currentRenderingAPI_ = newRenderingAPI;
+    }
+    else
+    {
+        utils::showErrorMessage(
+            "OpenGL 4.6 is not supported on your system. Falling back to more "
+            "compatible OpenGL 3.3.");
+        gui_.disallowRenderingAPIOption(newRenderingAPI);
+        currentRenderingAPI_ = RenderingAPI::OpenGL33;
+        drawProps_.renderingAPI = currentRenderingAPI_;
+        const bool fallbackGLVersionSuccess
+            = createWindow(currentRenderingAPI_);
+        if (!fallbackGLVersionSuccess)
+        {
+            utils::showErrorMessage("unable to create graphics context. ",
+                                    GPU_REQUIREMENTS_MESSAGE);
+            return false;
+        }
+    }
+
+    // Init GUI
+    gui_.init(window_, currentRenderingAPI_);
+
+    // Init renderer
+    if (!renderer_.init(window_, currentRenderingAPI_))
+    {
+        utils::showErrorMessage("unable to initialize renderer. ",
+                                GPU_REQUIREMENTS_MESSAGE);
+        return false;
+    }
+
+    return true;
+}
+#else
+bool App::initSystems()
+{
+    if (!createWindow())
+    {
+        utils::showErrorMessage("unable to create graphics context. ",
+                                GPU_REQUIREMENTS_MESSAGE);
+        return false;
+    }
+
+    // Init GUI
+    gui_.init(window_);
+
+    // Init renderer
+    if (!renderer_.init(window_))
+    {
+        utils::showErrorMessage("unable to initialize renderer. ",
+                                GPU_REQUIREMENTS_MESSAGE);
+        return false;
+    }
+
+    return true;
+}
+#endif
+
+#ifdef __EMSCRIPTEN__
+bool App::createWindow()
+{
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
     glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_ES_API);
 #else
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+bool App::createWindow(const RenderingAPI renderingAPI)
+{
+    const int majorGLversion = renderingAPI == RenderingAPI::OpenGL46 ? 4 : 3;
+    const int minorGLversion = renderingAPI == RenderingAPI::OpenGL46 ? 6 : 3;
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, majorGLversion);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, minorGLversion);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 #endif
 #ifdef __APPLE__
@@ -100,8 +198,6 @@ bool App::init()
                                nullptr);
     if (!window_)
     {
-        utils::showErrorMessage("unable to create window. ",
-                                gpuRequirementsMessage);
         return false;
     }
 
@@ -117,18 +213,11 @@ bool App::init()
     glfwSwapInterval(vsyncEnabled_);
 #endif
 
-    // Init GUI
-    Gui::init(window_);
+    return true;
+}
 
-    // Init renderer
-    if (!renderer_.init(window_))
-    {
-        utils::showErrorMessage("unable to initialize renderer. ",
-                                gpuRequirementsMessage);
-        return false;
-    }
-
-    // Load resources
+bool App::loadAssets()
+{
     std::optional<Skybox> skybox = SkyboxBuilder()
                                        .setRight("assets/skybox/right.jpg")
                                        .setLeft("assets/skybox/left.jpg")
@@ -163,7 +252,7 @@ bool App::init()
 
 void App::cleanup()
 {
-    Gui::cleanup();
+    gui_.cleanup();
     glfwDestroyWindow(window_);
     glfwTerminate();
 }
@@ -210,13 +299,20 @@ void App::run()
 
         while (lag >= FIXED_UPDATE_TIMESTEP)
         {
+            // Switch rendering context and reinitialize if changed from GUI
+            if ((currentRenderingAPI_ != drawProps_.renderingAPI)
+                && !reinit(drawProps_.renderingAPI))
+            {
+                // Exit on rendering context switch error
+                break;
+            }
             update();
             lag -= FIXED_UPDATE_TIMESTEP;
         }
 
         render();
 
-        // Display framerate when 1 second is exceeded
+        // Update framerate display every 1 second
         if (1.0 <= elapsedFrameTime)
         {
             frameRateInfo_.framesPerSecond
@@ -351,6 +447,7 @@ void App::update()
     }
 
 #ifndef __EMSCRIPTEN__
+    // Update VSync option if changed from GUI
     if (vsyncEnabled_ != drawProps_.vsyncEnabled)
     {
         vsyncEnabled_ = drawProps_.vsyncEnabled;
@@ -361,7 +458,7 @@ void App::update()
 
 void App::render()
 {
-    Gui::prepareDraw(
+    gui_.prepareDraw(
 #ifndef __EMSCRIPTEN__
         frameRateInfo_,
 #endif
@@ -369,7 +466,7 @@ void App::render()
         drawProps_);
     const Model& activeModel = models_[drawProps_.selectedModelIndex];
     renderer_.draw(activeModel, skybox_);
-    Gui::draw();
+    gui_.draw();
 
     glfwSwapBuffers(window_);
 }

@@ -29,6 +29,8 @@ public:
 
     ~Model();
 
+    void cleanup();
+
     [[nodiscard]] GLuint vertexArray() const;
     [[nodiscard]] const std::vector<GLuint>& indices() const;
 

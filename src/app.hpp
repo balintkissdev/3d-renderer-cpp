@@ -3,6 +3,7 @@
 
 #include "camera.hpp"
 #include "drawproperties.hpp"
+#include "gui.hpp"
 #include "model.hpp"
 #include "renderer.hpp"
 #include "skybox.hpp"
@@ -47,16 +48,32 @@ private:
     // Win32 window
     GLFWwindow* window_;
 #ifndef __EMSCRIPTEN__
-    bool vsyncEnabled_;
     FrameRateInfo frameRateInfo_;
+    RenderingAPI currentRenderingAPI_;
+    bool vsyncEnabled_;
 #endif
     Renderer renderer_;
+    Gui gui_;
     Camera camera_;
     DrawProperties drawProps_;
     glm::vec2 lastMousePos_;
     Skybox skybox_;
     std::vector<Model> models_;
 
+#ifdef __EMSCRIPTEN__
+    bool initSystems();
+    bool createWindow();
+#else
+    /// When rendering backend is changed during runtime, restart renderer and
+    /// reinitialize the systems of the application.
+    ///
+    /// New OpenGL context requires destroying the existing window and creating
+    /// a new one.
+    bool reinit(const RenderingAPI newRenderingAPI);
+    bool initSystems(const RenderingAPI newRenderingAPI);
+    bool createWindow(const RenderingAPI newRenderingAPI);
+#endif
+    bool loadAssets();
     void processInput();
     void update();
     void render();

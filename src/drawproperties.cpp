@@ -17,6 +17,7 @@ DrawProperties DrawProperties::createDefault()
         .fieldOfView = 60.0F,
         .selectedModelIndex = STANFORD_BUNNY_MODEL_INDEX,
 #ifndef __EMSCRIPTEN__
+        .renderingAPI = RenderingAPI::OpenGL46,
         .vsyncEnabled = false,
 #endif
         .skyboxEnabled = true,

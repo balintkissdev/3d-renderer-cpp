@@ -35,6 +35,8 @@ public:
 
     ~Skybox();
 
+    void cleanup();
+
     [[nodiscard]] GLuint textureID() const;
     [[nodiscard]] GLuint vertexArray() const;
 
