@@ -11,6 +11,7 @@
 class Camera;
 class Skybox;
 class Model;
+class Scene;
 struct DrawProperties;
 struct GLFWwindow;
 
@@ -33,9 +34,9 @@ public:
 #endif
     );
     void cleanup();
-    void draw(const Model& model, const Skybox& skybox);
-    void drawModel(const Model& model);
-    void drawSkybox(const Skybox& skybox);
+    void draw(const Scene& scene,
+              const std::vector<Model>& models,
+              const Skybox& skybox);
 
     // Screen update and buffer swap is responsibility of window
 
@@ -50,9 +51,13 @@ private:
 #ifndef __EMSCRIPTEN__
     RenderingAPI renderingAPI_;
 #endif
+    glm::mat4 view_;
     glm::mat4 projection_;
     std::vector<Shader> shaders_;
     const DrawProperties& drawProps_;
     const Camera& camera_;
+
+    void drawModels(const Scene& scene, const std::vector<Model>& models);
+    void drawSkybox(const Skybox& skybox);
 };
 #endif

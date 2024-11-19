@@ -3,7 +3,10 @@
 
 #include "drawproperties.hpp"
 
+#include "imgui.h"
+
 class Camera;
+class Scene;
 struct GLFWwindow;
 
 /// UI overlay on top of rendered scene to manipulate rendering properties.
@@ -12,6 +15,8 @@ struct GLFWwindow;
 /// application's responsibility to provide that in the form of DrawProperties.
 /// Widgets are redrawn for each frame to integrate well into the loop of
 /// real-time graphics and game applications.
+///
+/// TODO: Add ability to rename scene tree node labels.
 class Gui
 {
 public:
@@ -33,7 +38,8 @@ public:
         const FrameRateInfo& frameRateInfo,
 #endif
         const Camera& camera,
-        DrawProperties& drawProps);
+        DrawProperties& drawProps,
+        Scene& scene);
     void draw();
     void cleanup();
 
@@ -42,12 +48,21 @@ public:
 #endif
 
 private:
+    enum SceneTreeIndices : uint8_t
+    {
+        SkyboxTreeIndex,
+        LightingTreeIndex,
+    };
+
+    int selectedSceneItem_; // -1 means "unselected"
+
     void propertiesDialog(
 #ifndef __EMSCRIPTEN__
         const FrameRateInfo& frameRateInfo,
 #endif
         const Camera& camera,
-        DrawProperties& drawProps);
+        DrawProperties& drawProps,
+        Scene& scene);
 
 #ifndef __EMSCRIPTEN__
     /// Keeping track which rendering API should be selectable in the dropdown
@@ -59,6 +74,14 @@ private:
                          DrawProperties& drawProps);
     void confirmRestartDialog(RenderingAPI& renderingAPI);
 #endif
+
+    void sceneOutline(DrawProperties& drawProps, Scene& scene);
+    void sceneContextMenu(Scene& scene);
+    void populateTreeFromSceneNodes(Scene& scene);
+    [[nodiscard]] ImGuiTreeNodeFlags highlightIfSelected(
+        const size_t selectionIndex) const;
+    void selectIfClicked(const size_t selectionIndex);
+    void sceneNodeSection(DrawProperties& drawProps, Scene& scene) const;
 };
 
 #endif

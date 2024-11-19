@@ -13,6 +13,8 @@ target_sources(${PROJECT_NAME}
         model.hpp
         renderer.cpp
         renderer.hpp
+        scene.cpp
+        scene.hpp
         shader.cpp
         shader.hpp
         skybox.cpp

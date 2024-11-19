@@ -36,9 +36,12 @@ graphics API on desktop and WebGL2 in web browsers.
 
 This project is a demonstration of my expertise to write cross-platform 3D
 graphical applications in C++ that run on both desktop (Windows, Linux) and on
-the web with WebAssembly. I designed my application to balance the correct
-level of abstractions and performance optimizations. The project showcases
-confident usage of the following technologies:
+the web with WebAssembly.
+I use this project as a sandbox to prototype graphics programming techniques
+and plan to use it as reference when doing native game engine development
+at home.
+
+The project showcases confident usage of the following technologies:
 
 - C++20
 - 3D graphics programming with OpenGL 4.6, OpenGL 3.3, WebGL2 (based on OpenGL ES 3.0)
@@ -47,7 +50,6 @@ confident usage of the following technologies:
 - Building for WebAssembly using Emscripten
 - Clang Tooling (clang-format, clang-tidy)
 
-I plan to use this project as reference when I do native game engine development projects at home.
 
 Future additions will include Direct3D, Vulkan rendering backends and additional post-processing effects.
 
@@ -56,6 +58,11 @@ Future additions will include Direct3D, Vulkan rendering backends and additional
 - 3D model display from `OBJ` file format
 - Fly-by FPS camera movement
 - Skybox display using cube-map
+- Add multiple objects dynamically into the scene and manipulate their
+  positions, rotations, colors, and selected meshes separately.
+
+![Scene outline](doc/img/outline.png)
+
 - Runtime selectable rendering backends from a drop-down list
 
 ![Drop-down list](doc/img/dropdown.png)

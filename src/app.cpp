@@ -2,8 +2,6 @@
 
 #include "utils.hpp"
 
-#include "glm/gtc/matrix_transform.hpp"
-
 #ifdef __EMSCRIPTEN__
 #include "glad/gles2.h"
 
@@ -51,7 +49,7 @@ constexpr float FIXED_UPDATE_TIMESTEP = 1.0F / MAX_LOGIC_UPDATE_PER_SECOND;
 App::App()
     : window_{nullptr}
 #ifndef __EMSCRIPTEN__
-    , frameRateInfo_{0.0F, 0.0F}
+    , frameRateInfo_{.framesPerSecond = 0.0F, .msPerFrame = 0.0F}
     , currentRenderingAPI_(RenderingAPI::OpenGL46)
     , vsyncEnabled_{false}
 #endif
@@ -66,6 +64,9 @@ App::App()
                     static_cast<float>(SCREEN_HEIGHT) / 2.0F}
 {
     models_.reserve(3);
+    // TODO: Rename to "Stanford Bunny" once scene node label renaming is
+    // functional
+    scene_.add({"Model", Scene::Bunny});
 }
 
 bool App::init()
@@ -463,9 +464,9 @@ void App::render()
         frameRateInfo_,
 #endif
         camera_,
-        drawProps_);
-    const Model& activeModel = models_[drawProps_.selectedModelIndex];
-    renderer_.draw(activeModel, skybox_);
+        drawProps_,
+        scene_);
+    renderer_.draw(scene_, models_, skybox_);
     gui_.draw();
 
     glfwSwapBuffers(window_);

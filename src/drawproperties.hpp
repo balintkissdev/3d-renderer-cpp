@@ -32,11 +32,8 @@ struct DrawProperties
     static DrawProperties createDefault();
 
     std::array<float, 3> backgroundColor;
-    std::array<float, 3> modelRotation;
-    std::array<float, 3> modelColor;
     std::array<float, 3> lightDirection;
     float fieldOfView;
-    int selectedModelIndex;
 #ifndef __EMSCRIPTEN__
     RenderingAPI renderingAPI;
     bool vsyncEnabled;

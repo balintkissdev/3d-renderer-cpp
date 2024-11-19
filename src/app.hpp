@@ -6,6 +6,7 @@
 #include "gui.hpp"
 #include "model.hpp"
 #include "renderer.hpp"
+#include "scene.hpp"
 #include "skybox.hpp"
 
 struct GLFWwindow;
@@ -59,6 +60,7 @@ private:
     glm::vec2 lastMousePos_;
     Skybox skybox_;
     std::vector<Model> models_;
+    Scene scene_;
 
 #ifdef __EMSCRIPTEN__
     bool initSystems();

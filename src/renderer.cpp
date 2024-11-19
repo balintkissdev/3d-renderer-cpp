@@ -2,6 +2,7 @@
 
 #include "camera.hpp"
 #include "model.hpp"
+#include "scene.hpp"
 #include "shader.hpp"
 #include "skybox.hpp"
 #include "utils.hpp"
@@ -114,7 +115,9 @@ void Renderer::cleanup()
     shaders_.clear();
 }
 
-void Renderer::draw(const Model& model, const Skybox& skybox)
+void Renderer::draw(const Scene& scene,
+                    const std::vector<Model>& models,
+                    const Skybox& skybox)
 {
     // Viewport setup
     //
@@ -131,6 +134,8 @@ void Renderer::draw(const Model& model, const Skybox& skybox)
                                    0.1F,
                                    100.0F);
 
+    view_ = camera_.calculateViewMatrix();
+
     // Clear screen
     glClearColor(drawProps_.backgroundColor[0],
                  drawProps_.backgroundColor[1],
@@ -138,80 +143,96 @@ void Renderer::draw(const Model& model, const Skybox& skybox)
                  1.0F);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    drawModel(model);
+    drawModels(scene, models);
     if (drawProps_.skyboxEnabled)
     {
         drawSkybox(skybox);
     }
 }
 
-void Renderer::drawModel(const Model& model)
+void Renderer::drawModels(const Scene& scene, const std::vector<Model>& models)
 {
+    if (scene.children().empty())
+    {
+        return;
+    }
+
     // Set model draw shader
-    auto& shader
-        = shaders_[static_cast<std::uint8_t>(ShaderInstance::ModelShader)];
+    auto& shader = shaders_[static_cast<uint8_t>(ShaderInstance::ModelShader)];
     shader.use();
-    // Set vertex input
-    glBindVertexArray(model.vertexArray());
-
-    // Model transform
-    // Avoid Gimbal-lock by converting Euler angles to quaternions
-    const glm::quat quatX
-        = glm::angleAxis(glm::radians(drawProps_.modelRotation[0]),
-                         glm::vec3(1.0F, 0.0F, 0.0F));
-    const glm::quat quatY
-        = glm::angleAxis(glm::radians(drawProps_.modelRotation[1]),
-                         glm::vec3(0.0F, 1.0F, 0.0F));
-    const glm::quat quatZ
-        = glm::angleAxis(glm::radians(drawProps_.modelRotation[2]),
-                         glm::vec3(0.0F, 0.0F, 1.0F));
-    const glm::quat quat = quatZ * quatY * quatX;
-    const auto modelMatrix = glm::mat4_cast(quat);
-
-    // Concat matrix transformations on CPU to avoid unnecessary multiplications
-    // in GLSL. Results would be the same for all vertices.
-    const glm::mat4 view = camera_.calculateViewMatrix();
-    const glm::mat4 mvp = projection_ * view * modelMatrix;
-    const glm::mat3 normalMatrix
-        = glm::mat3(glm::transpose(glm::inverse(modelMatrix)));
-
-    // Transfer uniforms
-    shader.setUniform("u_model", modelMatrix);
-    shader.setUniform("u_mvp", mvp);
-    shader.setUniform("u_normalMatrix", normalMatrix);
-    shader.setUniform("u_color", drawProps_.modelColor);
-    shader.setUniform("u_light.direction", drawProps_.lightDirection);
-    shader.setUniform("u_viewPos", camera_.position());
-#ifdef __EMSCRIPTEN__
-    shader.setUniform("u_adsProps.diffuseEnabled", drawProps_.diffuseEnabled);
-    shader.setUniform("u_adsProps.specularEnabled", drawProps_.specularEnabled);
-#else
-    if (renderingAPI_ == RenderingAPI::OpenGL46)
-    {
-        // GLSL subroutines only became supported starting from OpenGL 4.0
-        shader.updateSubroutines(
-            GL_FRAGMENT_SHADER,
-            {drawProps_.diffuseEnabled ? "DiffuseEnabled" : "Disabled",
-             drawProps_.specularEnabled ? "SpecularEnabled" : "Disabled"});
-    }
-    else
-    {
-        shader.setUniform("u_adsProps.diffuseEnabled",
-                          drawProps_.diffuseEnabled);
-        shader.setUniform("u_adsProps.specularEnabled",
-                          drawProps_.specularEnabled);
-    }
 
     // glPolygonMode is not supported in OpenGL ES 3.0
+#ifndef __EMSCRIPTEN__
     glPolygonMode(GL_FRONT_AND_BACK,
                   drawProps_.wireframeModeEnabled ? GL_LINE : GL_FILL);
 #endif
 
-    // Issue draw call
-    glDrawElements(GL_TRIANGLES,
-                   static_cast<GLsizei>(model.indices().size()),
-                   GL_UNSIGNED_INT,
-                   nullptr);
+    for (const SceneNode& sceneNode : scene.children())
+    {
+        // Set vertex input
+        const Model& model = models[sceneNode.modelID];
+        glBindVertexArray(model.vertexArray());
+
+        // Model transform
+        // Translate
+        glm::mat4 modelMatrix
+            = glm::translate(glm::mat4(1.0F), sceneNode.position);
+
+        // Avoid Gimbal-lock by converting Euler angles to quaternions
+        const glm::quat quatX
+            = glm::angleAxis(glm::radians(sceneNode.rotation.x),
+                             glm::vec3(1.0F, 0.0F, 0.0F));
+        const glm::quat quatY
+            = glm::angleAxis(glm::radians(sceneNode.rotation.y),
+                             glm::vec3(0.0F, 1.0F, 0.0F));
+        const glm::quat quatZ
+            = glm::angleAxis(glm::radians(sceneNode.rotation.z),
+                             glm::vec3(0.0F, 0.0F, 1.0F));
+        const glm::quat quat = quatZ * quatY * quatX;
+        modelMatrix *= glm::mat4_cast(quat);
+
+        // Concat matrix transformations on CPU to avoid unnecessary
+        // multiplications in GLSL. Results would be the same for all vertices.
+        const glm::mat4 mvp = projection_ * view_ * modelMatrix;
+        const glm::mat3 normalMatrix
+            = glm::mat3(glm::transpose(glm::inverse(modelMatrix)));
+
+        // Transfer uniforms
+        shader.setUniform("u_model", modelMatrix);
+        shader.setUniform("u_mvp", mvp);
+        shader.setUniform("u_normalMatrix", normalMatrix);
+        shader.setUniform("u_color", sceneNode.color);
+        shader.setUniform("u_light.direction", drawProps_.lightDirection);
+        shader.setUniform("u_viewPos", camera_.position());
+#ifdef __EMSCRIPTEN__
+        shader.setUniform("u_adsProps.diffuseEnabled",
+                          drawProps_.diffuseEnabled);
+        shader.setUniform("u_adsProps.specularEnabled",
+                          drawProps_.specularEnabled);
+#else
+        if (renderingAPI_ == RenderingAPI::OpenGL46)
+        {
+            // GLSL subroutines only became supported starting from OpenGL 4.0
+            shader.updateSubroutines(
+                GL_FRAGMENT_SHADER,
+                {drawProps_.diffuseEnabled ? "DiffuseEnabled" : "Disabled",
+                 drawProps_.specularEnabled ? "SpecularEnabled" : "Disabled"});
+        }
+        else
+        {
+            shader.setUniform("u_adsProps.diffuseEnabled",
+                              drawProps_.diffuseEnabled);
+            shader.setUniform("u_adsProps.specularEnabled",
+                              drawProps_.specularEnabled);
+        }
+#endif
+
+        // Issue draw call
+        glDrawElements(GL_TRIANGLES,
+                       static_cast<GLsizei>(model.indices().size()),
+                       GL_UNSIGNED_INT,
+                       nullptr);
+    }
 
     // Reset state
 #ifndef __EMSCRIPTEN__
@@ -243,7 +264,7 @@ void Renderer::drawSkybox(const Skybox& skybox)
     // Remove camera position transformations by nullifying column 4, but keep
     // rotation in the view matrix. If you don't do this, skybox will be shown
     // as a shrinked down cube around model.
-    glm::mat4 normalizedView = camera_.calculateViewMatrix();
+    glm::mat4 normalizedView = view_;
     normalizedView[3] = glm::vec4(0.0F, 0.0F, 0.0F, 0.0F);
     // Concat matrix transformations on CPU to avoid unnecessary
     // multiplications in GLSL. Results would be the same for all vertices.
