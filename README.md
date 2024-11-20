@@ -26,7 +26,7 @@ https://github.com/user-attachments/assets/b756ea4b-a449-443c-bc5a-644702e004aa
 - [Requirements](#requirements)
 - [Build Instructions](#build-instructions)
 - [Usage](#usage)
-- [Resources](#resources)
+- [Acknowledgements](#acknowledgements)
 
 ## Try it out!
 
@@ -204,9 +204,9 @@ Use keyboard and mouse to navigate the 3D environment.
 - Ascend: `Spacebar`
 - Descend: `C`
 
-Modify UI controls to change properties of the 3D model display.
+Modify UI controls to change properties of the 3D scene display.
 
-## Resources
+## Acknowledgements
 
 - *Utah Teapot* and *Stanford Bunny* model meshes are from [Stanford Computer Graphics Laboratory](https://graphics.stanford.edu/)
     - High poly *Stanford Bunny* model mesh is from https://www.prinmath.com/csci5229/OBJ/index.html
