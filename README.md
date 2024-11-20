@@ -16,6 +16,8 @@ graphics API on desktop and WebGL2 in web browsers.
 
 ![Demo](doc/img/demo.png)
 
+https://github.com/user-attachments/assets/b756ea4b-a449-443c-bc5a-644702e004aa
+
 ## Table of Contents
 
 - [Try it out!](#try-it-out)
