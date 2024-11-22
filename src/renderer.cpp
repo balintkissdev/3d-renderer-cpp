@@ -161,17 +161,46 @@ void Renderer::drawModels(const Scene& scene, const std::vector<Model>& models)
     auto& shader = shaders_[static_cast<uint8_t>(ShaderInstance::ModelShader)];
     shader.use();
 
+    // Setup uniform values shared by all scene nodes, avoiding doing
+    // unnecessary work during iteration
+    shader.setUniform("u_light.direction", drawProps_.lightDirection);
+    shader.setUniform("u_viewPos", camera_.position());
+#ifdef __EMSCRIPTEN__
+    shader.setUniform("u_adsProps.diffuseEnabled", drawProps_.diffuseEnabled);
+    shader.setUniform("u_adsProps.specularEnabled", drawProps_.specularEnabled);
+#else
+    if (renderingAPI_ == RenderingAPI::OpenGL46)
+    {
+        // GLSL subroutines only became supported starting from OpenGL 4.0
+        shader.updateSubroutines(
+            GL_FRAGMENT_SHADER,
+            {drawProps_.diffuseEnabled ? "DiffuseEnabled" : "Disabled",
+             drawProps_.specularEnabled ? "SpecularEnabled" : "Disabled"});
+    }
+    else
+    {
+        shader.setUniform("u_adsProps.diffuseEnabled",
+                          drawProps_.diffuseEnabled);
+        shader.setUniform("u_adsProps.specularEnabled",
+                          drawProps_.specularEnabled);
+    }
+
     // glPolygonMode is not supported in OpenGL ES 3.0
-#ifndef __EMSCRIPTEN__
     glPolygonMode(GL_FRONT_AND_BACK,
                   drawProps_.wireframeModeEnabled ? GL_LINE : GL_FILL);
 #endif
 
+    // TODO: Introduce instanced rendering
+    size_t cachedModelID = std::numeric_limits<size_t>::max();
+    const Model* model = nullptr;
     for (const SceneNode& sceneNode : scene.children())
     {
-        // Set vertex input
-        const Model& model = models[sceneNode.modelID];
-        glBindVertexArray(model.vertexArray());
+        // Only bind vertex array if model changes
+        if (sceneNode.modelID != cachedModelID)
+        {
+            model = &models[sceneNode.modelID];
+            glBindVertexArray(model->vertexArray());
+        }
 
         // Model transform
         // Translate
@@ -197,39 +226,15 @@ void Renderer::drawModels(const Scene& scene, const std::vector<Model>& models)
         const glm::mat3 normalMatrix
             = glm::mat3(glm::transpose(glm::inverse(modelMatrix)));
 
-        // Transfer uniforms
+        // Scene node-specific uniforms
         shader.setUniform("u_model", modelMatrix);
         shader.setUniform("u_mvp", mvp);
         shader.setUniform("u_normalMatrix", normalMatrix);
         shader.setUniform("u_color", sceneNode.color);
-        shader.setUniform("u_light.direction", drawProps_.lightDirection);
-        shader.setUniform("u_viewPos", camera_.position());
-#ifdef __EMSCRIPTEN__
-        shader.setUniform("u_adsProps.diffuseEnabled",
-                          drawProps_.diffuseEnabled);
-        shader.setUniform("u_adsProps.specularEnabled",
-                          drawProps_.specularEnabled);
-#else
-        if (renderingAPI_ == RenderingAPI::OpenGL46)
-        {
-            // GLSL subroutines only became supported starting from OpenGL 4.0
-            shader.updateSubroutines(
-                GL_FRAGMENT_SHADER,
-                {drawProps_.diffuseEnabled ? "DiffuseEnabled" : "Disabled",
-                 drawProps_.specularEnabled ? "SpecularEnabled" : "Disabled"});
-        }
-        else
-        {
-            shader.setUniform("u_adsProps.diffuseEnabled",
-                              drawProps_.diffuseEnabled);
-            shader.setUniform("u_adsProps.specularEnabled",
-                              drawProps_.specularEnabled);
-        }
-#endif
 
         // Issue draw call
         glDrawElements(GL_TRIANGLES,
-                       static_cast<GLsizei>(model.indices().size()),
+                       static_cast<GLsizei>(model->indices().size()),
                        GL_UNSIGNED_INT,
                        nullptr);
     }
@@ -238,7 +243,6 @@ void Renderer::drawModels(const Scene& scene, const std::vector<Model>& models)
 #ifndef __EMSCRIPTEN__
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 #endif
-    glBindVertexArray(0);
 }
 
 void Renderer::drawSkybox(const Skybox& skybox)
@@ -279,6 +283,5 @@ void Renderer::drawSkybox(const Skybox& skybox)
     glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, nullptr);
 
     // Reset state
-    glBindVertexArray(0);
     glDepthFunc(GL_LESS);  // Reset depth testing to default
 }
