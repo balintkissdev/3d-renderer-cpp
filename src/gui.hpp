@@ -2,12 +2,16 @@
 #define GUI_HPP_
 
 #include "drawproperties.hpp"
+#include "window.hpp"
 
 #include "imgui.h"
 
+#ifdef WINDOW_PLATFORM_GLFW
+struct GLFWwindow;
+#endif
+
 class Camera;
 class Scene;
-struct GLFWwindow;
 
 /// UI overlay on top of rendered scene to manipulate rendering properties.
 ///
@@ -26,7 +30,7 @@ public:
     Gui(Gui&&) = delete;
     Gui& operator=(Gui&&) = delete;
 
-    void init(GLFWwindow* window
+    void init(Window::Raw raw
 #ifndef __EMSCRIPTEN__
               ,
               const RenderingAPI renderingAPI
@@ -54,7 +58,7 @@ private:
         LightingTreeIndex,
     };
 
-    int selectedSceneItem_; // -1 means "unselected"
+    int selectedSceneItem_;  // -1 means "unselected"
 
     void propertiesDialog(
 #ifndef __EMSCRIPTEN__
@@ -75,6 +79,8 @@ private:
     void confirmRestartDialog(RenderingAPI& renderingAPI);
 #endif
 
+    // BUG: Jank on right-click context menu because camera is also activated at
+    // the same time
     void sceneOutline(DrawProperties& drawProps, Scene& scene);
     void sceneContextMenu(Scene& scene);
     void populateTreeFromSceneNodes(Scene& scene);

@@ -18,6 +18,23 @@ set(PROJECT_VERSION_MINOR 2)
 set(PROJECT_VERSION_PATCH 0)
 set(PROJECT_VERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_PATCH})
 
+option(WITH_GLFW "Use GLFW window implementation instead of native Win32 API (available only on Windows)" OFF)
+if(WIN32)
+    if(WITH_GLFW)
+        set(WINDOW_PLATFORM_GLFW TRUE)
+        add_definitions(-DWINDOW_PLATFORM_GLFW)
+        message(STATUS "Using GLFW window implementation on Windows")
+    else()
+        set(WINDOW_PLATFORM_WIN32 TRUE)
+        add_definitions(-DWINDOW_PLATFORM_WIN32)
+        message(STATUS "Using native Win32 API window implementation")
+    endif()
+else()
+    set(WINDOW_PLATFORM_GLFW TRUE)
+    add_definitions(-DWINDOW_PLATFORM_GLFW)
+    message(STATUS "Using GLFW window implementation (required for non-Windows)")
+endif()
+
 option(WEBBUILD_CI "Specify if an Emscripten build is running in CI" OFF)
 
 # Global flags for not just app but dependencies built by this project too
@@ -33,7 +50,7 @@ include(FetchContent)
 
 # Download GLFW for desktop build, otherwise skip this and use bundled
 # Emscripten package
-if(NOT EMSCRIPTEN)
+if(NOT EMSCRIPTEN AND WINDOW_PLATFORM_GLFW)
     FetchContent_Declare(
         glfw
         GIT_REPOSITORY https://github.com/glfw/glfw.git
@@ -58,6 +75,7 @@ FetchContent_Declare(
     GIT_REPOSITORY https://github.com/assimp/assimp.git
     GIT_TAG v5.4.1
 )
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)  # TODO: Bugprone because not scoped to Assimp build
 set(ASSIMP_BUILD_ALL_IMPORTERS_BY_DEFAULT OFF CACHE BOOL "" FORCE)
 set(ASSIMP_BUILD_OBJ_IMPORTER ON CACHE BOOL "" FORCE)
 set(ASSIMP_BUILD_SAMPLES OFF CACHE BOOL "" FORCE)
@@ -155,7 +173,7 @@ target_include_directories(${PROJECT_NAME}
         "${assimp_SOURCE_DIR}/include"
         "${glm_SOURCE_DIR}"
 )
-if(NOT EMSCRIPTEN)
+if(WINDOW_PLATFORM_GLFW)
     target_include_directories(${PROJECT_NAME}
         SYSTEM
         PRIVATE
@@ -172,11 +190,16 @@ target_link_libraries(${PROJECT_NAME}
         glad
         # "-sUSE_GLFW=3" linker option uses Emscripten GLFW package for WebAssembly
 )
+if(WINDOW_PLATFORM_GLFW)
+    target_link_libraries(${PROJECT_NAME}
+        PRIVATE
+            glfw
+    )
+endif()
 if(NOT EMSCRIPTEN)
     find_package(OpenGL REQUIRED)
     target_link_libraries(${PROJECT_NAME}
         PRIVATE
-            glfw
             OpenGL::GL
     )
 endif()

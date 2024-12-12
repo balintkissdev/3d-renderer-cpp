@@ -1,3 +1,16 @@
+if(MSVC)
+    target_precompile_headers(${PROJECT_NAME}
+        PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/pch.hpp"
+    )
+endif()
+
+if(WINDOW_PLATFORM_WIN32)
+    set(WINDOW_PLATFORM_PREFIX win32)
+else()
+    set(WINDOW_PLATFORM_PREFIX glfw)
+endif()
+
 target_sources(${PROJECT_NAME}
     PRIVATE
         app.cpp
@@ -20,4 +33,7 @@ target_sources(${PROJECT_NAME}
         skybox.cpp
         skybox.hpp
         utils.hpp
+        "${WINDOW_PLATFORM_PREFIX}_window.cpp"
+        "${WINDOW_PLATFORM_PREFIX}_window.hpp"
+        window.hpp
 )

@@ -2,15 +2,7 @@
 
 #include "utils.hpp"
 
-#ifdef __EMSCRIPTEN__
-#include "glad/gles2.h"
-
-#include <GLFW/glfw3.h>  // Use GLFW port from Emscripten
-#include <emscripten.h>
-#else
-#include "GLFW/glfw3.h"
-#include "glad/gl.h"
-
+#ifndef __EMSCRIPTEN__
 #include <chrono>
 #endif
 
@@ -20,8 +12,11 @@ namespace fs = std::filesystem;
 
 namespace
 {
-constexpr uint16_t SCREEN_WIDTH = 1024;
-constexpr uint16_t SCREEN_HEIGHT = 768;
+constexpr uint16_t WINDOW_WIDTH = 1024;
+constexpr uint16_t WINDOW_HEIGHT = 768;
+
+// NOLINTNEXTLINE(readability-identifier-naming)
+const char* WINDOW_TITLE = "3D Renderer by Bálint Kiss";
 
 // NOLINTNEXTLINE(readability-identifier-naming)
 const char* GPU_REQUIREMENTS_MESSAGE =
@@ -47,21 +42,19 @@ constexpr float FIXED_UPDATE_TIMESTEP = 1.0F / MAX_LOGIC_UPDATE_PER_SECOND;
 }  // namespace
 
 App::App()
-    : window_{nullptr}
+    : window_{*this}
 #ifndef __EMSCRIPTEN__
     , frameRateInfo_{.framesPerSecond = 0.0F, .msPerFrame = 0.0F}
     , currentRenderingAPI_(RenderingAPI::OpenGL46)
     , vsyncEnabled_{false}
 #endif
-    , renderer_(drawProps_, camera_)
+    , renderer_(window_, drawProps_, camera_)
     // Positioning and rotation accidentally imitates a right-handed 3D
     // coordinate system with positive Z going farther from model, but this
     // setting is done because of initial orientation of the loaded Stanford
     // Bunny mesh.
     , camera_({1.7F, 1.3F, 4.0F}, {240.0F, -15.0F})
     , drawProps_(DrawProperties::createDefault())
-    , lastMousePos_{static_cast<float>(SCREEN_WIDTH) / 2.0F,
-                    static_cast<float>(SCREEN_HEIGHT) / 2.0F}
 {
     models_.reserve(3);
     // TODO: Rename to "Stanford Bunny" once scene node label renaming is
@@ -71,15 +64,6 @@ App::App()
 
 bool App::init()
 {
-    // Initialize windowing system
-    if (!glfwInit())
-    {
-        utils::showErrorMessage("unable to initialize windowing system. ",
-                                GPU_REQUIREMENTS_MESSAGE);
-        return false;
-    }
-    glfwSetErrorCallback(errorCallback);
-
     return
 #ifdef __EMSCRIPTEN__
         initSystems()
@@ -92,16 +76,15 @@ bool App::init()
 #ifndef __EMSCRIPTEN__
 bool App::reinit(const RenderingAPI newRenderingAPI)
 {
-    glfwHideWindow(window_);
+    window_.hide();
     // Important to release resources using current graphics context before
     // destroying it
     gui_.cleanup();
     skybox_.cleanup();
     models_.clear();
     renderer_.cleanup();
-
-    glfwDestroyWindow(window_);
-    window_ = nullptr;
+    // TODO: Avoid full re-init, see TODO in win32_window.hpp
+    window_.cleanup();
 
     // TODO: Reloading assets on rendering backend change would normally not be
     // necessary, but in this current architecture the GPU buffer and texture
@@ -134,11 +117,9 @@ bool App::initSystems(const RenderingAPI newRenderingAPI)
         }
     }
 
-    // Init GUI
-    gui_.init(window_, currentRenderingAPI_);
+    gui_.init(window_.raw(), currentRenderingAPI_);
 
-    // Init renderer
-    if (!renderer_.init(window_, currentRenderingAPI_))
+    if (!renderer_.init(currentRenderingAPI_))
     {
         utils::showErrorMessage("unable to initialize renderer. ",
                                 GPU_REQUIREMENTS_MESSAGE);
@@ -157,11 +138,9 @@ bool App::initSystems()
         return false;
     }
 
-    // Init GUI
-    gui_.init(window_);
+    gui_.init(window_.raw());
 
-    // Init renderer
-    if (!renderer_.init(window_))
+    if (!renderer_.init())
     {
         utils::showErrorMessage("unable to initialize renderer. ",
                                 GPU_REQUIREMENTS_MESSAGE);
@@ -174,45 +153,23 @@ bool App::initSystems()
 
 #ifdef __EMSCRIPTEN__
 bool App::createWindow()
-{
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
-    glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_ES_API);
 #else
 bool App::createWindow(const RenderingAPI renderingAPI)
+#endif
 {
-    const int majorGLversion = renderingAPI == RenderingAPI::OpenGL46 ? 4 : 3;
-    const int minorGLversion = renderingAPI == RenderingAPI::OpenGL46 ? 6 : 3;
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, majorGLversion);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, minorGLversion);
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+    if (!window_.init(WINDOW_WIDTH,
+                      WINDOW_HEIGHT,
+                      WINDOW_TITLE
+#ifndef __EMSCRIPTEN__
+                      ,
+                      renderingAPI
 #endif
-#ifdef __APPLE__
-    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
-#endif
-    // TODO: Make window and OpenGL framebuffer resizable
-    glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
-    window_ = glfwCreateWindow(SCREEN_WIDTH,
-                               SCREEN_HEIGHT,
-                               "3D renderer by Bálint Kiss",
-                               nullptr,
-                               nullptr);
-    if (!window_)
+                      ))
     {
         return false;
     }
 
-    // Setup event callbacks
-    glfwSetWindowUserPointer(window_, this);
-    glfwSetMouseButtonCallback(window_, mouseButtonCallback);
-    glfwSetCursorPosCallback(window_, mouseMoveCallback);
-
-    // Make GL context current
-    glfwMakeContextCurrent(window_);
-#ifndef __EMSCRIPTEN__
-    // Set VSync
-    glfwSwapInterval(vsyncEnabled_);
-#endif
+    window_.setOnMouseMove(MouseOffsetCallback);
 
     return true;
 }
@@ -254,8 +211,6 @@ bool App::loadAssets()
 void App::cleanup()
 {
     gui_.cleanup();
-    glfwDestroyWindow(window_);
-    glfwTerminate();
 }
 
 void App::run()
@@ -284,7 +239,7 @@ void App::run()
     // How much application "clock" is behind real time. Also known as
     // "accumulator"
     float lag = 0.0F;
-    while (!glfwWindowShouldClose(window_))
+    while (!window_.shouldQuit())
     {
         const auto currentTime = std::chrono::steady_clock::now();
         const float elapsedTime
@@ -305,7 +260,7 @@ void App::run()
                 && !reinit(drawProps_.renderingAPI))
             {
                 // Exit on rendering context switch error
-                break;
+                return;
             }
             update();
             lag -= FIXED_UPDATE_TIMESTEP;
@@ -329,11 +284,6 @@ void App::run()
 #endif
 }
 
-void App::errorCallback([[maybe_unused]] int error, const char* description)
-{
-    utils::showErrorMessage("GLFW error: ", description);
-}
-
 #ifdef __EMSCRIPTEN__
 void App::emscriptenMainLoopCallback(void* arg)
 {
@@ -344,105 +294,57 @@ void App::emscriptenMainLoopCallback(void* arg)
 }
 #endif
 
-void App::mouseButtonCallback(GLFWwindow* window,
-                              int button,
-                              int action,
-                              [[maybe_unused]] int mods)
+void App::MouseOffsetCallback(App& app,
+                              const float offsetX,
+                              const float offsetY)
 {
-    if (button == GLFW_MOUSE_BUTTON_RIGHT)
+    if (app.window_.rightMouseButtonPressed())
     {
-        // Initiate mouse look on right mouse button press
-        if (action == GLFW_PRESS)
-        {
-            if (glfwGetInputMode(window, GLFW_CURSOR) == GLFW_CURSOR_NORMAL)
-            {
-#ifndef __EMSCRIPTEN__
-                // HACK: Prevent cursor flicker at center before disabling
-                //
-                // GLFW_CURSOR_HIDDEN is not implemented in JS Emscripten port
-                // of GLFW, resulting in an error console.log() display.
-                glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
-#endif
-                // Cursor disable is required to temporarily center it for
-                // mouselook
-                glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-            }
-        }
-        // Stop mouse look on release, give cursor back. Cursor position stays
-        // the same as before mouse look.
-        else
-        {
-            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
-        }
+        app.camera_.look(offsetX, offsetY);
     }
-}
-
-void App::mouseMoveCallback(GLFWwindow* window,
-                            double currentMousePosX,
-                            double currentMousePosY)
-{
-    const glm::vec2 currentMousePosFloat{
-        static_cast<float>(currentMousePosX),
-        static_cast<float>(currentMousePosY),
-    };
-    auto* impl = static_cast<App*>(glfwGetWindowUserPointer(window));
-    glm::vec2& lastMousePos = impl->lastMousePos_;
-    if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_RELEASE)
-    {
-        // Always save position even when not holding down mouse button to avoid
-        // sudden jumps when initiating turning
-        lastMousePos.x = currentMousePosFloat.x;
-        lastMousePos.y = currentMousePosFloat.y;
-        return;
-    }
-
-    const float xOffset = currentMousePosFloat.x - lastMousePos.x;
-    // Reversed because y is bottom to up
-    const float yOffset = lastMousePos.y - currentMousePosFloat.y;
-    lastMousePos = currentMousePosFloat;
-
-    impl->camera_.look(xOffset, yOffset);
 }
 
 void App::processInput()
 {
-    glfwPollEvents();
+    window_.poll();
+    // No need to exit application from a web browser.
 #ifndef __EMSCRIPTEN__
     // Exiting here instead of update() avoids delay.
-    // No need to exit application from a web browser.
-    if (glfwGetKey(window_, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+    if (window_.keyPressed(Key::ESCAPE))
     {
-        glfwSetWindowShouldClose(window_, true);
+        window_.setShouldQuit(true);
     }
 #endif
 }
 
 void App::update()
 {
+    window_.setCursorEnabled(!window_.rightMouseButtonPressed());
+
     // Update camera here instead of processInput(), otherwise camera movement
     // will be too fast on fast computers.
-    if (glfwGetKey(window_, GLFW_KEY_W) == GLFW_PRESS)
+    if (window_.keyPressed(Key::W))
     {
         camera_.moveForward(FIXED_UPDATE_TIMESTEP);
     }
-    if (glfwGetKey(window_, GLFW_KEY_S) == GLFW_PRESS)
+    if (window_.keyPressed(Key::S))
     {
         camera_.moveBackward(FIXED_UPDATE_TIMESTEP);
     }
-    if (glfwGetKey(window_, GLFW_KEY_A) == GLFW_PRESS)
+    if (window_.keyPressed(Key::A))
     {
         camera_.strafeLeft(FIXED_UPDATE_TIMESTEP);
     }
-    if (glfwGetKey(window_, GLFW_KEY_D) == GLFW_PRESS)
+    if (window_.keyPressed(Key::D))
     {
         camera_.strafeRight(FIXED_UPDATE_TIMESTEP);
     }
 
-    if (glfwGetKey(window_, GLFW_KEY_SPACE) == GLFW_PRESS)
+    if (window_.keyPressed(Key::SPACE))
     {
         camera_.ascend(FIXED_UPDATE_TIMESTEP);
     }
-    if (glfwGetKey(window_, GLFW_KEY_C) == GLFW_PRESS)
+    if (window_.keyPressed(Key::C))
     {
         camera_.descend(FIXED_UPDATE_TIMESTEP);
     }
@@ -452,7 +354,7 @@ void App::update()
     if (vsyncEnabled_ != drawProps_.vsyncEnabled)
     {
         vsyncEnabled_ = drawProps_.vsyncEnabled;
-        glfwSwapInterval(vsyncEnabled_);
+        window_.setVSyncEnabled(vsyncEnabled_);
     }
 #endif
 }
@@ -469,6 +371,6 @@ void App::render()
     renderer_.draw(scene_, models_, skybox_);
     gui_.draw();
 
-    glfwSwapBuffers(window_);
+    window_.swapBuffers();
 }
 

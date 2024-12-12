@@ -12,6 +12,7 @@ class Camera;
 class Skybox;
 class Model;
 class Scene;
+class Window;
 struct DrawProperties;
 struct GLFWwindow;
 
@@ -19,18 +20,16 @@ struct GLFWwindow;
 class Renderer
 {
 public:
-    Renderer(const DrawProperties& drawProps, const Camera& camera);
+    Renderer(const Window& window, const DrawProperties& drawProps, const Camera& camera);
     Renderer(const Renderer&) = delete;
     Renderer& operator=(const Renderer&) = delete;
     Renderer(Renderer&&) noexcept = delete;
     Renderer& operator=(Renderer&&) noexcept = delete;
 
-    /// Load OpenGL function addresses, required shaders and set OpenGL
-    /// capabilities.
-    bool init(GLFWwindow* window
+    /// Create required shaders and set OpenGL capabilities.
+    bool init(
 #ifndef __EMSCRIPTEN__
-              ,
-              const RenderingAPI renderingAPI
+        const RenderingAPI renderingAPI
 #endif
     );
     void cleanup();
@@ -47,7 +46,7 @@ private:
         SkyboxShader,
     };
 
-    GLFWwindow* window_;
+    const Window& window_;
 #ifndef __EMSCRIPTEN__
     RenderingAPI renderingAPI_;
 #endif

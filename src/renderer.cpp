@@ -6,16 +6,14 @@
 #include "shader.hpp"
 #include "skybox.hpp"
 #include "utils.hpp"
+#include "window.hpp"
 
 #include "glm/glm.hpp"
 #include "glm/gtc/quaternion.hpp"
 
 #ifdef __EMSCRIPTEN__
 #include "glad/gles2.h"
-
-#include <GLFW/glfw3.h>  // Use GLFW port from Emscripten
 #else
-#include "GLFW/glfw3.h"
 #include "glad/gl.h"
 #endif
 
@@ -23,32 +21,22 @@
 
 namespace fs = std::filesystem;
 
-Renderer::Renderer(const DrawProperties& drawProps, const Camera& camera)
-    : window_{nullptr}
-    , drawProps_(drawProps)
-    , camera_(camera)
+Renderer::Renderer(const Window& window,
+                   const DrawProperties& drawProps,
+                   const Camera& camera)
+    : window_{window}
+    , drawProps_{drawProps}
+    , camera_{camera}
 {
     shaders_.reserve(2);
 }
 
-bool Renderer::init(GLFWwindow* window
+bool Renderer::init(
 #ifndef __EMSCRIPTEN__
-                    ,
-                    const RenderingAPI renderingAPI
+    const RenderingAPI renderingAPI
 #endif
 )
 {
-    // Set OpenGL function addresses
-#ifdef __EMSCRIPTEN__
-    if (!gladLoadGLES2(glfwGetProcAddress))
-#else
-    if (!gladLoadGL(glfwGetProcAddress))
-#endif
-    {
-        utils::showErrorMessage("unable to load OpenGL extensions");
-        return false;
-    }
-
     // Load shaders
 #ifdef __EMSCRIPTEN__
     const fs::path modelVertexShaderPath(
@@ -102,7 +90,6 @@ bool Renderer::init(GLFWwindow* window
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-    window_ = window;
 #ifndef __EMSCRIPTEN__
     renderingAPI_ = renderingAPI;
 #endif
@@ -125,8 +112,18 @@ void Renderer::draw(const Scene& scene,
     // never know how framebuffer size might differ from window size, especially
     // on high-DPI displays. Not doing so can lead to display bugs like clipping
     // top part of the view.
-    int frameBufferWidth, frameBufferHeight;
-    glfwGetFramebufferSize(window_, &frameBufferWidth, &frameBufferHeight);
+    const auto [frameBufferWidth, frameBufferHeight]
+        = window_.frameBufferSize();
+    if (frameBufferWidth <= 0 || frameBufferHeight <= 0)
+    {
+        // If frame buffer size is currently (0,0), that means window is
+        // minimized (on Windows). Skip drawing.
+        // Alternative method is checking on Win32 API side if window was
+        // minimized:
+        // https://github.com/ocornut/imgui/blob/13c4084362b35ce58a25be70b9f1710dfe3377e9/examples/example_win32_opengl3/main.cpp#L228
+        return;
+    }
+
     glViewport(0, 0, frameBufferWidth, frameBufferHeight);
     projection_ = glm::perspective(glm::radians(drawProps_.fieldOfView),
                                    static_cast<float>(frameBufferWidth)

@@ -20,6 +20,9 @@ BreakBeforeBinaryOperators: All
 BreakConstructorInitializers: BeforeComma
 DerivePointerAlignment: false
 IncludeCategories:
+    # Precompiled header
+  - Regex: '^"pch\.hpp"'
+    Priority: 0
     # Local third party dependency headers
   - Regex: '^"(assimp|glad|GLFW|glm|imgui|stb).*"'
     Priority: 2

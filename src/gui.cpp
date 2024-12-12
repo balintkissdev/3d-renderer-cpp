@@ -1,12 +1,24 @@
-#include "gui.hpp"
+#include "pch.hpp"
 
 #include "camera.hpp"
 #include "drawproperties.hpp"
+#include "gui.hpp"
 #include "scene.hpp"
 
 #include "glm/gtc/type_ptr.hpp"
-#include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
+
+#if defined(WINDOW_PLATFORM_WIN32)
+#include "imgui_impl_win32.h"
+#define ImGui_Impl_InitForOpenGL ImGui_ImplWin32_InitForOpenGL
+#define ImGui_Impl_NewFrame ImGui_ImplWin32_NewFrame
+#define ImGui_Impl_Shutdown ImGui_ImplWin32_Shutdown
+#elif defined(WINDOW_PLATFORM_GLFW)
+#include "imgui_impl_glfw.h"
+#define ImGui_Impl_InitForOpenGL(x) ImGui_ImplGlfw_InitForOpenGL(x, true)
+#define ImGui_Impl_NewFrame ImGui_ImplGlfw_NewFrame
+#define ImGui_Impl_Shutdown ImGui_ImplGlfw_Shutdown
+#endif
 
 namespace
 {
@@ -21,7 +33,7 @@ Gui::Gui()
 {
 }
 
-void Gui::init(GLFWwindow* window
+void Gui::init(Window::Raw raw
 #ifndef __EMSCRIPTEN__
                ,
                const RenderingAPI renderingAPI
@@ -31,7 +43,7 @@ void Gui::init(GLFWwindow* window
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGui::StyleColorsDark();
-    ImGui_ImplGlfw_InitForOpenGL(window, true);
+    ImGui_Impl_InitForOpenGL(raw);
 #ifdef __EMSCRIPTEN__
     const char* glslVersion = "#version 300 es";
     ImGui_ImplGlfw_InstallEmscriptenCanvasResizeCallback("#canvas");
@@ -63,7 +75,7 @@ void Gui::prepareDraw(
     Scene& scene)
 {
     ImGui_ImplOpenGL3_NewFrame();
-    ImGui_ImplGlfw_NewFrame();
+    ImGui_Impl_NewFrame();
     ImGui::NewFrame();
 
 #ifdef __EMSCRIPTEN__
@@ -90,7 +102,7 @@ void Gui::draw()
 void Gui::cleanup()
 {
     ImGui_ImplOpenGL3_Shutdown();
-    ImGui_ImplGlfw_Shutdown();
+    ImGui_Impl_Shutdown();
     ImGui::DestroyContext();
 }
 

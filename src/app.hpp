@@ -8,8 +8,7 @@
 #include "renderer.hpp"
 #include "scene.hpp"
 #include "skybox.hpp"
-
-struct GLFWwindow;
+#include "window.hpp"
 
 /// Encapsulation of renderer application lifecycle and logic update to avoid
 /// polluting main().
@@ -33,21 +32,16 @@ public:
     void cleanup();
 
 private:
-    static void errorCallback(int error, const char* description);
+
+
 #ifdef __EMSCRIPTEN__
     static void emscriptenMainLoopCallback(void* arg);
 #endif
-    static void mouseButtonCallback(GLFWwindow* window,
-                                    int button,
-                                    int action,
-                                    int mods);
-    static void mouseMoveCallback(GLFWwindow* window,
-                                  double currentMousePosX,
-                                  double currentMousePosY);
+    static void MouseOffsetCallback(App& app,
+                                    const float offsetX,
+                                    const float offsetY);
 
-    // TODO: Abstract away window implementation once starting work on native
-    // Win32 window
-    GLFWwindow* window_;
+    Window window_;
 #ifndef __EMSCRIPTEN__
     FrameRateInfo frameRateInfo_;
     RenderingAPI currentRenderingAPI_;
@@ -57,7 +51,6 @@ private:
     Gui gui_;
     Camera camera_;
     DrawProperties drawProps_;
-    glm::vec2 lastMousePos_;
     Skybox skybox_;
     std::vector<Model> models_;
     Scene scene_;
