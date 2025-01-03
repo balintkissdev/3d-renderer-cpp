@@ -47,6 +47,7 @@ The project showcases confident usage of the following technologies:
 
 - C++20
 - 3D graphics programming with OpenGL 4.6, OpenGL 3.3, WebGL2 (based on OpenGL ES 3.0)
+- Native Windows application development using Win32 API for window management and OpenGL context creation
 - Advanced CMake practices (modern CMake targets, FetchContent, CPack)
 - Immediate mode overlay GUI using Dear ImGui (as opposed to retained mode GUI frameworks like Qt)
 - Building for WebAssembly using Emscripten
