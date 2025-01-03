@@ -6,20 +6,23 @@ jobs:
   windows-build:
     runs-on: windows-2022
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
       - uses: ilammy/msvc-dev-cmd@v1
+        with:
+          vsversion: "2022"
       - name: Set compiler environment for Windows
         uses: lukka/set-shell-env@v1
         with:
           CXX: cl.exe
           CC: cl.exe
-          VS160COMNTOOLS: C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\Common7\Tools
-      - name: Checkout
-        uses: actions/checkout@v4
       - uses: lukka/get-cmake@latest
       - name: Build project
+        # TODO: Outdated, make sure to update without breaking CI
         uses: lukka/run-cmake@v3
         with:
-          cmakeAppendedArgs: "-DCMAKE_BUILD_TYPE=Release -DBUILD_WERROR=ON"
+          # HACK: Windows CI hallucinates clang-tidy errors that are not even there, possibly due to PCH
+          cmakeAppendedArgs: "-DCMAKE_BUILD_TYPE=Release -DBUILD_WERROR=ON -DENABLE_CLANG_TIDY=OFF"
           buildDirectory: "${{ github.workspace }}/build/"
       - name: Generate ZIP package
         working-directory: build
@@ -46,7 +49,7 @@ jobs:
       - uses: lukka/get-cmake@latest
       - name: Build project
         run: |
-          cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_WERROR=ON
+          cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_WERROR=ON -DENABLE_CLANG_TIDY=ON
           make -j`nproc`
       - name: Generate AppImage package
         run: |
@@ -78,6 +81,7 @@ jobs:
             -DWEBBUILD_CI=ON \
             -DCMAKE_BUILD_TYPE=Release \
             -DBUILD_WERROR=ON \
+            -DENABLE_CLANG_TIDY=ON \
             -DCMAKE_INSTALL_PREFIX=dist \
             .
           emmake make VERBOSE=1

@@ -136,21 +136,31 @@ else()
     )
 endif()
 
-# Execute clang-tidy static code analysis during executable build
-find_program(
-    CLANG_TIDY_EXE
-    NAMES clang-tidy
-)
-# FIXME: clang-tidy doesn't work together with Emscripten
-if(CLANG_TIDY_EXE AND NOT EMSCRIPTEN)
-    message(STATUS "clang-tidy found: ${CLANG_TIDY_EXE}")
-    set(DO_CLANG_TIDY
-        "${CLANG_TIDY_EXE}"
-        "--header-filter=src/*"
+option(ENABLE_CLANG_TIDY "Enable static code analysis with clang-tidy during build")
+if(ENABLE_CLANG_TIDY)
+    find_program(
+        CLANG_TIDY_EXE
+        NAMES clang-tidy
     )
-    set_target_properties(${PROJECT_NAME} PROPERTIES CXX_CLANG_TIDY "${DO_CLANG_TIDY}")
+# FIXME: clang-tidy doesn't work together with Emscripten
+    if(CLANG_TIDY_EXE AND NOT EMSCRIPTEN)
+        message(STATUS "clang-tidy found: ${CLANG_TIDY_EXE}")
+        execute_process(
+            COMMAND ${CLANG_TIDY_EXE} --version
+            OUTPUT_VARIABLE CLANG_TIDY_VERSION
+        )
+        message(STATUS "clang-tidy version: ${CLANG_TIDY_VERSION}")
+        set(DO_CLANG_TIDY
+            "${CLANG_TIDY_EXE}"
+            "--header-filter=src/*"
+        )
+        set_target_properties(${PROJECT_NAME} PROPERTIES CXX_CLANG_TIDY "${DO_CLANG_TIDY}")
+    else()
+        message(STATUS "clang-tidy not found.")
+    endif()
 else()
-    message(STATUS "clang-tidy not found.")
+    unset(CLANG_TIDY_EXE CACHE)
+    message(STATUS "clang-tidy is disabled.")
 endif()
 
 # Add sources to build

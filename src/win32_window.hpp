@@ -83,7 +83,7 @@ public:
     void setVSyncEnabled(const bool vsyncEnabled);
     [[nodiscard]] bool keyPressed(const char key) const;
     // TODO: Could handle more mouse buttons, but right now that would be YAGNI
-    bool rightMouseButtonPressed() const;
+    [[nodiscard]] bool rightMouseButtonPressed() const;
     void setOnMouseMove(const MouseOffsetCallback& callback);
     void setCursorEnabled(const bool enabled);
     [[nodiscard]] std::pair<int, int> frameBufferSize() const;

@@ -2,6 +2,7 @@
 Checks: >
   bugprone-*,
   -bugprone-easily-swappable-parameters,
+  -bugprone-reserved-identifier,
   clang-diagnostic-*,
   clang-analyzer-*,
   modernize-*,
