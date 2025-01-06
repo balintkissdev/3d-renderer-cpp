@@ -1,8 +1,8 @@
-# Real-time C++ 3D renderer with OpenGL/WebGL
+# Real-time C++ 3D rendering engine with OpenGL/WebGL
 
 [![Build](https://github.com/balintkissdev/3d-renderer-cpp/actions/workflows/main.yml/badge.svg)](https://github.com/balintkissdev/3d-renderer-cpp/actions/workflows/main.yml)
 
-> A hardware-accelerated 3D renderer written in C++. Runs using OpenGL 4.6 or 3.3 as
+> A hardware-accelerated 3D rendering engine written in C++. Runs using OpenGL 4.6 or 3.3 as
 graphics API on desktop and WebGL2 in web browsers.
 
 [Click here for Rust version of this project](https://github.com/balintkissdev/3d-renderer-rust)
@@ -45,14 +45,13 @@ at home.
 
 The project showcases confident usage of the following technologies:
 
-- C++20
+- C++
 - 3D graphics programming with OpenGL 4.6, OpenGL 3.3, WebGL2 (based on OpenGL ES 3.0)
 - Native Windows application development using Win32 API for window management and OpenGL context creation
 - Advanced CMake practices (modern CMake targets, FetchContent, CPack)
 - Immediate mode overlay GUI using Dear ImGui (as opposed to retained mode GUI frameworks like Qt)
 - Building for WebAssembly using Emscripten
 - Clang Tooling (clang-format, clang-tidy)
-
 
 Future additions will include Direct3D, Vulkan rendering backends and additional post-processing effects.
 
