@@ -1,5 +1,5 @@
-#ifndef MODEL_HPP_
-#define MODEL_HPP_
+#ifndef GL_MODEL_HPP_
+#define GL_MODEL_HPP_
 
 #include "utils.hpp"
 
@@ -18,17 +18,17 @@
 ///
 /// Non-copyable, move-only. Mesh face vertices reside in GPU memory.
 /// Vertices are referred by indices to avoid storing duplicated vertices.
-class Model
+class GLModel
 {
 public:
     /// Factory method loading a model file and initializing buffers.
-    static std::optional<Model> create(const std::filesystem::path& filePath);
+    static std::optional<GLModel> create(const std::filesystem::path& filePath);
 
-    DISABLE_COPY(Model)
-    Model(Model&& other) noexcept;
-    Model& operator=(Model&& other) noexcept;
+    DISABLE_COPY(GLModel)
+    GLModel(GLModel&& other) noexcept;
+    GLModel& operator=(GLModel&& other) noexcept;
 
-    ~Model();
+    ~GLModel();
 
     void cleanup();
 
@@ -36,21 +36,7 @@ public:
     [[nodiscard]] const std::vector<GLuint>& indices() const;
 
 private:
-    /// Per-vertex data containing vertex attributes for each vertex.
-    ///
-    /// Texture UV coordinates are omitted because none of the bundled default
-    /// models have textures.
-    struct Vertex
-    {
-        glm::vec3 position;
-        glm::vec3 normal;
-    };
-
-    static bool loadModelFromFile(const std::filesystem::path& filePath,
-                                  std::vector<Vertex>& outVertices,
-                                  std::vector<GLuint>& outIndices);
-
-    Model();
+    GLModel();
 
     GLuint vertexArray_;
     std::vector<GLuint> indices_;
@@ -59,12 +45,12 @@ private:
                           /// vertex buffer
 };
 
-inline GLuint Model::vertexArray() const
+inline GLuint GLModel::vertexArray() const
 {
     return vertexArray_;
 }
 
-inline const std::vector<GLuint>& Model::indices() const
+inline const std::vector<GLuint>& GLModel::indices() const
 {
     return indices_;
 }

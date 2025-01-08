@@ -13,6 +13,7 @@ struct GLFWwindow;
 
 class Camera;
 class Scene;
+class Renderer;
 
 /// UI overlay on top of rendered scene to manipulate rendering properties.
 ///
@@ -28,12 +29,13 @@ public:
     Gui();
     DISABLE_COPY_AND_MOVE(Gui)
 
-    void init(Window::Raw raw
+    void init(Renderer& renderer
 #ifndef __EMSCRIPTEN__
               ,
-              const RenderingAPI renderingAPI
+              const RenderingAPI newRenderingAPI
 #endif
     );
+
     /// Setup UI widgets before submitting to draw call.
     void prepareDraw(
 #ifndef __EMSCRIPTEN__
@@ -42,8 +44,11 @@ public:
         const Camera& camera,
         DrawProperties& drawProps,
         Scene& scene);
-    void draw();
-    void cleanup();
+    void cleanup(
+#ifndef __EMSCRIPTEN__
+        const RenderingAPI previousRenderingAPI
+#endif
+    );
 
 #ifndef __EMSCRIPTEN__
     void disallowRenderingAPIOption(const RenderingAPI renderingAPI);
@@ -69,8 +74,12 @@ private:
 #ifndef __EMSCRIPTEN__
     /// Keeping track which rendering API should be selectable in the dropdown
     /// list. Opted for enum-indexed array instead of std::map.
-    std::array<bool, 2> supportedRenderingAPIs_;
+    std::array<bool, 3> supportedRenderingAPIs_;
 
+    // Maintain separate selected and currently used rendering API to avoid
+    // crash by calling prepareDraw() with new selectedRenderingAPI_ that is not
+    // even initialized yet.
+    RenderingAPI currentRenderingAPI_;
     RenderingAPI selectedRenderingAPI_;
     void rendererSection(const FrameRateInfo& frameRateInfo,
                          DrawProperties& drawProps);

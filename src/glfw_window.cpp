@@ -75,9 +75,8 @@ bool Window::init(const uint16_t width,
 
 #ifndef __EMSCRIPTEN__
     setVSyncEnabled(false);
-#endif
-
     DEBUG_ASSERT_GL_VERSION(requestedMajorGLVersion, requestedMinorGLVersion);
+#endif
 
     return true;
 }

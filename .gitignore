@@ -456,3 +456,5 @@ FodyWeavers.xsd
 !assets/meshes/*.obj
 build/
 .cache/
+CMakeSettings.json
+

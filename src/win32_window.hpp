@@ -3,7 +3,7 @@
 
 #include "drawproperties.hpp"
 #include "utils.hpp"
-#include "wgl_context.hpp"
+#include "gl/wgl_context.hpp"
 
 #include <Windows.h>
 #include <array>

@@ -37,7 +37,9 @@ bool Window::init(const uint16_t width,
     // Register window
     WNDCLASSEXW windowClass = {};
     windowClass.cbSize = sizeof(windowClass);
-    windowClass.style = CS_HREDRAW | CS_VREDRAW | CS_OWNDC;
+    windowClass.style = (renderingAPI == RenderingAPI::Direct3D12)
+                          ? CS_DBLCLKS
+                          : CS_HREDRAW | CS_VREDRAW | CS_OWNDC;
     windowClass.lpfnWndProc = Window::WndProc;
     // Returns handle to the current EXE, but be careful if code is running in
     // DLL instead.
@@ -51,7 +53,8 @@ bool Window::init(const uint16_t width,
         return false;
     }
 
-    if (!wglContext_.enableWglExtensions(hInstance, windowClass))
+    if (renderingAPI != RenderingAPI::Direct3D12
+        && !wglContext_.enableWglExtensions(hInstance, windowClass))
     {
         utils::showErrorMessage("unable enable WGL extensions for OpenGL");
         return false;
@@ -63,7 +66,8 @@ bool Window::init(const uint16_t width,
         return false;
     }
 
-    if (!wglContext_.create(hWnd_, renderingAPI))
+    if (renderingAPI != RenderingAPI::Direct3D12
+        && !wglContext_.create(hWnd_, renderingAPI))
     {
         utils::showErrorMessage("unable create OpenGL Rendering Context");
         return false;
@@ -128,6 +132,7 @@ bool Window::createWindow(HINSTANCE hInstance,
 void Window::cleanup()
 {
     wglContext_.cleanup(hWnd_);
+
     ::DestroyWindow(hWnd_);
     ::UnregisterClassW(APPLICATION_NAME, ::GetModuleHandle(nullptr));
 }

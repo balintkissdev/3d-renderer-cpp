@@ -1,5 +1,5 @@
-#ifndef SKYBOX_HPP_
-#define SKYBOX_HPP_
+#ifndef GL_SKYBOX_HPP_
+#define GL_SKYBOX_HPP_
 
 #include "utils.hpp"
 
@@ -23,18 +23,18 @@
 /// from which to sample the cube map texture.
 ///
 /// Non-copyable. Move-only. Texture and vertex data are stored in GPU memory.
-class Skybox
+class GLSkybox
 {
 public:
-    friend class SkyboxBuilder;
+    friend class GLSkyboxBuilder;
 
-    Skybox();  // HACK: Allowing as member variable in App without
-               // std::unique_ptr
-    DISABLE_COPY(Skybox)
-    Skybox(Skybox&& other) noexcept;
-    Skybox& operator=(Skybox&& other) noexcept;
+    GLSkybox();  // HACK: Allowing as member variable in App without
+                 // std::unique_ptr
+    DISABLE_COPY(GLSkybox)
+    GLSkybox(GLSkybox&& other) noexcept;
+    GLSkybox& operator=(GLSkybox&& other) noexcept;
 
-    ~Skybox();
+    ~GLSkybox();
 
     void cleanup();
 
@@ -48,30 +48,30 @@ private:
     GLuint indexBuffer_;
 };
 
-inline GLuint Skybox::textureID() const
+inline GLuint GLSkybox::textureID() const
 {
     return textureID_;
 }
 
-inline GLuint Skybox::vertexArray() const
+inline GLuint GLSkybox::vertexArray() const
 {
     return vertexArray_;
 }
 
 /// Builder pattern for skybox creation, avoiding mistakes from specifying
 /// skybox face texture parameters out of order.
-class SkyboxBuilder
+class GLSkyboxBuilder
 {
 public:
-    SkyboxBuilder& setRight(const std::filesystem::path& rightFacePath);
-    SkyboxBuilder& setLeft(const std::filesystem::path& leftFacePath);
-    SkyboxBuilder& setTop(const std::filesystem::path& topFacePath);
-    SkyboxBuilder& setBottom(const std::filesystem::path& bottomFacePath);
-    SkyboxBuilder& setFront(const std::filesystem::path& frontFacePath);
-    SkyboxBuilder& setBack(const std::filesystem::path& backFacePath);
+    GLSkyboxBuilder& setRight(const std::filesystem::path& rightFacePath);
+    GLSkyboxBuilder& setLeft(const std::filesystem::path& leftFacePath);
+    GLSkyboxBuilder& setTop(const std::filesystem::path& topFacePath);
+    GLSkyboxBuilder& setBottom(const std::filesystem::path& bottomFacePath);
+    GLSkyboxBuilder& setFront(const std::filesystem::path& frontFacePath);
+    GLSkyboxBuilder& setBack(const std::filesystem::path& backFacePath);
 
     /// Load texture faces and generate vertex and index buffers.
-    std::optional<Skybox> build();
+    std::optional<GLSkybox> build();
 
 private:
     std::filesystem::path rightFacePath_;

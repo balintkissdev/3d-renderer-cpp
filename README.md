@@ -1,14 +1,15 @@
-# Real-time C++ 3D rendering engine with OpenGL/WebGL
+# Real-time C++ 3D rendering engine with Direct3D 12/OpenGL
 
 [![Build](https://github.com/balintkissdev/3d-renderer-cpp/actions/workflows/main.yml/badge.svg)](https://github.com/balintkissdev/3d-renderer-cpp/actions/workflows/main.yml)
 
-> A hardware-accelerated 3D rendering engine written in C++. Runs using OpenGL 4.6 or 3.3 as
+> A hardware-accelerated 3D rendering engine written in C++. Runs using either Direct3D 12 or OpenGL as
 graphics API on desktop and WebGL2 in web browsers.
 
 [Click here for Rust version of this project](https://github.com/balintkissdev/3d-renderer-rust)
 
 <p align="center">
   <img src="doc/img/cpp_logo.svg" height="60"/>
+  <img src="doc/img/DirectX_12_Ultimate.png" height="60"/>
   <img src="doc/img/OpenGL_RGB_June16.svg" height="60"/>
   <img src="doc/img/WebGL_RGB_June16.svg" height="60"/>
   <img src="doc/img/web-assembly-logo.png" height="60"/>
@@ -38,15 +39,14 @@ https://github.com/user-attachments/assets/b756ea4b-a449-443c-bc5a-644702e004aa
 
 This project is a demonstration of my expertise to write cross-platform 3D
 graphical applications in C++ that run on both desktop (Windows, Linux) and on
-the web with WebAssembly.
+the web with WebAssembly, capable of choosing between different rendering API backends.
 I use this project as a sandbox to prototype graphics programming techniques
 and plan to use it as reference when doing native game engine development
 at home.
 
 The project showcases confident usage of the following technologies:
 
-- C++
-- 3D graphics programming with OpenGL 4.6, OpenGL 3.3, WebGL2 (based on OpenGL ES 3.0)
+- 3D graphics programming with Direct3D 12, OpenGL 4.6, WebGL2 (based on OpenGL ES 3.0)
 - Native Windows application development using Win32 API for window management and OpenGL context creation
 - Advanced CMake practices (modern CMake targets, FetchContent, CPack)
 - Immediate mode overlay GUI using Dear ImGui (as opposed to retained mode GUI frameworks like Qt)
@@ -75,9 +75,10 @@ Future additions will include Direct3D, Vulkan rendering backends and additional
 ## Requirements
 
 Desktop executable requires at least an OpenGL 3.3 compatible graphics adapter
-to run. The application attempts to target the highest OpenGL 4.6 version and
-chooses OpenGL 3.3 as fallback. Check if your hardware supports OpenGL and make
-sure to have the latest graphics driver installed to avoid any errors.
+to run. The application attempts to target the highest version of Direct3D or
+OpenGL and chooses OpenGL 3.3 as fallback. Check if your hardware supports
+OpenGL and make sure to have the latest graphics driver installed to avoid any
+errors.
 
 Web browser live demo requires support for WebGL2.
 

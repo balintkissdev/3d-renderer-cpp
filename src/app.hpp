@@ -4,12 +4,12 @@
 #include "camera.hpp"
 #include "drawproperties.hpp"
 #include "gui.hpp"
-#include "model.hpp"
 #include "renderer.hpp"
 #include "scene.hpp"
-#include "skybox.hpp"
-#include "window.hpp"
 #include "utils.hpp"
+#include "window.hpp"
+
+#include <memory>
 
 /// Encapsulation of renderer application lifecycle and logic update to avoid
 /// polluting main().
@@ -30,8 +30,6 @@ public:
     void cleanup();
 
 private:
-
-
 #ifdef __EMSCRIPTEN__
     static void emscriptenMainLoopCallback(void* arg);
 #endif
@@ -40,17 +38,15 @@ private:
                                     const float offsetY);
 
     Window window_;
-#ifndef __EMSCRIPTEN__
-    FrameRateInfo frameRateInfo_;
-    RenderingAPI currentRenderingAPI_;
-    bool vsyncEnabled_;
-#endif
-    Renderer renderer_;
+    std::unique_ptr<Renderer> renderer_;
     Gui gui_;
     Camera camera_;
     DrawProperties drawProps_;
-    Skybox skybox_;
-    std::vector<Model> models_;
+#ifndef __EMSCRIPTEN__
+    FrameRateInfo frameRateInfo_;
+    bool vsyncEnabled_;
+    RenderingAPI currentRenderingAPI_;
+#endif
     Scene scene_;
 
 #ifdef __EMSCRIPTEN__
@@ -60,13 +56,13 @@ private:
     /// When rendering backend is changed during runtime, restart renderer and
     /// reinitialize the systems of the application.
     ///
-    /// New OpenGL context requires destroying the existing window and creating
+    /// New context requires destroying the existing window and creating
     /// a new one.
-    bool reinit(const RenderingAPI newRenderingAPI);
+    bool reinit(const RenderingAPI previousRenderingAPI,
+                const RenderingAPI newRenderingAPI);
     bool initSystems(const RenderingAPI newRenderingAPI);
     bool createWindow(const RenderingAPI newRenderingAPI);
 #endif
-    bool loadAssets();
     void processInput();
     void update();
     void render();

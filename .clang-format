@@ -18,6 +18,7 @@ BraceWrapping:
   SplitEmptyFunction: false
 BreakBeforeBinaryOperators: All
 BreakConstructorInitializers: BeforeComma
+ColumnLimit: 80
 DerivePointerAlignment: false
 IncludeCategories:
     # Precompiled header

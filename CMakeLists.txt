@@ -18,6 +18,8 @@ set(PROJECT_VERSION_MINOR 2)
 set(PROJECT_VERSION_PATCH 1)
 set(PROJECT_VERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_PATCH})
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 option(WITH_GLFW "Use GLFW window implementation instead of native Win32 API (available only on Windows)" OFF)
 if(WIN32)
     if(WITH_GLFW)
@@ -119,8 +121,9 @@ target_compile_options(${PROJECT_NAME} PRIVATE
     $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-fno-exceptions>
     # Disable RTTI
     $<IF:$<CXX_COMPILER_ID:MSVC>,/GR-,-fno-rtti>
-    # Enable all warnings
-    $<IF:$<CXX_COMPILER_ID:MSVC>,/W4,-Wall -Wextra -Wpedantic>
+    # Enable warnings
+    # TODO: Only disable -Wlanguage-extension-token on clang running on Windows
+    $<IF:$<CXX_COMPILER_ID:MSVC>,/W4,-Wall -Wextra -Wpedantic -Wno-language-extension-token>
     # Warnings as errors if enabled
     $<$<BOOL:${BUILD_WERROR}>:$<IF:$<CXX_COMPILER_ID:MSVC>,/WX,-Werror>>
 )
@@ -198,6 +201,15 @@ if(WINDOW_PLATFORM_GLFW)
     target_link_libraries(${PROJECT_NAME}
         PRIVATE
             glfw
+    )
+endif()
+if(WIN32)
+    target_link_libraries(${PROJECT_NAME}
+        PRIVATE
+            d3d11
+            d3d12
+            dxgi
+            d3dcompiler
     )
 endif()
 if(NOT EMSCRIPTEN)

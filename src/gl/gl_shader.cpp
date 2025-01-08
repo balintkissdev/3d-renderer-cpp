@@ -1,4 +1,4 @@
-#include "shader.hpp"
+#include "gl_shader.hpp"
 
 #include "utils.hpp"
 
@@ -17,8 +17,9 @@
 
 namespace fs = std::filesystem;
 
-std::optional<Shader> Shader::createFromFile(const fs::path& vertexShaderPath,
-                                             const fs::path& fragmentShaderPath)
+std::optional<GLShader> GLShader::createFromFile(
+    const fs::path& vertexShaderPath,
+    const fs::path& fragmentShaderPath)
 {
     // Compile vertex shader
     const auto vertexShader = compile(vertexShaderPath, GL_VERTEX_SHADER);
@@ -49,15 +50,15 @@ std::optional<Shader> Shader::createFromFile(const fs::path& vertexShaderPath,
         return std::nullopt;
     }
 
-    return Shader{shaderProgram};
+    return GLShader{shaderProgram};
 }
 
-Shader::Shader()
+GLShader::GLShader()
     : shaderProgram_{0}
 {
 }
 
-Shader::Shader(const GLuint shaderProgram)
+GLShader::GLShader(const GLuint shaderProgram)
     : shaderProgram_{shaderProgram}
 {
     if (shaderProgram)
@@ -66,12 +67,12 @@ Shader::Shader(const GLuint shaderProgram)
     }
 }
 
-Shader::~Shader()
+GLShader::~GLShader()
 {
     cleanup();
 }
 
-Shader::Shader(Shader&& other) noexcept
+GLShader::GLShader(GLShader&& other) noexcept
     : shaderProgram_{std::exchange(other.shaderProgram_, 0)}
     , uniformCache_{std::move(other.uniformCache_)}
 #ifndef __EMSCRIPTEN__
@@ -80,7 +81,7 @@ Shader::Shader(Shader&& other) noexcept
 {
 }
 
-Shader& Shader::operator=(Shader&& other) noexcept
+GLShader& GLShader::operator=(GLShader&& other) noexcept
 {
     std::swap(shaderProgram_, other.shaderProgram_);
     uniformCache_ = std::move(other.uniformCache_);
@@ -90,12 +91,12 @@ Shader& Shader::operator=(Shader&& other) noexcept
     return *this;
 }
 
-void Shader::use() const
+void GLShader::use() const
 {
     glUseProgram(shaderProgram_);
 }
 
-void Shader::cleanup()
+void GLShader::cleanup()
 {
     if (shaderProgram_ != 0)
     {
@@ -105,49 +106,50 @@ void Shader::cleanup()
 }
 
 template <>
-void Shader::setUniform(const std::string& name, const int& v)
+void GLShader::setUniform(const std::string& name, const int& v)
 {
     ASSERT_UNIFORM(name);
     glUniform1i(uniformCache_.at(name), v);
 }
 
 template <>
-void Shader::setUniform(const std::string& name, const bool& v)
+void GLShader::setUniform(const std::string& name, const bool& v)
 {
     ASSERT_UNIFORM(name);
     glUniform1i(uniformCache_.at(name), v);
 }
 
 template <>
-void Shader::setUniform(const std::string& name, const std::array<float, 3>& v)
+void GLShader::setUniform(const std::string& name,
+                          const std::array<float, 3>& v)
 {
     ASSERT_UNIFORM(name);
     glUniform3fv(uniformCache_.at(name), 1, v.data());
 }
 
 template <>
-void Shader::setUniform(const std::string& name, const glm::vec3& v)
+void GLShader::setUniform(const std::string& name, const glm::vec3& v)
 {
     ASSERT_UNIFORM(name);
     glUniform3fv(uniformCache_.at(name), 1, glm::value_ptr(v));
 }
 
 template <>
-void Shader::setUniform(const std::string& name, const glm::mat3& v)
+void GLShader::setUniform(const std::string& name, const glm::mat3& v)
 {
     ASSERT_UNIFORM(name);
     glUniformMatrix3fv(uniformCache_.at(name), 1, GL_FALSE, glm::value_ptr(v));
 }
 
 template <>
-void Shader::setUniform(const std::string& name, const glm::mat4& v)
+void GLShader::setUniform(const std::string& name, const glm::mat4& v)
 {
     ASSERT_UNIFORM(name);
     glUniformMatrix4fv(uniformCache_.at(name), 1, GL_FALSE, glm::value_ptr(v));
 }
 
-std::optional<GLuint> Shader::compile(const fs::path& shaderPath,
-                                      const GLenum shaderTpye)
+std::optional<GLuint> GLShader::compile(const fs::path& shaderPath,
+                                        const GLenum shaderTpye)
 {
     const std::string shaderSrc = readFile(shaderPath);
     const GLchar* shaderGlSrc = shaderSrc.c_str();
@@ -159,7 +161,7 @@ std::optional<GLuint> Shader::compile(const fs::path& shaderPath,
              : std::nullopt;
 }
 
-std::string Shader::readFile(const fs::path& shaderPath)
+std::string GLShader::readFile(const fs::path& shaderPath)
 {
     std::ifstream file(shaderPath, std::ios::binary | std::ios::ate);
     std::streamsize fileSize(file.tellg());
@@ -169,7 +171,8 @@ std::string Shader::readFile(const fs::path& shaderPath)
     return shaderSrc;
 }
 
-bool Shader::checkCompileErrors(const GLuint shaderID, const GLenum shaderType)
+bool GLShader::checkCompileErrors(const GLuint shaderID,
+                                  const GLenum shaderType)
 {
     int success;
     glGetShaderiv(shaderID, GL_COMPILE_STATUS, &success);
@@ -190,7 +193,7 @@ bool Shader::checkCompileErrors(const GLuint shaderID, const GLenum shaderType)
     return success;
 }
 
-bool Shader::checkLinkerErrors(const GLuint shaderID)
+bool GLShader::checkLinkerErrors(const GLuint shaderID)
 {
     int success;
     glGetProgramiv(shaderID, GL_LINK_STATUS, &success);
@@ -209,8 +212,8 @@ bool Shader::checkLinkerErrors(const GLuint shaderID)
 }
 
 #ifndef __EMSCRIPTEN__
-void Shader::updateSubroutines(const GLenum shaderType,
-                               const std::vector<std::string>& names)
+void GLShader::updateSubroutines(const GLenum shaderType,
+                                 const std::vector<std::string>& names)
 {
     // TODO: Clearing subroutine indices on every frame update is slow
     subroutineIndices_.clear();
@@ -225,7 +228,7 @@ void Shader::updateSubroutines(const GLenum shaderType,
 }
 #endif
 
-void Shader::cacheActiveUniforms()
+void GLShader::cacheActiveUniforms()
 {
     GLint uniformCount = 0;
     glGetProgramiv(shaderProgram_, GL_ACTIVE_UNIFORMS, &uniformCount);
@@ -258,7 +261,7 @@ void Shader::cacheActiveUniforms()
 }
 
 #ifndef NDEBUG
-void Shader::assertUniform(const std::string& name)
+void GLShader::assertUniform(const std::string& name)
 {
     if (!uniformCache_.contains(name))
     {

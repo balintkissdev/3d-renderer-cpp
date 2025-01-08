@@ -1,5 +1,5 @@
-#ifndef SHADER_HPP_
-#define SHADER_HPP_
+#ifndef GL_SHADER_HPP_
+#define GL_SHADER_HPP_
 
 #include "utils.hpp"
 
@@ -20,25 +20,25 @@
 #include <unordered_map>
 #include <vector>
 
-/// Wrapper around shader with helper operations
-/// for loading, compiling, binding, uniform value update.
+/// Wrapper around compiled OpenGL shader program written in GLSL, with helper
+/// operations for loading, compiling, binding, uniform value update.
 ///
 /// Non-copyable, move-only. Because this already contains a handle to the
 /// compiled shader binary in GPU memory, there's no point in separate heap
 /// allocation if not necessary.
-class Shader
+class GLShader
 {
 public:
     /// Factory method compiling vertex and fragment shaders from GLSL files.
-    static std::optional<Shader> createFromFile(
+    static std::optional<GLShader> createFromFile(
         const std::filesystem::path& vertexShaderPath,
         const std::filesystem::path& fragmentShaderPath);
 
-    DISABLE_COPY(Shader)
-    Shader(Shader&& other) noexcept;
-    Shader& operator=(Shader&& other) noexcept;
+    DISABLE_COPY(GLShader)
+    GLShader(GLShader&& other) noexcept;
+    GLShader& operator=(GLShader&& other) noexcept;
 
-    ~Shader();
+    ~GLShader();
 
     /// Bind shader to graphics pipeline to use for draw calls.
     void use() const;
@@ -68,8 +68,8 @@ private:
                                    const GLenum shaderType);
     static bool checkLinkerErrors(const GLuint shaderID);
 
-    Shader();
-    explicit Shader(const GLuint shaderProgram);
+    GLShader();
+    explicit GLShader(const GLuint shaderProgram);
 
     GLuint shaderProgram_;
     std::unordered_map<std::string, GLint> uniformCache_;
@@ -97,16 +97,17 @@ private:
 };
 
 template <>
-void Shader::setUniform(const std::string& name, const int& v);
+void GLShader::setUniform(const std::string& name, const int& v);
 template <>
-void Shader::setUniform(const std::string& name, const bool& v);
+void GLShader::setUniform(const std::string& name, const bool& v);
 template <>
-void Shader::setUniform(const std::string& name, const std::array<float, 3>& v);
+void GLShader::setUniform(const std::string& name,
+                          const std::array<float, 3>& v);
 template <>
-void Shader::setUniform(const std::string& name, const glm::vec3& v);
+void GLShader::setUniform(const std::string& name, const glm::vec3& v);
 template <>
-void Shader::setUniform(const std::string& name, const glm::mat3& v);
+void GLShader::setUniform(const std::string& name, const glm::mat3& v);
 template <>
-void Shader::setUniform(const std::string& name, const glm::mat4& v);
+void GLShader::setUniform(const std::string& name, const glm::mat4& v);
 
 #endif

@@ -10,6 +10,8 @@ enum class RenderingAPI : uint8_t
 {
     OpenGL46,
     OpenGL33,
+    Direct3D12,
+    Count,
 };
 
 /// Information for displaying framerate measurements

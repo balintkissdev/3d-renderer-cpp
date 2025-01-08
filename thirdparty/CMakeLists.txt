@@ -22,17 +22,21 @@ if(WINDOW_PLATFORM_WIN32)
 else()
     set(IMGUI_WINDOW_IMPL imgui_impl_glfw)
 endif()
-add_library(imgui
-    STATIC
-        "${THIRDPARTY_DIR}/imgui/imgui.cpp"
-        "${THIRDPARTY_DIR}/imgui/imgui_draw.cpp"
-        "${THIRDPARTY_DIR}/imgui/imgui_tables.cpp"
-        "${THIRDPARTY_DIR}/imgui/imgui_widgets.cpp"
-        "${THIRDPARTY_DIR}/imgui/backends/${IMGUI_WINDOW_IMPL}.cpp"
-        "${THIRDPARTY_DIR}/imgui/backends/imgui_impl_opengl3.cpp"
+set(IMGUI_DIR "${THIRDPARTY_DIR}/imgui/")
+set(IMGUI_SOURCES
+    "${IMGUI_DIR}imgui.cpp"
+    "${IMGUI_DIR}imgui_draw.cpp"
+    "${IMGUI_DIR}imgui_tables.cpp"
+    "${IMGUI_DIR}imgui_widgets.cpp"
+    "${IMGUI_DIR}backends/${IMGUI_WINDOW_IMPL}.cpp"
+    "${IMGUI_DIR}backends/imgui_impl_opengl3.cpp"
 )
+if(WINDOW_PLATFORM_WIN32)
+    list(APPEND IMGUI_SOURCES "${IMGUI_DIR}backends/imgui_impl_dx12.cpp")
+endif()
+add_library(imgui STATIC ${IMGUI_SOURCES})
 
-set(IMGUI_INCLUDE_DIRS "${THIRDPARTY_DIR}/imgui")
+set(IMGUI_INCLUDE_DIRS "${IMGUI_DIR}")
 if(NOT EMSCRIPTEN)
     list(APPEND IMGUI_INCLUDE_DIRS "${glfw_SOURCE_DIR}/include")
 endif()

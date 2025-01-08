@@ -1,6 +1,11 @@
 #include "app.hpp"
 
+#include "gl/gl_renderer.hpp"
 #include "utils.hpp"
+
+#if defined(WINDOW_PLATFORM_WIN32)
+#include "direct3d12/d3d12_renderer.hpp"
+#endif
 
 #ifndef __EMSCRIPTEN__
 #include <chrono>
@@ -43,20 +48,19 @@ constexpr float FIXED_UPDATE_TIMESTEP = 1.0F / MAX_LOGIC_UPDATE_PER_SECOND;
 
 App::App()
     : window_{*this}
-#ifndef __EMSCRIPTEN__
-    , frameRateInfo_{.framesPerSecond = 0.0F, .msPerFrame = 0.0F}
-    , currentRenderingAPI_(RenderingAPI::OpenGL46)
-    , vsyncEnabled_{false}
-#endif
-    , renderer_(window_, drawProps_, camera_)
+    , renderer_{nullptr}
     // Positioning and rotation accidentally imitates a right-handed 3D
     // coordinate system with positive Z going farther from model, but this
     // setting is done because of initial orientation of the loaded Stanford
     // Bunny mesh.
-    , camera_({1.7F, 1.3F, 4.0F}, {240.0F, -15.0F})
-    , drawProps_(DrawProperties::createDefault())
+    , camera_{{1.7F, 1.3F, 4.0F}, {240.0F, -15.0F}}
+    , drawProps_{DrawProperties::createDefault()}
+#ifndef __EMSCRIPTEN__
+    , frameRateInfo_{.framesPerSecond = 0.0F, .msPerFrame = 0.0F}
+    , vsyncEnabled_{false}
+    , currentRenderingAPI_{drawProps_.renderingAPI}
+#endif
 {
-    models_.reserve(3);
     // TODO: Rename to "Stanford Bunny" once scene node label renaming is
     // functional
     scene_.add({"Model", Scene::Bunny});
@@ -70,40 +74,38 @@ bool App::init()
 #else
         initSystems(currentRenderingAPI_)
 #endif
-        && loadAssets();
+            ;
 }
 
 #ifndef __EMSCRIPTEN__
-bool App::reinit(const RenderingAPI newRenderingAPI)
+bool App::reinit(const RenderingAPI previousRenderingAPI,
+                 const RenderingAPI newRenderingAPI)
 {
     window_.hide();
     // Important to release resources using current graphics context before
     // destroying it
-    gui_.cleanup();
-    skybox_.cleanup();
-    models_.clear();
-    renderer_.cleanup();
+    gui_.cleanup(previousRenderingAPI);
+    renderer_.reset();
     // TODO: Avoid full re-init, see TODO in win32_window.hpp
     window_.cleanup();
 
     // TODO: Reloading assets on rendering backend change would normally not be
     // necessary, but in this current architecture the GPU buffer and texture
     // resources are bound to the assets themselves.
-    return initSystems(newRenderingAPI) && loadAssets();
+    return initSystems(newRenderingAPI);
 }
 
 bool App::initSystems(const RenderingAPI newRenderingAPI)
 {
-    const bool desiredGLVersionSuccess = createWindow(newRenderingAPI);
-    if (desiredGLVersionSuccess)
+    if (createWindow(newRenderingAPI))
     {
         currentRenderingAPI_ = newRenderingAPI;
     }
     else
     {
         utils::showErrorMessage(
-            "OpenGL 4.6 is not supported on your system. Falling back to more "
-            "compatible OpenGL 3.3.");
+            "Selected graphics API is not supported on your system. Falling "
+            "back to more compatible OpenGL 3.3.");
         gui_.disallowRenderingAPIOption(newRenderingAPI);
         currentRenderingAPI_ = RenderingAPI::OpenGL33;
         drawProps_.renderingAPI = currentRenderingAPI_;
@@ -117,14 +119,35 @@ bool App::initSystems(const RenderingAPI newRenderingAPI)
         }
     }
 
-    gui_.init(window_.raw(), currentRenderingAPI_);
+    switch (currentRenderingAPI_)
+    {
+        case RenderingAPI::OpenGL33:
+        case RenderingAPI::OpenGL46:
+            renderer_ = std::make_unique<GLRenderer>(window_,
+                                                     drawProps_,
+                                                     camera_,
+                                                     currentRenderingAPI_);
+            break;
+#if defined(WINDOW_PLATFORM_WIN32)
+        case RenderingAPI::Direct3D12:
+            renderer_
+                = std::make_unique<D3D12Renderer>(window_, drawProps_, camera_);
+            break;
+#endif
+        default:
+            assert(
+                "illegal operation during init: non-existent "
+                "graphics backend");
+    }
 
-    if (!renderer_.init(currentRenderingAPI_))
+    if (!renderer_->init())
     {
         utils::showErrorMessage("unable to initialize renderer. ",
                                 GPU_REQUIREMENTS_MESSAGE);
         return false;
     }
+
+    gui_.init(*renderer_, currentRenderingAPI_);
 
     return true;
 }
@@ -138,14 +161,15 @@ bool App::initSystems()
         return false;
     }
 
-    gui_.init(window_.raw());
-
-    if (!renderer_.init())
+    renderer_ = std::make_unique<GLRenderer>(window_, drawProps_, camera_);
+    if (!renderer_->init())
     {
         utils::showErrorMessage("unable to initialize renderer. ",
                                 GPU_REQUIREMENTS_MESSAGE);
         return false;
     }
+
+    gui_.init(*renderer_);
 
     return true;
 }
@@ -174,43 +198,13 @@ bool App::createWindow(const RenderingAPI renderingAPI)
     return true;
 }
 
-bool App::loadAssets()
-{
-    std::optional<Skybox> skybox = SkyboxBuilder()
-                                       .setRight("assets/skybox/right.jpg")
-                                       .setLeft("assets/skybox/left.jpg")
-                                       .setTop("assets/skybox/top.jpg")
-                                       .setBottom("assets/skybox/bottom.jpg")
-                                       .setFront("assets/skybox/front.jpg")
-                                       .setBack("assets/skybox/back.jpg")
-                                       .build();
-    if (!skybox)
-    {
-        utils::showErrorMessage("unable to create skybox for application");
-        return false;
-    }
-    skybox_ = std::move(skybox.value());
-
-    const std::array<fs::path, 3> modelPaths{"assets/meshes/cube.obj",
-                                             "assets/meshes/teapot.obj",
-                                             "assets/meshes/bunny.obj"};
-    for (const auto& path : modelPaths)
-    {
-        std::optional<Model> model = Model::create(path);
-        if (!model)
-        {
-            utils::showErrorMessage("unable to create model from path ", path);
-            return false;
-        }
-        models_.emplace_back(std::move(model.value()));
-    }
-
-    return true;
-}
-
 void App::cleanup()
 {
-    gui_.cleanup();
+    gui_.cleanup(
+#ifndef __EMSCRIPTEN__
+        currentRenderingAPI_
+#endif
+    );
 }
 
 void App::run()
@@ -257,7 +251,7 @@ void App::run()
         {
             // Switch rendering context and reinitialize if changed from GUI
             if ((currentRenderingAPI_ != drawProps_.renderingAPI)
-                && !reinit(drawProps_.renderingAPI))
+                && !reinit(currentRenderingAPI_, drawProps_.renderingAPI))
             {
                 // Exit on rendering context switch error
                 return;
@@ -354,7 +348,7 @@ void App::update()
     if (vsyncEnabled_ != drawProps_.vsyncEnabled)
     {
         vsyncEnabled_ = drawProps_.vsyncEnabled;
-        window_.setVSyncEnabled(vsyncEnabled_);
+        renderer_->setVSyncEnabled(vsyncEnabled_);
     }
 #endif
 }
@@ -368,9 +362,6 @@ void App::render()
         camera_,
         drawProps_,
         scene_);
-    renderer_.draw(scene_, models_, skybox_);
-    gui_.draw();
-
-    window_.swapBuffers();
+    renderer_->draw(scene_);
 }
 

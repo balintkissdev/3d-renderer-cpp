@@ -2,21 +2,38 @@
 
 #include "camera.hpp"
 #include "drawproperties.hpp"
+#include "renderer.hpp"
 #include "scene.hpp"
 
 #include "glm/gtc/type_ptr.hpp"
 #include "imgui_impl_opengl3.h"
 
+#include <cassert>
+
 #if defined(WINDOW_PLATFORM_WIN32)
+#include "imgui_impl_dx12.h"
 #include "imgui_impl_win32.h"
-#define ImGui_Impl_InitForOpenGL ImGui_ImplWin32_InitForOpenGL
+
 #define ImGui_Impl_NewFrame ImGui_ImplWin32_NewFrame
 #define ImGui_Impl_Shutdown ImGui_ImplWin32_Shutdown
+
+namespace
+{
+constexpr bool DIRECT3D12_SUPPORTED = true;
+}
+
 #elif defined(WINDOW_PLATFORM_GLFW)
 #include "imgui_impl_glfw.h"
-#define ImGui_Impl_InitForOpenGL(x) ImGui_ImplGlfw_InitForOpenGL(x, true)
+
 #define ImGui_Impl_NewFrame ImGui_ImplGlfw_NewFrame
 #define ImGui_Impl_Shutdown ImGui_ImplGlfw_Shutdown
+
+#ifndef __EMSCRIPTEN__
+namespace
+{
+constexpr bool DIRECT3D12_SUPPORTED = false;
+}
+#endif
 #endif
 
 namespace
@@ -24,35 +41,30 @@ namespace
 const std::array SELECTABLE_MODELS{"Cube", "Utah Teapot", "Stanford Bunny"};
 }
 
+// TODO: This preprocessor soup is getting ludicrous
 Gui::Gui()
     : selectedSceneItem_{-1}
 #ifndef __EMSCRIPTEN__
-    , supportedRenderingAPIs_{true, true}
+    , supportedRenderingAPIs_{true, true, DIRECT3D12_SUPPORTED}
 #endif
 {
 }
 
-void Gui::init(Window::Raw raw
+void Gui::init(Renderer& renderer
 #ifndef __EMSCRIPTEN__
                ,
-               const RenderingAPI renderingAPI
+               const RenderingAPI newRenderingAPI
 #endif
 )
 {
+#ifndef __EMSCRIPTEN__
+    currentRenderingAPI_ = newRenderingAPI;
+    selectedRenderingAPI_ = newRenderingAPI;
+#endif
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGui::StyleColorsDark();
-    ImGui_Impl_InitForOpenGL(raw);
-#ifdef __EMSCRIPTEN__
-    const char* glslVersion = "#version 300 es";
-    ImGui_ImplGlfw_InstallEmscriptenCanvasResizeCallback("#canvas");
-#else
-    const char* glslVersion = renderingAPI == RenderingAPI::OpenGL46
-                                ? "#version 460 core"
-                                : "#version 330 core";
-    selectedRenderingAPI_ = renderingAPI;
-#endif
-    ImGui_ImplOpenGL3_Init(glslVersion);
+    renderer.initImGuiBackend();
 
     // Disable ImGUI overriding GLFW cursor appearance for right-click mouselook
     ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_NoMouseCursorChange;
@@ -73,7 +85,27 @@ void Gui::prepareDraw(
     DrawProperties& drawProps,
     Scene& scene)
 {
+#ifndef __EMSCRIPTEN__
+    // HACK
+    switch (currentRenderingAPI_)
+    {
+        case RenderingAPI::OpenGL33:
+        case RenderingAPI::OpenGL46:
+            ImGui_ImplOpenGL3_NewFrame();
+            break;
+#if defined(WINDOW_PLATFORM_WIN32)
+        case RenderingAPI::Direct3D12:
+            ImGui_ImplDX12_NewFrame();
+            break;
+#endif
+        default:
+            assert(
+                "illegal operation during ImGui NewFrame(): non-existent "
+                "graphics backend");
+    }
+#else
     ImGui_ImplOpenGL3_NewFrame();
+#endif
     ImGui_Impl_NewFrame();
     ImGui::NewFrame();
 
@@ -93,14 +125,33 @@ void Gui::prepareDraw(
     ImGui::Render();
 }
 
-void Gui::draw()
+void Gui::cleanup(
+#ifndef __EMSCRIPTEN__
+    const RenderingAPI previousRenderingAPI
+#endif
+)
 {
-    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-}
-
-void Gui::cleanup()
-{
+#ifndef __EMSCRIPTEN__
+    // HACK
+    switch (previousRenderingAPI)
+    {
+        case RenderingAPI::OpenGL33:
+        case RenderingAPI::OpenGL46:
+            ImGui_ImplOpenGL3_Shutdown();
+            break;
+#if defined(WINDOW_PLATFORM_WIN32)
+        case RenderingAPI::Direct3D12:
+            ImGui_ImplDX12_Shutdown();
+            break;
+#endif
+        default:
+            assert(
+                "illegal operation during ImGui shutdown: non-existent "
+                "graphics backend");
+    }
+#else
     ImGui_ImplOpenGL3_Shutdown();
+#endif
     ImGui_Impl_Shutdown();
     ImGui::DestroyContext();
 }
@@ -165,14 +216,16 @@ void Gui::rendererSection(const FrameRateInfo& frameRateInfo,
         ImGui::Text("%.2F FPS, %.6F ms/frame",
                     frameRateInfo.framesPerSecond,
                     frameRateInfo.msPerFrame);
-        static constexpr std::array SELECTABLE_APIS{"OpenGL 4.6", "OpenGL 3.3"};
-        // Suppress clang-tidy out of enum bounds warning
-        static constexpr size_t SELECTABLE_APIS_COUNT
-            = static_cast<size_t>(RenderingAPI::OpenGL33) + 1;
+        constexpr std::array selectableAPIs{
+            "OpenGL 4.6",
+            "OpenGL 3.3",
+            "Direct3D 12",
+        };
         auto renderingAPI = static_cast<size_t>(selectedRenderingAPI_);
-        if (ImGui::BeginCombo("##Rendering API", SELECTABLE_APIS[renderingAPI]))
+        if (ImGui::BeginCombo("##Rendering API", selectableAPIs[renderingAPI]))
         {
-            for (size_t i = 0; i < SELECTABLE_APIS_COUNT; ++i)
+            for (size_t i = 0; i < static_cast<size_t>(RenderingAPI::Count);
+                 ++i)
             {
                 // Display unsupported APIs as unselectable
                 if (!supportedRenderingAPIs_[i])
@@ -180,14 +233,14 @@ void Gui::rendererSection(const FrameRateInfo& frameRateInfo,
                     ImGui::PushStyleColor(
                         ImGuiCol_Text,
                         ImGui::GetStyle().Colors[ImGuiCol_TextDisabled]);
-                    ImGui::Text("%s (Unsupported)", SELECTABLE_APIS[i]);
+                    ImGui::Text("%s (Unsupported)", selectableAPIs[i]);
                     ImGui::PopStyleColor();
                     continue;
                 }
 
                 // Handle apply changes on selection
                 const bool selected = (renderingAPI == i);
-                if (ImGui::Selectable(SELECTABLE_APIS[i], selected))
+                if (ImGui::Selectable(selectableAPIs[i], selected))
                 {
                     renderingAPI = i;
                     selectedRenderingAPI_
@@ -203,7 +256,16 @@ void Gui::rendererSection(const FrameRateInfo& frameRateInfo,
             ImGui::EndCombo();
         }
         ImGui::Checkbox("Vertical sync", &drawProps.vsyncEnabled);
-        ImGui::Checkbox("Wireframe mode", &drawProps.wireframeModeEnabled);
+        // TODO: Wireframe fill mode requires creation of a separate PSO on
+        // D3D12
+        const bool direct3DEnabled
+            = currentRenderingAPI_ == RenderingAPI::Direct3D12;
+        ImGui::BeginDisabled(direct3DEnabled);
+        bool tmpDisabled = false;
+        ImGui::Checkbox(
+            "Wireframe mode",
+            direct3DEnabled ? &tmpDisabled : &drawProps.wireframeModeEnabled);
+        ImGui::EndDisabled();
     }
 }
 
@@ -375,7 +437,20 @@ void Gui::sceneNodeSection(DrawProperties& drawProps, Scene& scene) const
         && ImGui::CollapsingHeader("Skybox/Background",
                                    ImGuiTreeNodeFlags_DefaultOpen))
     {
+#ifndef __EMSCRIPTEN__
+        // TODO: Add skybox support on D3D12
+        const bool direct3DEnabled
+            = currentRenderingAPI_ == RenderingAPI::Direct3D12;
+        ImGui::BeginDisabled(direct3DEnabled);
+        bool tmpDisabled = false;
+        ImGui::Checkbox(
+            "Enable skybox",
+            direct3DEnabled ? &tmpDisabled : &drawProps.skyboxEnabled);
+        ImGui::EndDisabled();
+#else
+
         ImGui::Checkbox("Enable skybox", &drawProps.skyboxEnabled);
+#endif
         ImGui::Text("Background clear color");
         ImGui::ColorEdit3("##Background clear color",
                           drawProps.backgroundColor.data());

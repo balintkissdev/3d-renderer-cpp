@@ -2,61 +2,38 @@
 #define RENDERER_HPP_
 
 #include "drawproperties.hpp"
-#include "shader.hpp"
 #include "utils.hpp"
 
-#include "glm/mat4x4.hpp"
-
-#include <vector>
-
 class Camera;
-class Skybox;
-class Model;
 class Scene;
 class Window;
-struct DrawProperties;
-struct GLFWwindow;
 
-/// Separation of graphics API-dependent rendering mechanisms.
+/// Abstract base to be implemented by different rendering backends to enable
+/// runtime switching between them, acting as interface API contract for other
+/// components.
+///
+/// Current window, global drawing properties and camera behavior is shared.
+/// For renderable entities (model meshes, shaders, skyboxes), it is best to
+/// keep virtual inheritance hierarchy to a minimum.
 class Renderer
 {
 public:
-    Renderer(const Window& window,
+    Renderer(Window& window,
              const DrawProperties& drawProps,
              const Camera& camera);
+    virtual ~Renderer();
     DISABLE_COPY_AND_MOVE(Renderer)
 
-    /// Create required shaders and set OpenGL capabilities.
-    bool init(
-#ifndef __EMSCRIPTEN__
-        const RenderingAPI renderingAPI
-#endif
-    );
-    void cleanup();
-    void draw(const Scene& scene,
-              const std::vector<Model>& models,
-              const Skybox& skybox);
+    virtual bool init() = 0;
+    virtual void initImGuiBackend() = 0;
+    virtual void cleanup() = 0;
+    virtual void draw(const Scene& scene) = 0;
+    virtual void setVSyncEnabled(const bool vsyncEnabled) = 0;
 
-    // Screen update and buffer swap is responsibility of window
-
-private:
-    enum class ShaderInstance : uint8_t
-    {
-        ModelShader,
-        SkyboxShader,
-    };
-
-    const Window& window_;
-#ifndef __EMSCRIPTEN__
-    RenderingAPI renderingAPI_;
-#endif
-    glm::mat4 view_;
-    glm::mat4 projection_;
-    std::vector<Shader> shaders_;
+protected:
+    Window& window_;
     const DrawProperties& drawProps_;
     const Camera& camera_;
-
-    void drawModels(const Scene& scene, const std::vector<Model>& models);
-    void drawSkybox(const Skybox& skybox);
 };
+
 #endif

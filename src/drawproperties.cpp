@@ -1,6 +1,17 @@
 #include "drawproperties.hpp"
 
-#include <cstdlib>
+#ifndef __EMSCRIPTEN__
+namespace
+{
+constexpr RenderingAPI DEFAULT_RENDERING_API =
+#if defined(WINDOW_PLATFORM_WIN32)
+    RenderingAPI::Direct3D12
+#else
+    RenderingAPI::OpenGL46
+#endif
+    ;
+}  // namespace
+#endif
 
 DrawProperties DrawProperties::createDefault()
 {
@@ -9,7 +20,7 @@ DrawProperties DrawProperties::createDefault()
         .lightDirection{-0.5F, -1.0F, 0.0F},
         .fieldOfView = 60.0F,
 #ifndef __EMSCRIPTEN__
-        .renderingAPI = RenderingAPI::OpenGL46,
+        .renderingAPI = DEFAULT_RENDERING_API,
         .vsyncEnabled = false,
 #endif
         .skyboxEnabled = true,

@@ -89,7 +89,7 @@ glm::mat4 Camera::calculateViewMatrix() const
 
     cachedPosition_ = position_;
     cachedDirection_ = direction_;
-    cachedView_ = glm::lookAt(position_, position_ + direction_, UP_VECTOR);
+    cachedView_ = glm::lookAtRH(position_, position_ + direction_, UP_VECTOR);
     return cachedView_;
 }
 

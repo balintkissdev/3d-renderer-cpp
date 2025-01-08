@@ -1,4 +1,4 @@
-#include "skybox.hpp"
+#include "gl_skybox.hpp"
 
 #include "utils.hpp"
 
@@ -13,7 +13,7 @@
 
 namespace fs = std::filesystem;
 
-Skybox::Skybox()
+GLSkybox::GLSkybox()
     : textureID_{0}
     , vertexArray_{0}
     , vertexBuffer_{0}
@@ -21,7 +21,7 @@ Skybox::Skybox()
 {
 }
 
-Skybox::Skybox(Skybox&& other) noexcept
+GLSkybox::GLSkybox(GLSkybox&& other) noexcept
     : textureID_{std::exchange(other.textureID_, 0)}
     , vertexArray_{std::exchange(other.vertexArray_, 0)}
     , vertexBuffer_{std::exchange(other.vertexBuffer_, 0)}
@@ -29,7 +29,7 @@ Skybox::Skybox(Skybox&& other) noexcept
 {
 }
 
-Skybox& Skybox::operator=(Skybox&& other) noexcept
+GLSkybox& GLSkybox::operator=(GLSkybox&& other) noexcept
 {
     std::swap(textureID_, other.textureID_);
     std::swap(vertexArray_, other.vertexArray_);
@@ -38,12 +38,12 @@ Skybox& Skybox::operator=(Skybox&& other) noexcept
     return *this;
 }
 
-Skybox::~Skybox()
+GLSkybox::~GLSkybox()
 {
     cleanup();
 }
 
-void Skybox::cleanup()
+void GLSkybox::cleanup()
 {
     // Existing 0s are silently ignored
     glDeleteTextures(1, &textureID_);
@@ -56,45 +56,45 @@ void Skybox::cleanup()
     indexBuffer_ = 0;
 }
 
-SkyboxBuilder& SkyboxBuilder::setRight(const fs::path& rightFacePath)
+GLSkyboxBuilder& GLSkyboxBuilder::setRight(const fs::path& rightFacePath)
 {
     rightFacePath_ = rightFacePath;
     return *this;
 }
 
-SkyboxBuilder& SkyboxBuilder::setLeft(const fs::path& leftFacePath)
+GLSkyboxBuilder& GLSkyboxBuilder::setLeft(const fs::path& leftFacePath)
 {
     leftFacePath_ = leftFacePath;
     return *this;
 }
 
-SkyboxBuilder& SkyboxBuilder::setTop(const fs::path& topFacePath)
+GLSkyboxBuilder& GLSkyboxBuilder::setTop(const fs::path& topFacePath)
 {
     topFacePath_ = topFacePath;
     return *this;
 }
 
-SkyboxBuilder& SkyboxBuilder::setBottom(const fs::path& bottomFacePath)
+GLSkyboxBuilder& GLSkyboxBuilder::setBottom(const fs::path& bottomFacePath)
 {
     bottomFacePath_ = bottomFacePath;
     return *this;
 }
 
-SkyboxBuilder& SkyboxBuilder::setFront(const fs::path& frontFacePath)
+GLSkyboxBuilder& GLSkyboxBuilder::setFront(const fs::path& frontFacePath)
 {
     frontFacePath_ = frontFacePath;
     return *this;
 }
 
-SkyboxBuilder& SkyboxBuilder::setBack(const fs::path& backFacePath)
+GLSkyboxBuilder& GLSkyboxBuilder::setBack(const fs::path& backFacePath)
 {
     backFacePath_ = backFacePath;
     return *this;
 }
 
-std::optional<Skybox> SkyboxBuilder::build()
+std::optional<GLSkybox> GLSkyboxBuilder::build()
 {
-    Skybox skybox;
+    GLSkybox skybox;
     // Create texture
     glGenTextures(1, &skybox.textureID_);
     glBindTexture(GL_TEXTURE_CUBE_MAP, skybox.textureID_);
