@@ -1,18 +1,14 @@
-#include "pch.hpp"
+#include "win32_window.hpp"
 
 #include "app.hpp"
 #include "utils.hpp"
-#include "win32_window.hpp"
 
 #include "glad/gl.h"
 #include "glad/wgl.h"
 #include "imgui_impl_win32.h"
 
-#include <Windowsx.h>
+#include <Libloaderapi.h>
 #include <cassert>
-#include <libloaderapi.h>
-#include <winbase.h>
-#include <winuser.h>
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd,
                                                              UINT msg,
@@ -21,14 +17,14 @@ extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd,
 
 const wchar_t* Window::APPLICATION_NAME = L"3DRenderer";
 
-HMODULE Window::s_openGLDLL = 0;
+HMODULE Window::s_openGLDLL = nullptr;
 
 Window::Window(App& app)
     : app_{app}
     , shouldQuit_{false}
-    , hWnd_{0}
-    , deviceContext_{0}
-    , renderingContext_{0}
+    , hWnd_{nullptr}
+    , deviceContext_{nullptr}
+    , renderingContext_{nullptr}
     , keys_{false}
     , rightMouseButton_{false}
     , cursorVisible_{true}
@@ -229,7 +225,7 @@ bool Window::createGLContext(const RenderingAPI renderingAPI)
     // sRGB pixel formats and floating-point framebuffers.
 
     // clang-format off
-    const int pixelAttribs[] = {
+    const std::array pixelAttribs = {
         WGL_DRAW_TO_WINDOW_ARB, GL_TRUE,
         WGL_SUPPORT_OPENGL_ARB, GL_TRUE,
         WGL_DOUBLE_BUFFER_ARB,  GL_TRUE,
@@ -244,12 +240,12 @@ bool Window::createGLContext(const RenderingAPI renderingAPI)
     int pixelFormat;
     UINT foundFormatCount;
     bool ok = wglChoosePixelFormatARB(deviceContext_,
-                                      pixelAttribs,
+                                      pixelAttribs.data(),
                                       nullptr,
                                       1U,
                                       &pixelFormat,
                                       &foundFormatCount);
-    if (ok == false || foundFormatCount == 0)
+    if (!ok || foundFormatCount == 0)
     {
         return false;
     }
@@ -269,7 +265,7 @@ bool Window::createGLContext(const RenderingAPI renderingAPI)
     const int requestedMinorGLVersion
         = (renderingAPI == RenderingAPI::OpenGL46) ? 6 : 3;
     // clang-format off
-    int contextAttribs[] = {
+    const std::array contextAttribs = {
         WGL_CONTEXT_MAJOR_VERSION_ARB, requestedMajorGLVersion,
         WGL_CONTEXT_MINOR_VERSION_ARB, requestedMinorGLVersion,
         WGL_CONTEXT_PROFILE_MASK_ARB,  WGL_CONTEXT_CORE_PROFILE_BIT_ARB,
@@ -277,8 +273,9 @@ bool Window::createGLContext(const RenderingAPI renderingAPI)
     };
     // clang-format on
 
-    renderingContext_
-        = wglCreateContextAttribsARB(deviceContext_, 0, contextAttribs);
+    renderingContext_ = wglCreateContextAttribsARB(deviceContext_,
+                                                   nullptr,
+                                                   contextAttribs.data());
     if (!renderingContext_)
     {
         return false;
@@ -326,6 +323,7 @@ void* Window::GLFuncLoader(const char* name)
     if (glFunc == nullptr || (glFunc == reinterpret_cast<void*>(1))
         || (glFunc == reinterpret_cast<void*>(2))
         || (glFunc == reinterpret_cast<void*>(3))
+        // NOLINTNEXTLINE(performance-no-int-to-ptr)
         || (glFunc == reinterpret_cast<void*>(-1)))
     {
         glFunc = reinterpret_cast<void*>(::GetProcAddress(s_openGLDLL, name));
@@ -406,6 +404,7 @@ LRESULT CALLBACK Window::WndProc(HWND hWnd,
     }
 
     auto* impl
+        // NOLINTNEXTLINE(performance-no-int-to-ptr)
         = reinterpret_cast<Window*>(::GetWindowLongPtr(hWnd, GWLP_USERDATA));
     switch (msg)
     {
@@ -426,13 +425,14 @@ LRESULT CALLBACK Window::WndProc(HWND hWnd,
             assert(impl->onMouseMove_);
 
             UINT dwSize = sizeof(RAWINPUT);
-            BYTE lpb[sizeof(RAWINPUT)];
+            std::array<BYTE, sizeof(RAWINPUT)> lpb;
+            // NOLINTNEXTLINE(performance-no-int-to-ptr)
             ::GetRawInputData(reinterpret_cast<HRAWINPUT>(lParam),
                               RID_INPUT,
-                              lpb,
+                              lpb.data(),
                               &dwSize,
                               sizeof(RAWINPUTHEADER));
-            RAWINPUT* raw = reinterpret_cast<RAWINPUT*>(lpb);
+            auto* raw = reinterpret_cast<RAWINPUT*>(lpb.data());
             if (raw->header.dwType == RIM_TYPEMOUSE)
             {
                 const auto xOffset = static_cast<float>(raw->data.mouse.lLastX);
@@ -463,6 +463,8 @@ LRESULT CALLBACK Window::WndProc(HWND hWnd,
             }
         }
         break;
+        default:
+            break;
     }
     return ::DefWindowProcW(hWnd, msg, wParam, lParam);
 }

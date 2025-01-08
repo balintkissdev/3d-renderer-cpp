@@ -22,26 +22,27 @@ option(WITH_GLFW "Use GLFW window implementation instead of native Win32 API (av
 if(WIN32)
     if(WITH_GLFW)
         set(WINDOW_PLATFORM_GLFW TRUE)
-        add_definitions(-DWINDOW_PLATFORM_GLFW)
+        set(WINDOW_PLATFORM_DEF "WINDOW_PLATFORM_GLFW")
         message(STATUS "Using GLFW window implementation on Windows")
     else()
         set(WINDOW_PLATFORM_WIN32 TRUE)
-        add_definitions(-DWINDOW_PLATFORM_WIN32)
+        set(WINDOW_PLATFORM_DEF "WINDOW_PLATFORM_WIN32")
         message(STATUS "Using native Win32 API window implementation")
     endif()
 else()
     set(WINDOW_PLATFORM_GLFW TRUE)
-    add_definitions(-DWINDOW_PLATFORM_GLFW)
+    set(WINDOW_PLATFORM_DEF "WINDOW_PLATFORM_GLFW")
     message(STATUS "Using GLFW window implementation (required for non-Windows)")
 endif()
 
 option(WEBBUILD_CI "Specify if an Emscripten build is running in CI" OFF)
 
-# Global flags for not just app but dependencies built by this project too
-if(MSVC)
-    # Build without MSVCRT.dll
-    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
-endif()
+# Globally build without need to link to Visual C++ Runtime DLLs (needs Visual
+# C++ Redistributable installed on user's system, use "dumpbin /dependents" in MSVC Developer
+# Command Prompt to verify required DLLs to ship) not for just app but
+# dependencies built by this project too.
+set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>" CACHE STRING "" FORCE)
+# set(MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>" CACHE STRING "" FORCE)
 
 # Download and build dependencies without requiring the user to manually search
 # the internet to download and copy libraries (Windows) or pollute the user's
@@ -102,6 +103,7 @@ add_executable(${PROJECT_NAME} "")
 set_target_properties(${PROJECT_NAME} PROPERTIES
     CXX_STANDARD 20
     CXX_STANDARD_REQUIRED YES
+    WIN32_EXECUTABLE $<BOOL:${WIN32}>
 )
 # Treating compiler warnings as errors is turned off by default but can be
 # enabled with `-DBUILD_WERROR=ON` during the CMake configuration. This is
@@ -111,30 +113,21 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
 # building without modifying the `CMakeLists.txt` file. Warnings as errors are
 # enabled for automated CI builds.
 option(BUILD_WERROR "Treat compiler warnings as errors")
-if(BUILD_WERROR)
-    target_compile_options(
-        ${PROJECT_NAME} PRIVATE
-        "$<IF:$<CXX_COMPILER_ID:MSVC>,/WX,-Werror>"
-    )
-endif()
-if(MSVC)
-    target_compile_options(${PROJECT_NAME} PRIVATE
-        # TODO: Find a way to disable exceptions on MSVC without breaking build
-        /GR-                  # Disable RTTI
-        /W4                   # Warning level 4
-    )
-    set_target_properties(${PROJECT_NAME} PROPERTIES
-        LINK_FLAGS /SUBSYSTEM:WINDOWS
-    )
-else()
-    target_compile_options(${PROJECT_NAME} PRIVATE
-        -fno-exceptions        # Disable exceptions
-        -fno-rtti              # Disable RTTI
-        -Wall                  # Enable all warnings
-        -Wextra                # Enable extra warnings
-        -Wpedantic             # Enable pedantic warnings
-    )
-endif()
+target_compile_options(${PROJECT_NAME} PRIVATE
+    # Disable exceptions
+    # TODO: Find a way to disable exceptions on MSVC without breaking build
+    $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-fno-exceptions>
+    # Disable RTTI
+    $<IF:$<CXX_COMPILER_ID:MSVC>,/GR-,-fno-rtti>
+    # Enable all warnings
+    $<IF:$<CXX_COMPILER_ID:MSVC>,/W4,-Wall -Wextra -Wpedantic>
+    # Warnings as errors if enabled
+    $<$<BOOL:${BUILD_WERROR}>:$<IF:$<CXX_COMPILER_ID:MSVC>,/WX,-Werror>>
+)
+target_compile_definitions(${PROJECT_NAME} PRIVATE
+    $<$<PLATFORM_ID:Windows>:WIN32_LEAN_AND_MEAN>
+    "${WINDOW_PLATFORM_DEF}"
+)
 
 option(ENABLE_CLANG_TIDY "Enable static code analysis with clang-tidy during build")
 if(ENABLE_CLANG_TIDY)
@@ -152,7 +145,8 @@ if(ENABLE_CLANG_TIDY)
         message(STATUS "clang-tidy version: ${CLANG_TIDY_VERSION}")
         set(DO_CLANG_TIDY
             "${CLANG_TIDY_EXE}"
-            "--header-filter=src/*"
+            "-p=${CMAKE_BINARY_DIR}"
+            "--header-filter=^${CMAKE_SOURCE_DIR}/src/.*"
         )
         set_target_properties(${PROJECT_NAME} PROPERTIES CXX_CLANG_TIDY "${DO_CLANG_TIDY}")
     else()

@@ -3,6 +3,8 @@
 
 #include "drawproperties.hpp"
 
+#include <Windows.h>
+
 #include <array>
 #include <functional>
 #include <string>

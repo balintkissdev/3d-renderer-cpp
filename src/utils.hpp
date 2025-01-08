@@ -1,12 +1,12 @@
 #ifndef UTILS_HPP_
 #define UTILS_HPP_
 
-#include "pch.hpp"
-
 #include <iostream>
 #include <sstream>
 
-#ifdef __EMSCRIPTEN__
+#ifdef _WIN32
+#include <Windows.h>
+#elif __EMSCRIPTEN__
 #include <emscripten.h>
 #endif
 

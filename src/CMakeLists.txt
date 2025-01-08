@@ -1,10 +1,3 @@
-if(MSVC)
-    target_precompile_headers(${PROJECT_NAME}
-        PRIVATE
-        "${CMAKE_CURRENT_SOURCE_DIR}/pch.hpp"
-    )
-endif()
-
 if(WINDOW_PLATFORM_WIN32)
     set(WINDOW_PLATFORM_PREFIX win32)
 else()
@@ -37,3 +30,4 @@ target_sources(${PROJECT_NAME}
         "${WINDOW_PLATFORM_PREFIX}_window.hpp"
         window.hpp
 )
+

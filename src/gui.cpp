@@ -1,8 +1,7 @@
-#include "pch.hpp"
+#include "gui.hpp"
 
 #include "camera.hpp"
 #include "drawproperties.hpp"
-#include "gui.hpp"
 #include "scene.hpp"
 
 #include "glm/gtc/type_ptr.hpp"
@@ -166,14 +165,14 @@ void Gui::rendererSection(const FrameRateInfo& frameRateInfo,
         ImGui::Text("%.2F FPS, %.6F ms/frame",
                     frameRateInfo.framesPerSecond,
                     frameRateInfo.msPerFrame);
-        static constexpr std::array selectableAPIs{"OpenGL 4.6", "OpenGL 3.3"};
+        static constexpr std::array SELECTABLE_APIS{"OpenGL 4.6", "OpenGL 3.3"};
         // Suppress clang-tidy out of enum bounds warning
-        static constexpr size_t selectableAPIsCount
+        static constexpr size_t SELECTABLE_APIS_COUNT
             = static_cast<size_t>(RenderingAPI::OpenGL33) + 1;
         auto renderingAPI = static_cast<size_t>(selectedRenderingAPI_);
-        if (ImGui::BeginCombo("##Rendering API", selectableAPIs[renderingAPI]))
+        if (ImGui::BeginCombo("##Rendering API", SELECTABLE_APIS[renderingAPI]))
         {
-            for (size_t i = 0; i < selectableAPIsCount; ++i)
+            for (size_t i = 0; i < SELECTABLE_APIS_COUNT; ++i)
             {
                 // Display unsupported APIs as unselectable
                 if (!supportedRenderingAPIs_[i])
@@ -181,14 +180,14 @@ void Gui::rendererSection(const FrameRateInfo& frameRateInfo,
                     ImGui::PushStyleColor(
                         ImGuiCol_Text,
                         ImGui::GetStyle().Colors[ImGuiCol_TextDisabled]);
-                    ImGui::Text("%s (Unsupported)", selectableAPIs[i]);
+                    ImGui::Text("%s (Unsupported)", SELECTABLE_APIS[i]);
                     ImGui::PopStyleColor();
                     continue;
                 }
 
                 // Handle apply changes on selection
                 const bool selected = (renderingAPI == i);
-                if (ImGui::Selectable(selectableAPIs[i], selected))
+                if (ImGui::Selectable(SELECTABLE_APIS[i], selected))
                 {
                     renderingAPI = i;
                     selectedRenderingAPI_
