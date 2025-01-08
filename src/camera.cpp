@@ -11,9 +11,15 @@ namespace
 // TODO: Make them configurable
 constexpr float MOVEMENT_SPEED = 2.5F;
 constexpr float LOOK_SENSITIVITY = 0.1F;
-}  // namespace
 
-const glm::vec3 Camera::UP_VECTOR{0.0F, 1.0F, 0.0F};
+constexpr float ROTATION_Y_LIMIT = 89.0F;
+
+/// Normalized mapping of positive Y axis in world coordinate space, always
+/// pointing upwards in the viewport (x:0, y:1, z:0). Required to determine
+/// the Right vector (mapping of positive X axis, done by GLM) when creating
+/// the view matrix.
+constexpr glm::vec3 UP_VECTOR{0.0F, 1.0F, 0.0F};
+}  // namespace
 
 Camera::Camera(const glm::vec3& position, const glm::vec2& rotation)
     : position_(position)
@@ -21,6 +27,7 @@ Camera::Camera(const glm::vec3& position, const glm::vec2& rotation)
 {
     // Avoid camera jump on first mouselook.
     updateDirection();
+    static_cast<void>(calculateViewMatrix());
 }
 
 void Camera::moveForward(const float deltaTime)
@@ -64,22 +71,38 @@ void Camera::look(const float xOffset, const float yOffset)
     utils::wrap(rotation_.x, 0.0F, 359.9F);
     rotation_.y += yOffset * LOOK_SENSITIVITY;
     // Avoid user to do a backflip
-    rotation_.y = std::clamp(rotation_.y, -89.0F, 89.0F);
+    rotation_.y = glm::clamp(rotation_.y, -ROTATION_Y_LIMIT, ROTATION_Y_LIMIT);
 
-    updateDirection();
+    if (rotation_ != cachedRotation_)
+    {
+        updateDirection();
+        cachedRotation_ = rotation_;
+    }
 }
 
 glm::mat4 Camera::calculateViewMatrix() const
 {
-    return glm::lookAt(position_, position_ + direction_, UP_VECTOR);
+    if (position_ == cachedPosition_ && direction_ == cachedDirection_)
+    {
+        return cachedView_;
+    }
+
+    cachedPosition_ = position_;
+    cachedDirection_ = direction_;
+    cachedView_ = glm::lookAt(position_, position_ + direction_, UP_VECTOR);
+    return cachedView_;
 }
 
 void Camera::updateDirection()
 {
-    direction_.x = std::cos(glm::radians(rotation_.x))
-                 * std::cos(glm::radians(rotation_.y));
-    direction_.y = std::sin(glm::radians(rotation_.y));
-    direction_.z = std::sin(glm::radians(rotation_.x))
-                 * std::cos(glm::radians(rotation_.y));
+    const float rotationXRadian = glm::radians(rotation_.x);
+    const float rotationXSin = glm::sin(rotationXRadian);
+    const float rotationXCos = glm::cos(rotationXRadian);
+    const float rotationYRadian = glm::radians(rotation_.y);
+    const float rotationYSin = glm::sin(rotationYRadian);
+    const float rotationYCos = glm::cos(rotationYRadian);
+    direction_.x = rotationXCos * rotationYCos;
+    direction_.y = rotationYSin;
+    direction_.z = rotationXSin * rotationYCos;
     direction_ = glm::normalize(direction_);
 }
