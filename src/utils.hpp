@@ -17,6 +17,16 @@ namespace utils
 #define STR_CONCAT(a, b) _STR_CONCAT(a, b)
 #define _STR_CONCAT(a, b) a##b
 
+#define DISABLE_COPY(T)   \
+    T(const T&) = delete; \
+    T& operator=(const T&) = delete;
+#define DISABLE_MOVE(T) \
+    T(T&&) = delete;  \
+    T& operator=(T&&) = delete;
+#define DISABLE_COPY_AND_MOVE(T) \
+    DISABLE_COPY(T)              \
+    DISABLE_MOVE(T)
+
 /// Log a formatted error message accepting any number of arguments to console.
 /// An error message box is displayed on Windows and WebAssembly builds.
 template <typename... Args>

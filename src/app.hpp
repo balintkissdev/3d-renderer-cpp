@@ -9,6 +9,7 @@
 #include "scene.hpp"
 #include "skybox.hpp"
 #include "window.hpp"
+#include "utils.hpp"
 
 /// Encapsulation of renderer application lifecycle and logic update to avoid
 /// polluting main().
@@ -16,10 +17,7 @@ class App
 {
 public:
     App();
-    App(const App&) = delete;
-    App& operator=(const App&) = delete;
-    App(App&&) = delete;
-    App& operator=(App&&) = delete;
+    DISABLE_COPY_AND_MOVE(App)
 
     /// Controlled initialization for explicit error handling.
     bool init();

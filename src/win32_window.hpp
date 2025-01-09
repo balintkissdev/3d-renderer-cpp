@@ -2,9 +2,9 @@
 #define WIN32_WINDOW_HPP_
 
 #include "drawproperties.hpp"
+#include "utils.hpp"
 
 #include <Windows.h>
-
 #include <array>
 #include <functional>
 #include <string>
@@ -70,6 +70,7 @@ public:
 
     Window(App& app);
     ~Window();
+    DISABLE_COPY_AND_MOVE(Window)
 
     bool init(const uint16_t width,
               const uint16_t height,

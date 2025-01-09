@@ -3,6 +3,7 @@
 
 #include "drawproperties.hpp"
 #include "shader.hpp"
+#include "utils.hpp"
 
 #include "glm/mat4x4.hpp"
 
@@ -20,11 +21,10 @@ struct GLFWwindow;
 class Renderer
 {
 public:
-    Renderer(const Window& window, const DrawProperties& drawProps, const Camera& camera);
-    Renderer(const Renderer&) = delete;
-    Renderer& operator=(const Renderer&) = delete;
-    Renderer(Renderer&&) noexcept = delete;
-    Renderer& operator=(Renderer&&) noexcept = delete;
+    Renderer(const Window& window,
+             const DrawProperties& drawProps,
+             const Camera& camera);
+    DISABLE_COPY_AND_MOVE(Renderer)
 
     /// Create required shaders and set OpenGL capabilities.
     bool init(

@@ -2,6 +2,7 @@
 #define GLFW_WINDOW_HPP_
 
 #include "drawproperties.hpp"
+#include "utils.hpp"
 
 #include "glm/vec2.hpp"
 
@@ -44,6 +45,7 @@ public:
 
     Window(App& app);
     ~Window();
+    DISABLE_COPY_AND_MOVE(Window)
 
     bool init(const uint16_t width,
               const uint16_t height,

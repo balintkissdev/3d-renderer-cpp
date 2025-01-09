@@ -2,6 +2,7 @@
 #define GUI_HPP_
 
 #include "drawproperties.hpp"
+#include "utils.hpp"
 #include "window.hpp"
 
 #include "imgui.h"
@@ -25,10 +26,7 @@ class Gui
 {
 public:
     Gui();
-    Gui(const Gui&) = delete;
-    Gui& operator=(const Gui&) = delete;
-    Gui(Gui&&) = delete;
-    Gui& operator=(Gui&&) = delete;
+    DISABLE_COPY_AND_MOVE(Gui)
 
     void init(Window::Raw raw
 #ifndef __EMSCRIPTEN__

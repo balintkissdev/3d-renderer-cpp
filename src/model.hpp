@@ -1,6 +1,8 @@
 #ifndef MODEL_HPP_
 #define MODEL_HPP_
 
+#include "utils.hpp"
+
 #ifdef __EMSCRIPTEN__
 #include "glad/gles2.h"
 #else
@@ -22,8 +24,7 @@ public:
     /// Factory method loading a model file and initializing buffers.
     static std::optional<Model> create(const std::filesystem::path& filePath);
 
-    Model(const Model& other) = delete;
-    Model& operator=(const Model& other) = delete;
+    DISABLE_COPY(Model)
     Model(Model&& other) noexcept;
     Model& operator=(Model&& other) noexcept;
 

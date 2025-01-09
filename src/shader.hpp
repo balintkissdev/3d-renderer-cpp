@@ -1,6 +1,8 @@
 #ifndef SHADER_HPP_
 #define SHADER_HPP_
 
+#include "utils.hpp"
+
 #ifdef __EMSCRIPTEN__
 #include "glad/gles2.h"
 #else
@@ -32,8 +34,7 @@ public:
         const std::filesystem::path& vertexShaderPath,
         const std::filesystem::path& fragmentShaderPath);
 
-    Shader(const Shader& other) = delete;
-    Shader& operator=(const Shader& other) = delete;
+    DISABLE_COPY(Shader)
     Shader(Shader&& other) noexcept;
     Shader& operator=(Shader&& other) noexcept;
 

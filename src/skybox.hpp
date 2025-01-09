@@ -1,6 +1,8 @@
 #ifndef SKYBOX_HPP_
 #define SKYBOX_HPP_
 
+#include "utils.hpp"
+
 #ifdef __EMSCRIPTEN__
 #include "glad/gles2.h"
 #else
@@ -28,8 +30,7 @@ public:
 
     Skybox();  // HACK: Allowing as member variable in App without
                // std::unique_ptr
-    Skybox(const Skybox&) = delete;
-    Skybox& operator=(const Skybox&) = delete;
+    DISABLE_COPY(Skybox)
     Skybox(Skybox&& other) noexcept;
     Skybox& operator=(Skybox&& other) noexcept;
 
