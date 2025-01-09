@@ -31,7 +31,7 @@
 /// The Windows SDK provides gl.h header with functions for OpenGL 1.1 only and
 /// modern OpenGL function declarations are usually imported to code by manually
 /// downloading wglext.h headers from the Khronos OpenGL Registry. This is not
-/// needed thanks to usage of GLAD extension loader in this project.
+/// needed thanks to usage of GLAD-generated headers bundled in this project.
 ///
 /// In order to access modern OpenGL versions in application code, the WGL
 /// extensions have to be loaded first, select the pixel format suitable for the
