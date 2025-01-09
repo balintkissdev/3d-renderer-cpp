@@ -3,6 +3,7 @@
 
 #include "drawproperties.hpp"
 #include "utils.hpp"
+#include "wgl_context.hpp"
 
 #include <Windows.h>
 #include <array>
@@ -26,24 +27,6 @@ constexpr char W = 'W';
 
 /// Win32 API implementation of application window for Windows platform. Primary
 /// motivation to be separate from GLFW is the introduction of Direct3D API.
-///
-/// Windows out of the box only supports OpenGL 1.1 API with opengl32.dll
-/// without installed graphics drivers and later versions are implemented by GPU
-/// manufacturer drivers. This is due to Microsoft leaving the OpenGL
-/// architecture board back in 2003
-/// (https://www.theregister.com/2003/03/03/microsoft_quits_opengl_board/) in
-/// order to pool all their resources into DirectX instead. The Windows SDK also
-/// only provides gl.h for OpenGL 1.1 only and modern OpenGL functions are
-/// usually imported by manually downloading wglext.h headers from the Khronos
-/// OpenGL Registry. This is not needed thanks to usage of GLAD in this project.
-///
-/// In order to access modern OpenGL versions, the WGL extensions have to be
-/// loaded, set the pixel format of the OpenGL surface and then create the
-/// proper OpenGL Rendering Context.
-///
-/// The provisions of OpenGL 1.1 in Windows 98, ME and 2000 are done using a
-/// software version of OpenGL 1.1. On Windows XP/Vista/7/10, a Direct3D wrapper
-/// supporting OpenGL 1.1 does this.
 ///
 /// TODO: Reuse the same Device Context for switching between OpenGL versions.
 ///
@@ -95,7 +78,6 @@ public:
 
 private:
     static const wchar_t* APPLICATION_NAME;
-    static HMODULE s_openGLDLL;
 
     // ANSI code pages on Windows can be different between computers, leading to
     // string corruption when only relying on Win32 API calls that only accept
@@ -110,7 +92,6 @@ private:
     // anyway (only platform difference is that wchar_t is 4 bytes on Linux,
     // but that platform is irrelevant here).
     static std::wstring ToWideString(std::string_view str);
-    static void* GLFuncLoader(const char* name);
     static LRESULT CALLBACK WndProc(HWND hWnd,
                                     UINT uMsg,
                                     WPARAM wParam,
@@ -119,8 +100,7 @@ private:
     App& app_;
     bool shouldQuit_;
     HWND hWnd_;
-    HDC deviceContext_;
-    HGLRC renderingContext_;
+    WGLContext wglContext_;
     // Key map is filled from the Window Procedure from WM_KEYDOWN and WM_KEYUP
     // messages. WM_KEYDOWN messages in Win32 event queue only come in
     // periodically when being held and are not continous, hence the separate
@@ -137,18 +117,16 @@ private:
 
     MouseOffsetCallback onMouseMove_;
 
-    bool enableWglExtensions(HINSTANCE hInstance);
     bool createWindow(HINSTANCE hInstance,
                       const uint16_t width,
                       const uint16_t height,
                       std::string_view title);
-    bool createGLContext(const RenderingAPI renderingAPI);
     void setCursorVisible(const bool visible);
 };
 
 inline void Window::swapBuffers()
 {
-    ::SwapBuffers(deviceContext_);
+    wglContext_.swapBuffers();
 }
 
 inline void Window::hide()
@@ -164,6 +142,11 @@ inline bool Window::shouldQuit() const
 inline void Window::setShouldQuit(const bool quit)
 {
     shouldQuit_ = quit;
+}
+
+inline void Window::setVSyncEnabled(const bool vsyncEnabled)
+{
+    wglContext_.setVSyncEnabled(vsyncEnabled);
 }
 
 inline bool Window::keyPressed(const char key) const

@@ -1,6 +1,7 @@
 #ifndef UTILS_HPP_
 #define UTILS_HPP_
 
+#include <cassert>
 #include <iostream>
 #include <sstream>
 
@@ -21,7 +22,7 @@ namespace utils
     T(const T&) = delete; \
     T& operator=(const T&) = delete;
 #define DISABLE_MOVE(T) \
-    T(T&&) = delete;  \
+    T(T&&) = delete;    \
     T& operator=(T&&) = delete;
 #define DISABLE_COPY_AND_MOVE(T) \
     DISABLE_COPY(T)              \

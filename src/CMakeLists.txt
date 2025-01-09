@@ -1,5 +1,10 @@
 if(WINDOW_PLATFORM_WIN32)
     set(WINDOW_PLATFORM_PREFIX win32)
+    target_sources(${PROJECT_NAME}
+        PRIVATE
+            wgl_context.cpp
+            wgl_context.hpp
+    )
 else()
     set(WINDOW_PLATFORM_PREFIX glfw)
 endif()
