@@ -76,7 +76,7 @@ FetchContent_MakeAvailable(glm)
 FetchContent_Declare(
     assimp
     GIT_REPOSITORY https://github.com/assimp/assimp.git
-    GIT_TAG v5.4.1
+    GIT_TAG v6.0.2
 )
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)  # TODO: Bugprone because not scoped to Assimp build
 set(ASSIMP_BUILD_ALL_IMPORTERS_BY_DEFAULT OFF CACHE BOOL "" FORCE)
