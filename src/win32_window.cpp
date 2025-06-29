@@ -6,6 +6,7 @@
 #include "imgui_impl_win32.h"
 
 #include <cassert>
+#include <hidusage.h>
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd,
                                                              UINT msg,
@@ -73,13 +74,28 @@ bool Window::init(const uint16_t width,
         return false;
     }
 
-    // Register mouse as raw input device
-    RAWINPUTDEVICE rid = {};
-    rid.usUsagePage = 0x01;  // HID_USAGE_PAGE_GENERIC
-    rid.usUsage = 0x02;  // HID_USAGE_GENERIC_MOUSE
-    rid.dwFlags = RIDEV_INPUTSINK;
-    rid.hwndTarget = hWnd_;
-    ::RegisterRawInputDevices(&rid, 1, sizeof(rid));  // TODO: Error handling
+    // Register mouse and keyboard as raw input devices
+    std::array<RAWINPUTDEVICE, 2> rawDevices = {};
+    rawDevices[0].usUsagePage = HID_USAGE_PAGE_GENERIC;
+    rawDevices[0].usUsage = HID_USAGE_GENERIC_MOUSE;
+    rawDevices[0].dwFlags = RIDEV_INPUTSINK;
+    rawDevices[0].hwndTarget = hWnd_;
+
+    rawDevices[1].usUsagePage = HID_USAGE_PAGE_GENERIC;
+    rawDevices[1].usUsage = HID_USAGE_GENERIC_KEYBOARD;
+    // As much as I would like to use RIDEV_NOLEGACY, ImGui does not handle
+    // WM_INPUT messages yet, leading to not accepting key presses in text
+    // boxes.
+    rawDevices[1].hwndTarget = hWnd_;
+
+    if (!::RegisterRawInputDevices(rawDevices.data(),
+                                   rawDevices.size(),
+                                   sizeof(rawDevices[0])))
+    {
+        utils::showErrorMessage(
+            "Raw Input API is not supported on this system");
+        return false;
+    }
 
     ::ShowWindow(hWnd_, SW_SHOW);
     ::UpdateWindow(hWnd_);
@@ -195,7 +211,7 @@ LRESULT CALLBACK Window::WndProc(HWND hWnd,
         return 0;
     }
 
-    auto* impl
+    auto* windowImpl
         // NOLINTNEXTLINE(performance-no-int-to-ptr)
         = reinterpret_cast<Window*>(::GetWindowLongPtr(hWnd, GWLP_USERDATA));
     switch (msg)
@@ -214,51 +230,94 @@ LRESULT CALLBACK Window::WndProc(HWND hWnd,
         }
         case WM_INPUT:
         {
-            assert(impl->onMouseMove_);
-
-            UINT dwSize = sizeof(RAWINPUT);
-            std::array<BYTE, sizeof(RAWINPUT)> lpb;
-            // NOLINTNEXTLINE(performance-no-int-to-ptr)
-            ::GetRawInputData(reinterpret_cast<HRAWINPUT>(lParam),
-                              RID_INPUT,
-                              lpb.data(),
-                              &dwSize,
-                              sizeof(RAWINPUTHEADER));
-            auto* raw = reinterpret_cast<RAWINPUT*>(lpb.data());
-            if (raw->header.dwType == RIM_TYPEMOUSE)
-            {
-                const auto xOffset = static_cast<float>(raw->data.mouse.lLastX);
-                // Inverted Y because it's bottom to up in OpenGL
-                const auto yOffset
-                    = static_cast<float>(-raw->data.mouse.lLastY);
-                impl->onMouseMove_(impl->app_, xOffset, yOffset);
-            }
+            windowImpl->handleRawInput(lParam);
             break;
         }
-        case WM_KEYDOWN:
-            impl->keys_[wParam] = true;
-            break;
-        case WM_KEYUP:
-            impl->keys_[wParam] = false;
-            break;
-        case WM_RBUTTONDOWN:
-            impl->rightMouseButton_ = true;
-            break;
-        case WM_RBUTTONUP:
-            impl->rightMouseButton_ = false;
-            break;
         case WM_SYSCOMMAND:
-        {  // Disable ALT application menu
+        {
+            // Disable ALT application menu
             if ((wParam & 0xfff0) == SC_KEYMENU)
             {
                 return 0;
             }
+            // You can still ALT+TAB, don't worry
         }
         break;
         default:
             break;
     }
     return ::DefWindowProcW(hWnd, msg, wParam, lParam);
+}
+
+void Window::handleRawInput(const LPARAM lParam)
+{
+    assert(onMouseMove_);
+
+    UINT dwSize = sizeof(RAWINPUT);
+    std::array<BYTE, sizeof(RAWINPUT)> lpb;
+    // NOLINTNEXTLINE(performance-no-int-to-ptr)
+    ::GetRawInputData(reinterpret_cast<HRAWINPUT>(lParam),
+                      RID_INPUT,
+                      lpb.data(),
+                      &dwSize,
+                      sizeof(RAWINPUTHEADER));
+    auto* raw = reinterpret_cast<RAWINPUT*>(lpb.data());
+    const RAWINPUTHEADER& header = raw->header;
+
+    // Mouse
+    if (header.dwType == RIM_TYPEMOUSE)
+    {
+        const RAWMOUSE& mouse = raw->data.mouse;
+
+        // https://learn.microsoft.com/en-us/windows/win32/api/winuser/ns-winuser-rawmouse
+        const USHORT mouseButtonFlags = mouse.usButtonFlags;
+        if (mouseButtonFlags & RI_MOUSE_RIGHT_BUTTON_DOWN)
+        {
+            rightMouseButton_ = true;
+        }
+        if (mouseButtonFlags & RI_MOUSE_RIGHT_BUTTON_UP)
+        {
+            rightMouseButton_ = false;
+        }
+
+        const auto xOffset = static_cast<float>(mouse.lLastX);
+        // Inverted Y because it's bottom to up in OpenGL
+        // TODO: And what about Direct3D?
+        const auto yOffset = static_cast<float>(-mouse.lLastY);
+        if (xOffset != 0 || yOffset != 0)
+        {
+            // TODO: MOUSE_MOVE_RELATIVE (0) flag is
+            // active and positions are still recorded. Callback is being
+            // processed even when window is not focused. No behavior change due
+            // to no right mouse click, but can be source of potential bugs.
+            onMouseMove_(app_, xOffset, yOffset);
+        }
+
+        // If you want to implement mouse wheel, make sure to check for unsigned
+        // negative overflow errors.
+    }
+
+    // Keyboard
+    if (header.dwType == RIM_TYPEKEYBOARD)
+    {
+        const RAWKEYBOARD& keyboard = raw->data.keyboard;
+        const USHORT virtualKey = keyboard.VKey;
+        // 255 (0xFF) is invalid key that shows up for Shift+Home or NumLock
+        // off. Above this are very specific OEM keys.
+        constexpr uint8_t invalidKey = 0xFF;
+        if (virtualKey < invalidKey)
+        {
+            // The flag that is active during key press is RI_KEY_MAKE.
+            // RI_KEY_E0 and RI_KEY_E1 are active both during key press and key
+            // release.
+            // - RI_KEY_E0 is used to distinguish between modifier keys
+            //   from left/right and Numpad or regular keys.
+            // - RI_KEY_E1 is very rare, either for Pause/Break or old or
+            //   specialized keyboards.
+            const bool keyPressed = !(keyboard.Flags & RI_KEY_BREAK);
+            keys_[virtualKey] = keyPressed;
+        }
+    }
 }
 
 void Window::setCursorEnabled(const bool enabled)

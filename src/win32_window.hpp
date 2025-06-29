@@ -2,8 +2,8 @@
 #define WIN32_WINDOW_HPP_
 
 #include "drawproperties.hpp"
-#include "utils.hpp"
 #include "gl/wgl_context.hpp"
+#include "utils.hpp"
 
 #include <Windows.h>
 #include <array>
@@ -67,6 +67,9 @@ public:
     [[nodiscard]] bool shouldQuit() const;
     void setShouldQuit(const bool quit);
     void setVSyncEnabled(const bool vsyncEnabled);
+    // BUG: When window loses focus (ALT+TAB) while key is held down, it gets
+    // stuck until same key is pressed again. Present in both legacy WM messages
+    // and Raw Input API. Check also with GLFW implementation.
     [[nodiscard]] bool keyPressed(const char key) const;
     // TODO: Could handle more mouse buttons, but right now that would be YAGNI
     [[nodiscard]] bool rightMouseButtonPressed() const;
@@ -101,10 +104,14 @@ private:
     bool shouldQuit_;
     HWND hWnd_;
     WGLContext wglContext_;
-    // Key map is filled from the Window Procedure from WM_KEYDOWN and WM_KEYUP
-    // messages. WM_KEYDOWN messages in Win32 event queue only come in
-    // periodically when being held and are not continous, hence the separate
-    // array.
+    // Key map is filled from Raw Input API using clean hardware events instead
+    // of legacy WM_KEYDOWN and WM_KEYUP messages. Raw Input messages have
+    // better timing and reliability
+    // (~500ms initial delay on first WM_KEYDOWN and repeated ~30ms intervals on
+    // helds). WM_KEYDOWN messages in Win32 event queue come in
+    // periodically when being held, while Raw Input messages fire only once.
+    // Because the key events are not continous when being held, separate array
+    // tracks current held state.
     //
     // There's alternatively GetAsyncKeystate, but that can miss
     // important key presses and can introduce bugs by listening on key presses
@@ -121,6 +128,7 @@ private:
                       const uint16_t width,
                       const uint16_t height,
                       std::string_view title);
+    void handleRawInput(const LPARAM lParam);
     void setCursorVisible(const bool visible);
 };
 
