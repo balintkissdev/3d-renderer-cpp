@@ -38,6 +38,20 @@ constexpr char W = 'W';
 /// Keep in mind that GLAD still needs to reload OpenGL function pointers on
 /// context recreation.
 ///
+/// NOTE about using Unicode (UTF-16) instead of ANSI: A rule of thumb is to only use
+/// ANSI if the application is expected to work on old Windows systems that do not
+/// support Unicode (Windows 95, 98, ME). ANSI code pages are a legacy feature
+/// and the code pages on Windows depend on system settings that can be different
+/// between computers, leading to string corruption between machines and unreliable
+/// behavior when relying on Win32 API
+/// calls that only accept ANSI string parameters (suffixed with "A").
+/// The wide UTF-16 parameter ("W") variants of Win32 API calls are
+/// expected to work consistently between different systems and new Windows
+/// applications should use that instead. In fact, there are even newer Windows
+/// API functions that don't even have an ANSI variant at all.
+/// To learn more about how ANSI code pages used to work, see:
+/// https://learn.microsoft.com/en-us/windows/win32/intl/code-pages
+///
 /// TODO: Unlike GLFW, this implementation does not take DPI scaling into
 /// account when creating raw window.
 /// TODO: Prepare for Direct3D API.
@@ -82,16 +96,13 @@ public:
 private:
     static const wchar_t* APPLICATION_NAME;
 
-    // ANSI code pages on Windows can be different between computers, leading to
-    // string corruption when only relying on Win32 API calls that only accept
-    // ANSI string parameters (suffixed with "A"). The wide UTF-16 parameter
-    // ("W") variants of Win32 API calls are used for consistency between
-    // different systems. This converter turns a basic UTF-8 string into
-    // a 2-byte UTF-16 string.
+    // This converter turns a basic UTF-8 string into a 2-byte UTF-16 string.
+    //
+    // See Window doc comment about reasoning to stick with UTF-16.
     //
     // std::u16string was considered for the sake of explicitness, but the
     // resulting occurrences of reinterpret_cast<LPWSTR>() resulted in
-    // boilterplate code and std::wstring is guaranteed to be 2 bytes on Windows
+    // boilerplate code and std::wstring is guaranteed to be 2 bytes on Windows
     // anyway (only platform difference is that wchar_t is 4 bytes on Linux,
     // but that platform is irrelevant here).
     static std::wstring ToWideString(std::string_view str);

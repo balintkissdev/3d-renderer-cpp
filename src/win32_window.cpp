@@ -156,7 +156,7 @@ void Window::cleanup()
 void Window::poll()
 {
     MSG msg;
-    while (::PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
+    while (::PeekMessageW(&msg, nullptr, 0, 0, PM_REMOVE))
     {
         // WM_QUIT is sent by PostQuitMessage() and should not be dispatched
         // with DispatchMessage(), as it already notifies the message loop to
