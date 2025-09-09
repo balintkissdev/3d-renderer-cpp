@@ -1,7 +1,6 @@
 #ifndef GL_RENDERER_HPP_
 #define GL_RENDERER_HPP_
 
-#include "drawproperties.hpp"
 #include "gl_model.hpp"
 #include "gl_shader.hpp"
 #include "gl_skybox.hpp"

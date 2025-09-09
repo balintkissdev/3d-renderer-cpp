@@ -317,7 +317,7 @@ void Gui::sceneOutline(DrawProperties& drawProps, Scene& scene)
         {
             sceneContextMenu(scene);
 
-            // TODO: Skybox is not a real scene node yet
+            // TODO: Skybox is not a real scene graph yet
             if (ImGui::TreeNodeEx("Skybox",
                                   highlightIfSelected(SkyboxTreeIndex)))
             {
@@ -334,7 +334,7 @@ void Gui::sceneOutline(DrawProperties& drawProps, Scene& scene)
                 ImGui::TreePop();
             }
 
-            // TODO: Lighting is not a real scene node yet
+            // TODO: Lighting is not a real scene graph yet
             if (ImGui::TreeNodeEx("Directional light",
                                   highlightIfSelected(LightingTreeIndex)))
             {
@@ -437,20 +437,7 @@ void Gui::sceneNodeSection(DrawProperties& drawProps, Scene& scene) const
         && ImGui::CollapsingHeader("Skybox/Background",
                                    ImGuiTreeNodeFlags_DefaultOpen))
     {
-#ifndef __EMSCRIPTEN__
-        // TODO: Add skybox support on D3D12
-        const bool direct3DEnabled
-            = currentRenderingAPI_ == RenderingAPI::Direct3D12;
-        ImGui::BeginDisabled(direct3DEnabled);
-        bool tmpDisabled = false;
-        ImGui::Checkbox(
-            "Enable skybox",
-            direct3DEnabled ? &tmpDisabled : &drawProps.skyboxEnabled);
-        ImGui::EndDisabled();
-#else
-
         ImGui::Checkbox("Enable skybox", &drawProps.skyboxEnabled);
-#endif
         ImGui::Text("Background clear color");
         ImGui::ColorEdit3("##Background clear color",
                           drawProps.backgroundColor.data());

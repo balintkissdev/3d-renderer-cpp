@@ -29,11 +29,11 @@ std::optional<D3D12Model> D3D12Model::create(ID3D12Device* device,
 
     // TODO: Research better (default) heap usage
     CD3DX12_HEAP_PROPERTIES heapProperties(D3D12_HEAP_TYPE_UPLOAD);
-    CD3DX12_RESOURCE_DESC resourceDesc
+    CD3DX12_RESOURCE_DESC bufferDesc
         = CD3DX12_RESOURCE_DESC::Buffer(vertexBufferSize);
     device->CreateCommittedResource(&heapProperties,
                                     D3D12_HEAP_FLAG_NONE,
-                                    &resourceDesc,
+                                    &bufferDesc,
                                     D3D12_RESOURCE_STATE_GENERIC_READ,
                                     nullptr,
                                     IID_PPV_ARGS(model.vertexBuffer_.put()));
@@ -57,10 +57,10 @@ std::optional<D3D12Model> D3D12Model::create(ID3D12Device* device,
     const UINT indexBufferSize = sizeof(indices[0]) * indices.size();
 
     heapProperties = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
-    resourceDesc = CD3DX12_RESOURCE_DESC::Buffer(indexBufferSize);
+    bufferDesc = CD3DX12_RESOURCE_DESC::Buffer(indexBufferSize);
     device->CreateCommittedResource(&heapProperties,
                                     D3D12_HEAP_FLAG_NONE,
-                                    &resourceDesc,
+                                    &bufferDesc,
                                     D3D12_RESOURCE_STATE_GENERIC_READ,
                                     nullptr,
                                     IID_PPV_ARGS(model.indexBuffer_.put()));

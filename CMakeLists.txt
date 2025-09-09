@@ -204,12 +204,14 @@ if(WINDOW_PLATFORM_GLFW)
     )
 endif()
 if(WIN32)
+    add_subdirectory("${THIRDPARTY_DIR}/DirectXTex")
     target_link_libraries(${PROJECT_NAME}
         PRIVATE
-            d3d11
             d3d12
             dxgi
             d3dcompiler
+            dxguid  # Dependency for DirectXTex, see https://learn.microsoft.com/en-us/windows/win32/prog-dx-with-com#guids
+            DirectXTex
     )
 endif()
 if(NOT EMSCRIPTEN)

@@ -9,11 +9,13 @@
 
 #include "glm/glm.hpp"
 #include "glm/gtc/quaternion.hpp"
+
 #if defined(WINDOW_PLATFORM_WIN32)
 #include "imgui_impl_win32.h"
 #elif defined(WINDOW_PLATFORM_GLFW)
 #include "imgui_impl_glfw.h"
 #endif
+
 #include "imgui_impl_opengl3.h"
 
 #ifdef __EMSCRIPTEN__

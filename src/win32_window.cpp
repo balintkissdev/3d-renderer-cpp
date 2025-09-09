@@ -36,7 +36,7 @@ bool Window::init(const uint16_t width,
                   const RenderingAPI renderingAPI)
 {
     // Register window
-    WNDCLASSEXW windowClass = {};
+    WNDCLASSEXW windowClass{};
     windowClass.cbSize = sizeof(windowClass);
     windowClass.style = (renderingAPI == RenderingAPI::Direct3D12)
                           ? CS_DBLCLKS

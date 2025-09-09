@@ -81,4 +81,5 @@ private:
     std::filesystem::path frontFacePath_;
     std::filesystem::path backFacePath_;
 };
+
 #endif

@@ -304,7 +304,8 @@ void App::processInput()
     // No need to exit application from a web browser.
 #ifndef __EMSCRIPTEN__
     // Exiting here instead of update() avoids delay.
-    // BUG: Pressing ESC while editing ImGui textbox should cancel, not exit app.
+    // BUG: Pressing ESC while editing ImGui textbox should cancel, not exit
+    // app.
     if (window_.keyPressed(Key::ESCAPE))
     {
         window_.setShouldQuit(true);

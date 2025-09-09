@@ -6,6 +6,10 @@ if(WINDOW_PLATFORM_WIN32)
             direct3d12/d3d12_model.hpp
             direct3d12/d3d12_renderer.cpp
             direct3d12/d3d12_renderer.hpp
+            direct3d12/d3d12_shader.cpp
+            direct3d12/d3d12_shader.hpp
+            direct3d12/d3d12_skybox.cpp
+            direct3d12/d3d12_skybox.hpp
             gl/wgl_context.cpp
             gl/wgl_context.hpp
     )

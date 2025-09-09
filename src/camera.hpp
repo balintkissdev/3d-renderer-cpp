@@ -29,6 +29,7 @@ public:
 
     [[nodiscard]] inline glm::vec3 position() const;
     [[nodiscard]] inline glm::vec2 rotation() const;
+    [[nodiscard]] inline glm::vec3 direction() const;
 
 private:
     /// Camera location in world coordinate space. Also known as "eye
@@ -62,6 +63,11 @@ inline glm::vec3 Camera::position() const
 inline glm::vec2 Camera::rotation() const
 {
     return rotation_;
+}
+
+inline glm::vec3 Camera::direction() const
+{
+    return direction_;
 }
 
 #endif

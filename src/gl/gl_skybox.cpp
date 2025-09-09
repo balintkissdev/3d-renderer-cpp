@@ -18,16 +18,14 @@ GLSkybox::GLSkybox()
     , vertexArray_{0}
     , vertexBuffer_{0}
     , indexBuffer_{0}
-{
-}
+{}
 
 GLSkybox::GLSkybox(GLSkybox&& other) noexcept
     : textureID_{std::exchange(other.textureID_, 0)}
     , vertexArray_{std::exchange(other.vertexArray_, 0)}
     , vertexBuffer_{std::exchange(other.vertexBuffer_, 0)}
     , indexBuffer_{std::exchange(other.indexBuffer_, 0)}
-{
-}
+{}
 
 GLSkybox& GLSkybox::operator=(GLSkybox&& other) noexcept
 {

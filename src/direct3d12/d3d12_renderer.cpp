@@ -1,6 +1,7 @@
 #include "d3d12_renderer.hpp"
 
 #include "camera.hpp"
+#include "d3d12_shader.hpp"
 #include "drawproperties.hpp"
 #include "scene.hpp"
 #include "utils.hpp"
@@ -18,14 +19,14 @@
 #include <synchapi.h>
 
 namespace fs = std::filesystem;
-using namespace winrt;
 using namespace DirectX;
+using namespace winrt;
 
 D3D12Renderer::D3D12Renderer(Window& window,
                              const DrawProperties& drawProps,
                              const Camera& camera)
     : Renderer{window, drawProps, camera}
-    , viewPort_{CD3DX12_VIEWPORT(
+    , viewport_{CD3DX12_VIEWPORT(
           0.0F,
           0.0F,
           static_cast<float>(window_.frameBufferSize().first),
@@ -35,7 +36,7 @@ D3D12Renderer::D3D12Renderer(Window& window,
                    window_.frameBufferSize().first,
                    window_.frameBufferSize().second}
     , rtvDescriptorHeapSize_{0}
-    , cbvDescriptorHeapSize_{0}
+    , cbvSrvUavDescriptorHeapSize_{0}
     , frameIndex_{0}
     , fenceValue_{0}
     , vsyncEnabled_{drawProps.vsyncEnabled}
@@ -52,10 +53,15 @@ bool D3D12Renderer::init()
 {
     if (!createDevice() || !createCommandObjects() || !createDescriptorHeaps()
         || !createRTVs() || !createDSV() || !createCBVs()
-        || !createRootSignature() || !createPSO() || !loadAssets())
+        || !createModelRootSignature() || !createModelPSO() || !loadAssets())
     {
         return false;
     }
+
+    // Flush command list to apply texture uploads
+    commandList_->Close();
+    ID3D12CommandList* commandLists[] = {commandList_.get()};
+    commandQueue_->ExecuteCommandLists(1, commandLists);
 
     createSyncObjects();
     // Wait for setup to complete
@@ -117,7 +123,7 @@ bool D3D12Renderer::createDevice()
     adapter->GetDesc1(&adapterDesc);
 
     hr = D3D12CreateDevice(adapter.get(),
-                           D3D_FEATURE_LEVEL_12_0,
+                           D3D_FEATURE_LEVEL_11_1,
                            IID_PPV_ARGS(device_.put()));
     if (FAILED(hr))
     {
@@ -175,7 +181,7 @@ bool D3D12Renderer::createDevice()
 
 bool D3D12Renderer::createCommandObjects()
 {
-    // Create Command Allocator
+    // Command Allocator
     HRESULT hr = device_->CreateCommandAllocator(
         D3D12_COMMAND_LIST_TYPE_DIRECT,
         IID_PPV_ARGS(commandAllocator_.put()));
@@ -185,19 +191,17 @@ bool D3D12Renderer::createCommandObjects()
         return false;
     }
 
-    // Create command list
+    // Command List
     hr = device_->CreateCommandList(0,
                                     D3D12_COMMAND_LIST_TYPE_DIRECT,
                                     commandAllocator_.get(),
-                                    pso_.get(),
+                                    modelPso_.get(),
                                     IID_PPV_ARGS(commandList_.put()));
     if (FAILED(hr))
     {
         utils::showErrorMessage("unable to create Command List");
         return false;
     }
-    // Change from "recording" to "closed" state for startup
-    commandList_->Close();
 
     return true;
 }
@@ -234,45 +238,27 @@ bool D3D12Renderer::createDescriptorHeaps()
         return false;
     }
 
-    // Constant Buffer View (CBV) descriptor heap
-    // Used for model transform and material update. Each model gets its own
-    // CBV.
-    D3D12_DESCRIPTOR_HEAP_DESC cbvHeapDesc{};
-    cbvHeapDesc.NumDescriptors = MAX_MODEL_SCENE_NODE_COUNT * 2;
-    cbvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-    cbvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+    // CBV/SRV/UAV descriptor heap
+    D3D12_DESCRIPTOR_HEAP_DESC cbvSrvUavHeapDesc{};
+    cbvSrvUavHeapDesc.NumDescriptors = MAX_CBV_SRV_UAV_DESCRIPTOR_COUNT;
+    cbvSrvUavHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+    cbvSrvUavHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
     if (FAILED(device_->CreateDescriptorHeap(
-            &cbvHeapDesc,
-            IID_PPV_ARGS(cbvDescriptorHeap_.put()))))
+            &cbvSrvUavHeapDesc,
+            IID_PPV_ARGS(cbvSrvUavDescriptorHeap_.put()))))
     {
-        utils::showErrorMessage(
-            "unable to create Constant Buffer View (CBV) descriptor heap");
+        utils::showErrorMessage("unable to create CBV/SRV/UAV descriptor heap");
         return false;
     }
-    cbvDescriptorHeapSize_ = device_->GetDescriptorHandleIncrementSize(
+    cbvSrvUavDescriptorHeapSize_ = device_->GetDescriptorHandleIncrementSize(
         D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-
-    // Shader Resource View (SRV) descriptor heap
-    // Used by ImGui to bind font texture.
-    D3D12_DESCRIPTOR_HEAP_DESC srvHeapDesc{};
-    srvHeapDesc.NumDescriptors = 1;
-    srvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-    srvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-    if (FAILED(device_->CreateDescriptorHeap(
-            &srvHeapDesc,
-            IID_PPV_ARGS(srvDescriptorHeap_.put()))))
-    {
-        utils::showErrorMessage(
-            "unable to create Shader Resource View (SRV) descriptor heap");
-        return false;
-    }
 
     return true;
 }
 
 bool D3D12Renderer::createRTVs()
 {
-    CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(
+    CD3DX12_CPU_DESCRIPTOR_HANDLE rtvCpuHandle(
         rtvDescriptorHeap_->GetCPUDescriptorHandleForHeapStart());
 
     // RTV for each frame
@@ -281,8 +267,8 @@ bool D3D12Renderer::createRTVs()
         swapChain_->GetBuffer(i, IID_PPV_ARGS(renderTargets_[i].put()));
         device_->CreateRenderTargetView(renderTargets_[i].get(),
                                         nullptr,
-                                        rtvHandle);
-        rtvHandle.Offset(1, rtvDescriptorHeapSize_);
+                                        rtvCpuHandle);
+        rtvCpuHandle.Offset(1, rtvDescriptorHeapSize_);
     }
 
     return true;
@@ -292,7 +278,7 @@ bool D3D12Renderer::createDSV()
 {
     const CD3DX12_HEAP_PROPERTIES depthStencilHeapProps(
         D3D12_HEAP_TYPE_DEFAULT);
-    const auto depthStencilTextureDesc
+    const CD3DX12_RESOURCE_DESC depthStencilTextureDesc
         = CD3DX12_RESOURCE_DESC::Tex2D(DEPTH_STENCIL_FORMAT,
                                        window_.frameBufferSize().first,
                                        window_.frameBufferSize().second,
@@ -301,10 +287,13 @@ bool D3D12Renderer::createDSV()
                                        1,
                                        0,
                                        D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL);
-    D3D12_CLEAR_VALUE depthOptimizedClearValue{};
-    depthOptimizedClearValue.Format = DEPTH_STENCIL_FORMAT;
-    depthOptimizedClearValue.DepthStencil.Depth = 1.0F;
-    depthOptimizedClearValue.DepthStencil.Stencil = 0;
+    const D3D12_CLEAR_VALUE depthOptimizedClearValue = {
+        .Format = DEPTH_STENCIL_FORMAT,
+        .DepthStencil = {
+            .Depth = 1.0F,
+            .Stencil = 0,
+        },
+    };
     if (FAILED(device_->CreateCommittedResource(
             &depthStencilHeapProps,
             D3D12_HEAP_FLAG_NONE,
@@ -390,11 +379,11 @@ bool D3D12Renderer::createConstantBufferAndView(
     D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc{};
     cbvDesc.BufferLocation = constantBuffer->GetGPUVirtualAddress();
     cbvDesc.SizeInBytes = constantBufferSize;
-    CD3DX12_CPU_DESCRIPTOR_HANDLE cbvHandle(
-        cbvDescriptorHeap_->GetCPUDescriptorHandleForHeapStart(),
+    CD3DX12_CPU_DESCRIPTOR_HANDLE cbvCpuHandle(
+        cbvSrvUavDescriptorHeap_->GetCPUDescriptorHandleForHeapStart(),
         static_cast<int>(cbvDescriptorHeapIndex),
-        cbvDescriptorHeapSize_);
-    device_->CreateConstantBufferView(&cbvDesc, cbvHandle);
+        cbvSrvUavDescriptorHeapSize_);
+    device_->CreateConstantBufferView(&cbvDesc, cbvCpuHandle);
 
     // Map and initialize Constant Buffer
     CD3DX12_RANGE readRange(
@@ -405,7 +394,7 @@ bool D3D12Renderer::createConstantBufferAndView(
     return true;
 }
 
-bool D3D12Renderer::createRootSignature()
+bool D3D12Renderer::createModelRootSignature()
 {
     // Root Signature acts as "function signature" for the shaders in the
     // pipeline, defining the parameters passed for the shaders.
@@ -439,7 +428,7 @@ bool D3D12Renderer::createRootSignature()
                                             &ranges[1],
                                             D3D12_SHADER_VISIBILITY_PIXEL);
 
-    D3D12_ROOT_SIGNATURE_FLAGS rootSignatureFlags
+    constexpr D3D12_ROOT_SIGNATURE_FLAGS rootSignatureFlags
         = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
     CD3DX12_VERSIONED_ROOT_SIGNATURE_DESC rootSignatureDesc;
     rootSignatureDesc.Init_1_1(rootParameters.size(),
@@ -457,7 +446,7 @@ bool D3D12Renderer::createRootSignature()
         = device_->CreateRootSignature(0,
                                        signature->GetBufferPointer(),
                                        signature->GetBufferSize(),
-                                       IID_PPV_ARGS(rootSignature_.put()));
+                                       IID_PPV_ARGS(modelRootSignature_.put()));
     if (FAILED(hr))
     {
         utils::showErrorMessage("unable to create Root Signature");
@@ -466,27 +455,14 @@ bool D3D12Renderer::createRootSignature()
     return true;
 }
 
-bool D3D12Renderer::createPSO()
+bool D3D12Renderer::createModelPSO()
 {
-    // Compile shaders
-    // TODO: Revisit HLSL file organization when using precompiled CSO bytecode
-    const fs::path hlslShaderBasePath = "assets/shaders/hlsl/";
-    com_ptr<ID3DBlob> vertexShader;
-    if (!compileShader(hlslShaderBasePath / "model.vs.hlsl",
-                       ShaderCompileType::VertexShader,
-                       vertexShader))
-    {
-        return false;
-    }
+    D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc{};
 
-    com_ptr<ID3DBlob> pixelShader;
-    if (!compileShader(hlslShaderBasePath / "model.ps.hlsl",
-                       ShaderCompileType::PixelShader,
-                       pixelShader))
-    {
-        return false;
-    }
+    // Root Signature
+    psoDesc.pRootSignature = modelRootSignature_.get();
 
+    // Input Layout
     struct VertexSpecification
     {
         XMFLOAT3 position;
@@ -508,34 +484,55 @@ bool D3D12Renderer::createPSO()
                                  D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
                                  0},
     };
-
-    D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc{};
     psoDesc.InputLayout = D3D12_INPUT_LAYOUT_DESC{inputElementDesc.data(),
                                                   inputElementDesc.size()};
-    psoDesc.pRootSignature = rootSignature_.get();
+
+    // Shaders
+    // TODO: Revisit HLSL file organization when using precompiled CSO bytecode
+    com_ptr<ID3DBlob> vertexShader;
+    if (!D3D12Shader::CompileShader(
+            "model.vs.hlsl",
+            D3D12Shader::ShaderCompileType::VertexShader,
+            vertexShader))
+    {
+        return false;
+    }
     psoDesc.VS = CD3DX12_SHADER_BYTECODE(vertexShader.get());
+
+    com_ptr<ID3DBlob> pixelShader;
+    if (!D3D12Shader::CompileShader("model.ps.hlsl",
+                                    D3D12Shader::ShaderCompileType::PixelShader,
+                                    pixelShader))
+    {
+        return false;
+    }
     psoDesc.PS = CD3DX12_SHADER_BYTECODE(pixelShader.get());
-    CD3DX12_RASTERIZER_DESC rasterizerDesc(D3D12_DEFAULT);
-    // Show backfaces (e.g. faces inside Utah Teapot)
-    rasterizerDesc.CullMode = D3D12_CULL_MODE_NONE;
-    psoDesc.RasterizerState = rasterizerDesc;
-    psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
-    CD3DX12_DEPTH_STENCIL_DESC depthStencilDesc(D3D12_DEFAULT);
-    depthStencilDesc.DepthEnable = true;
-    depthStencilDesc.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
-    depthStencilDesc.DepthFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
-    depthStencilDesc.StencilEnable = FALSE;
-    psoDesc.DepthStencilState = depthStencilDesc;
-    psoDesc.SampleMask = UINT_MAX;
+
+    // Topology type
     psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+
+    // Rasterizer State
+    psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+    // Show backfaces (e.g. faces inside Utah Teapot)
+    psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
+
+    // Depth-Stencil State
+    psoDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
+    psoDesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
+
+    // Blend State
+    psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+
+    psoDesc.SampleMask = UINT_MAX;
     psoDesc.NumRenderTargets = 1;
     psoDesc.RTVFormats[0] = renderTargets_[0]->GetDesc().Format;
     psoDesc.DSVFormat = depthStencil_->GetDesc().Format;
     psoDesc.SampleDesc.Count = 1;
     psoDesc.SampleDesc.Quality = 0;
-    HRESULT hr = device_->CreateGraphicsPipelineState(&psoDesc,
-                                                      IID_PPV_ARGS(pso_.put()));
 
+    HRESULT hr
+        = device_->CreateGraphicsPipelineState(&psoDesc,
+                                               IID_PPV_ARGS(modelPso_.put()));
     if (FAILED(hr))
     {
         utils::showErrorMessage("unable to create Pipeline State Object (PSO)");
@@ -544,55 +541,37 @@ bool D3D12Renderer::createPSO()
     return true;
 }
 
-bool D3D12Renderer::compileShader(const fs::path& shaderPath,
-                                  const ShaderCompileType shaderType,
-                                  com_ptr<ID3DBlob>& shaderOut)
+bool D3D12Renderer::createSyncObjects()
 {
-    com_ptr<ID3DBlob> error;
-    constexpr UINT compileFlags =
-#if defined(_DEBUG)
-        // Skipping optimizations enable debugging with tools
-        D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
-#else
-        0
-#endif
-    ;
-
-    // UWP apps don't support D3DCompileFromFile() outside of development
-    HRESULT hr = D3DCompileFromFile(
-        shaderPath.c_str(),
-        nullptr,
-        D3D_COMPILE_STANDARD_FILE_INCLUDE,
-        "main",
-        shaderType == ShaderCompileType::VertexShader ? "vs_5_0" : "ps_5_0",
-        compileFlags,
-        0,
-        shaderOut.put(),
-        error.put());
+    HRESULT hr = device_->CreateFence(0,
+                                      D3D12_FENCE_FLAG_NONE,
+                                      IID_PPV_ARGS(fence_.put()));
     if (FAILED(hr))
     {
-        std::string errorCause
-            = error ? static_cast<const char*>(error->GetBufferPointer())
-                    : "unknown error";
-        utils::showErrorMessage("unable to compile HLSL shader",
-                                shaderPath.string(),
-                                "for Direct3D 12:",
-                                errorCause);
+        HRESULT removedReason = E_FAIL;
+        if (!device_.get())
+        {
+            removedReason = device_->GetDeviceRemovedReason();
+        }
+        utils::showErrorMessage("unable to create fence", hr, removedReason);
+        return false;
+    }
+    fenceValue_ = 1;
+
+    fenceEvent_ = ::CreateEvent(nullptr, FALSE, FALSE, nullptr);
+    if (fenceEvent_ == nullptr)
+    {
+        const DWORD e = ::GetLastError();
+        utils::showErrorMessage("unable to create fence event", e);
         return false;
     }
 
     return true;
 }
 
-void D3D12Renderer::createSyncObjects()
-{
-    device_->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(fence_.put()));
-    fenceValue_ = 1;
-    fenceEvent_ = ::CreateEvent(nullptr, false, false, nullptr);
-}
-
 bool D3D12Renderer::loadAssets()
 {
+    // Models
     const std::array<fs::path, 3> modelPaths{"assets/meshes/cube.obj",
                                              "assets/meshes/teapot.obj",
                                              "assets/meshes/bunny.obj"};
@@ -608,12 +587,50 @@ bool D3D12Renderer::loadAssets()
         models_.emplace_back(std::move(model.value()));
     }
 
+    // Skybox
+    constexpr UINT skyboxSrvDescriptorOffset
+        = MAX_MODEL_SCENE_NODE_COUNT * CB_PER_MODEL_COUNT;
+    CD3DX12_CPU_DESCRIPTOR_HANDLE srvCpuHandle(
+        cbvSrvUavDescriptorHeap_->GetCPUDescriptorHandleForHeapStart(),
+        skyboxSrvDescriptorOffset,
+        cbvSrvUavDescriptorHeapSize_);
+
+    CD3DX12_GPU_DESCRIPTOR_HANDLE srvGpuHandle(
+        cbvSrvUavDescriptorHeap_->GetGPUDescriptorHandleForHeapStart(),
+        skyboxSrvDescriptorOffset,
+        cbvSrvUavDescriptorHeapSize_);
+
+    std::optional<D3D12Skybox> skybox
+        = D3D12SkyboxBuilder().build(device_.get(),
+                                     commandList_.get(),
+                                     srvCpuHandle,
+                                     srvGpuHandle);
+
+    if (!skybox)
+    {
+        utils::showErrorMessage("unable to create skybox for application");
+        return false;
+    }
+    skybox_ = std::move(skybox.value());
+
     return true;
 }
 
 void D3D12Renderer::initImGuiBackend()
 {
     ImGui_ImplWin32_Init(window_.raw());
+
+    const UINT imguiSrvDescriptorOffset
+        = MAX_CBV_SRV_UAV_DESCRIPTOR_COUNT - IMGUI_FONT_TEXTURE_SRV_COUNT;
+    CD3DX12_CPU_DESCRIPTOR_HANDLE srvCpuHandle(
+        cbvSrvUavDescriptorHeap_->GetCPUDescriptorHandleForHeapStart(),
+        imguiSrvDescriptorOffset,
+        cbvSrvUavDescriptorHeapSize_);
+
+    CD3DX12_GPU_DESCRIPTOR_HANDLE srvGpuHandle(
+        cbvSrvUavDescriptorHeap_->GetGPUDescriptorHandleForHeapStart(),
+        imguiSrvDescriptorOffset,
+        cbvSrvUavDescriptorHeapSize_);
 
     // TODO: This is the legacy way of initializing a Direct3D12 ImGui backend.
     // From version 1.91.6, all ImGui backend versions require specifying a
@@ -622,13 +639,12 @@ void D3D12Renderer::initImGuiBackend()
     //
     // See:
     // https://github.com/ocornut/imgui/blob/c0dfd65d6790b9b96872b64fa232f1fa80fcd3b3/examples/example_win32_directx12/main.cpp#L37
-    ImGui_ImplDX12_Init(
-        device_.get(),
-        FRAME_COUNT,
-        renderTargets_[0]->GetDesc().Format,
-        srvDescriptorHeap_.get(),
-        srvDescriptorHeap_->GetCPUDescriptorHandleForHeapStart(),
-        srvDescriptorHeap_->GetGPUDescriptorHandleForHeapStart());
+    ImGui_ImplDX12_Init(device_.get(),
+                        FRAME_COUNT,
+                        renderTargets_[0]->GetDesc().Format,
+                        cbvSrvUavDescriptorHeap_.get(),
+                        srvCpuHandle,
+                        srvGpuHandle);
 }
 
 void D3D12Renderer::draw(const Scene& scene)
@@ -676,34 +692,31 @@ void D3D12Renderer::draw(const Scene& scene)
             |= ADS_FLAG_SPECULAR_ENABLED;
     }
 
-    // Begin frame (populate command list)
+    // Begin frame
     commandAllocator_->Reset();
-    commandList_->Reset(commandAllocator_.get(), pso_.get());
+    commandList_->Reset(commandAllocator_.get(), modelPso_.get());
 
     // Set render state
-    commandList_->SetGraphicsRootSignature(rootSignature_.get());
+    commandList_->SetGraphicsRootSignature(modelRootSignature_.get());
 
-    // CSV
-    const std::array<ID3D12DescriptorHeap*, 1> cbvHeaps
-        = {cbvDescriptorHeap_.get()};
-    commandList_->SetDescriptorHeaps(cbvHeaps.size(), cbvHeaps.data());
-
-    // SRV
-    const std::array<ID3D12DescriptorHeap*, 1> srvHeaps
-        = {srvDescriptorHeap_.get()};
-    commandList_->SetDescriptorHeaps(srvHeaps.size(), srvHeaps.data());
+    // CBV/SRV/UAV heaps
+    const std::array<ID3D12DescriptorHeap*, 1> cbvSrvUavHeaps
+        = {cbvSrvUavDescriptorHeap_.get()};
+    commandList_->SetDescriptorHeaps(cbvSrvUavHeaps.size(),
+                                     cbvSrvUavHeaps.data());
 
     // Set Rasterizer Stage state
-    commandList_->RSSetViewports(1, &viewPort_);
+    commandList_->RSSetViewports(1, &viewport_);
     commandList_->RSSetScissorRects(1, &scissorRect_);
 
     // Set backbuffer as render target
     ID3D12Resource* renderTarget = renderTargets_[frameIndex_].get();
-    CD3DX12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(
-        renderTarget,
-        D3D12_RESOURCE_STATE_PRESENT,
-        D3D12_RESOURCE_STATE_RENDER_TARGET);
-    commandList_->ResourceBarrier(1, &barrier);
+    CD3DX12_RESOURCE_BARRIER transitionBarrier
+        = CD3DX12_RESOURCE_BARRIER::Transition(
+            renderTarget,
+            D3D12_RESOURCE_STATE_PRESENT,
+            D3D12_RESOURCE_STATE_RENDER_TARGET);
+    commandList_->ResourceBarrier(1, &transitionBarrier);
     CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(
         rtvDescriptorHeap_->GetCPUDescriptorHandleForHeapStart(),
         static_cast<int>(frameIndex_),
@@ -729,15 +742,19 @@ void D3D12Renderer::draw(const Scene& scene)
                                         nullptr);
 
     drawModels(scene, mvpConstantBufferData, materialConstantBufferData);
-
-    ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), commandList_.get());
+    if (drawProps_.skyboxEnabled)
+    {
+        // HACK: Don't pass model matrix to skybox shader
+        skybox_.draw(commandList_.get(), mvpConstantBuffers_[0].get());
+    }
+    drawGui();
 
     // End frame
-    barrier = CD3DX12_RESOURCE_BARRIER::Transition(
+    transitionBarrier = CD3DX12_RESOURCE_BARRIER::Transition(
         renderTarget,
         D3D12_RESOURCE_STATE_RENDER_TARGET,
         D3D12_RESOURCE_STATE_PRESENT);
-    commandList_->ResourceBarrier(1, &barrier);
+    commandList_->ResourceBarrier(1, &transitionBarrier);
     commandList_->Close();
 
     const std::array<ID3D12CommandList*, 1> commandLists = {commandList_.get()};
@@ -787,29 +804,29 @@ void D3D12Renderer::drawModels(
         XMMATRIX normalMatrix = XMMatrixInverse(nullptr, modelMatrix);
         XMStoreFloat4x4(&mvpConstantBufferData.normalMatrix, normalMatrix);
 
+        // MVP constant buffer
+        std::memcpy(mvpCbvDataBegin_[i],
+                    &mvpConstantBufferData,
+                    sizeof(mvpConstantBufferData));
+        CD3DX12_GPU_DESCRIPTOR_HANDLE mpvCbvGpuHandle(
+            cbvSrvUavDescriptorHeap_->GetGPUDescriptorHandleForHeapStart(),
+            static_cast<int>(i),
+            cbvSrvUavDescriptorHeapSize_);
+        commandList_->SetGraphicsRootDescriptorTable(0, mpvCbvGpuHandle);
+
+        // Material constant buffer
         materialConstantBufferData.color.x = sceneNode.color.r;
         materialConstantBufferData.color.y = sceneNode.color.g;
         materialConstantBufferData.color.z = sceneNode.color.b;
 
-        // Write MVP constant buffer
-        std::memcpy(mvpCbvDataBegin_[i],
-                    &mvpConstantBufferData,
-                    sizeof(mvpConstantBufferData));
-        CD3DX12_GPU_DESCRIPTOR_HANDLE mpvCbvHandle(
-            cbvDescriptorHeap_->GetGPUDescriptorHandleForHeapStart(),
-            static_cast<int>(i),
-            cbvDescriptorHeapSize_);
-        commandList_->SetGraphicsRootDescriptorTable(0, mpvCbvHandle);
-
-        // Write Material constant buffer
         std::memcpy(materialCbvDataBegin_[i],
                     &materialConstantBufferData,
                     sizeof(materialConstantBufferData));
-        CD3DX12_GPU_DESCRIPTOR_HANDLE materialCbvHandle(
-            cbvDescriptorHeap_->GetGPUDescriptorHandleForHeapStart(),
+        CD3DX12_GPU_DESCRIPTOR_HANDLE materialCbvGpuHandle(
+            cbvSrvUavDescriptorHeap_->GetGPUDescriptorHandleForHeapStart(),
             static_cast<int>(mvpConstantBuffers_.size() + i),
-            cbvDescriptorHeapSize_);
-        commandList_->SetGraphicsRootDescriptorTable(1, materialCbvHandle);
+            cbvSrvUavDescriptorHeapSize_);
+        commandList_->SetGraphicsRootDescriptorTable(1, materialCbvGpuHandle);
 
         // Issue draw call
         // TODO: Wireframe fill mode requires creation of a separate PSO with
@@ -823,6 +840,11 @@ void D3D12Renderer::drawModels(
     }
 }
 
+void D3D12Renderer::drawGui()
+{
+    ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), commandList_.get());
+}
+
 void D3D12Renderer::waitForPreviousFrame()
 {
     // Wait for previous frame to complete before continue
@@ -834,8 +856,7 @@ void D3D12Renderer::waitForPreviousFrame()
     if (fence_->GetCompletedValue() < fence)
     {
         fence_->SetEventOnCompletion(fence, fenceEvent_);
-        WaitForSingleObject(fenceEvent_, INFINITE);
+        ::WaitForSingleObject(fenceEvent_, INFINITE);
     }
     frameIndex_ = swapChain_->GetCurrentBackBufferIndex();
 }
-

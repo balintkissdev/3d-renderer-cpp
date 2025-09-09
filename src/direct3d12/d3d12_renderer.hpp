@@ -1,7 +1,8 @@
 #ifndef D3D12_RENDERER_HPP_
 #define D3D12_RENDERER_HPP_
 
-#include "direct3d12/d3d12_model.hpp"
+#include "d3d12_model.hpp"
+#include "d3d12_skybox.hpp"
 #include "renderer.hpp"
 #include "utils.hpp"
 #include "win32_window.hpp"
@@ -9,7 +10,6 @@
 #include <d3d12.h>
 #include <d3dx12.h>
 #include <dxgi1_6.h>
-#include <filesystem>
 #include <winrt/base.h>
 
 class Scene;
@@ -67,7 +67,7 @@ private:
         = DXGI_FORMAT_D24_UNORM_S8_UINT;
     static constexpr size_t MAX_MODEL_SCENE_NODE_COUNT = 256;
 
-    CD3DX12_VIEWPORT viewPort_;
+    CD3DX12_VIEWPORT viewport_;
     CD3DX12_RECT scissorRect_;
 
     winrt::com_ptr<ID3D12Device> device_;
@@ -78,13 +78,21 @@ private:
     winrt::com_ptr<ID3D12DescriptorHeap> rtvDescriptorHeap_;
     size_t rtvDescriptorHeapSize_;
     winrt::com_ptr<ID3D12DescriptorHeap> dsvDescriptorHeap_;
-    winrt::com_ptr<ID3D12DescriptorHeap> cbvDescriptorHeap_;
-    size_t cbvDescriptorHeapSize_;
-    winrt::com_ptr<ID3D12DescriptorHeap> srvDescriptorHeap_;
+
+    static constexpr size_t CB_PER_MODEL_COUNT = 2;
+    static constexpr size_t SKYBOX_TEXTURE_SRV_COUNT = 1;
+    static constexpr size_t IMGUI_FONT_TEXTURE_SRV_COUNT = 1;
+    static constexpr UINT MAX_CBV_SRV_UAV_DESCRIPTOR_COUNT
+        = (MAX_MODEL_SCENE_NODE_COUNT * CB_PER_MODEL_COUNT)
+        + SKYBOX_TEXTURE_SRV_COUNT + IMGUI_FONT_TEXTURE_SRV_COUNT;
+    winrt::com_ptr<ID3D12DescriptorHeap> cbvSrvUavDescriptorHeap_;
+    size_t cbvSrvUavDescriptorHeapSize_;
+
     std::array<winrt::com_ptr<ID3D12Resource>, FRAME_COUNT> renderTargets_;
     winrt::com_ptr<ID3D12Resource> depthStencil_;
-    winrt::com_ptr<ID3D12RootSignature> rootSignature_;
-    winrt::com_ptr<ID3D12PipelineState> pso_;
+    // TODO: Move model PSO out of D3D12Renderer
+    winrt::com_ptr<ID3D12RootSignature> modelRootSignature_;
+    winrt::com_ptr<ID3D12PipelineState> modelPso_;
     std::vector<winrt::com_ptr<ID3D12Resource>> mvpConstantBuffers_;
     std::vector<winrt::com_ptr<ID3D12Resource>> materialConstantBuffers_;
     std::vector<uint8_t*> mvpCbvDataBegin_;
@@ -97,6 +105,7 @@ private:
 
     bool vsyncEnabled_;
     std::vector<D3D12Model> models_;
+    D3D12Skybox skybox_;
 
     bool createDevice();
     bool createCommandObjects();
@@ -110,22 +119,15 @@ private:
         winrt::com_ptr<ID3D12Resource>& constantBuffer,
         UINT cbvDescriptorHeapIndex,
         uint8_t*& cbvDataBegin);
-    bool createRootSignature();
-    bool createPSO();
-    enum class ShaderCompileType : uint8_t
-    {
-        VertexShader,
-        PixelShader,
-    };
-    bool compileShader(const std::filesystem::path& shaderPath,
-                       const ShaderCompileType shaderType,
-                       winrt::com_ptr<ID3DBlob>& shaderOut);
-    void createSyncObjects();
+    bool createModelRootSignature();
+    bool createModelPSO();
+    bool createSyncObjects();
     bool loadAssets();
 
     void drawModels(const Scene& scene,
                     MVPConstantBuffer& mvpConstantBufferData,
                     MaterialConstantBuffer& materialConstantBufferData);
+    void drawGui();
     void waitForPreviousFrame();
 };
 
