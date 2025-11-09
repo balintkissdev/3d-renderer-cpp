@@ -1,5 +1,5 @@
-#ifndef D3D12_PSO_
-#define D3D12_PSO_
+#ifndef D3D12_SHADER_HPP_
+#define D3D12_SHADER_HPP_
 
 #include <d3d12.h>
 #include <winrt/base.h>
