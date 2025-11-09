@@ -32,8 +32,8 @@ https://github.com/user-attachments/assets/b756ea4b-a449-443c-bc5a-644702e004aa
 ## Try it out!
 
 - [Live demo in web browser](https://www.balintkissdev.com/3d-renderer-cpp)
-- [Windows 64-bit download](https://github.com/balintkissdev/3d-renderer-cpp/releases/download/0.3.0/3DRenderer-0.3.0-win64.zip)
-- [Linux 64-bit download](https://github.com/balintkissdev/3d-renderer-cpp/releases/download/0.3.0/3DRenderer-0.3.0-linux-x86_64.AppImage)
+- [Windows 64-bit download](https://github.com/balintkissdev/3d-renderer-cpp/releases/download/0.3.1/3DRenderer-0.3.1-win64.zip)
+- [Linux 64-bit download](https://github.com/balintkissdev/3d-renderer-cpp/releases/download/0.3.1/3DRenderer-0.3.1-linux-x86_64.AppImage)
 
 ## Motivation
 
