@@ -71,7 +71,7 @@ void Gui::init(Renderer& renderer
 
     auto& style = ImGui::GetStyle();
     ImVec4* colors = style.Colors;
-    const ImVec4 transparentBackgroundColor{0.1F, 0.1F, 0.1F, 0.5F};
+    const ImVec4 transparentBackgroundColor{0.1f, 0.1f, 0.1f, 0.5f};
     colors[ImGuiCol_WindowBg] = transparentBackgroundColor;
     colors[ImGuiCol_ChildBg] = transparentBackgroundColor;
     colors[ImGuiCol_TitleBg] = transparentBackgroundColor;
@@ -191,8 +191,8 @@ void Gui::propertiesDialog(
                     cameraRotation.y);
         ImGui::SliderFloat("##FOV",
                            &drawProps.fieldOfView,
-                           45.0F,
-                           120.0F,
+                           45.0f,
+                           120.0f,
                            "FOV = %.1f°");
     }
 
@@ -213,7 +213,7 @@ void Gui::rendererSection(const FrameRateInfo& frameRateInfo,
 {
     if (ImGui::CollapsingHeader("Renderer", ImGuiTreeNodeFlags_DefaultOpen))
     {
-        ImGui::Text("%.2F FPS, %.6F ms/frame",
+        ImGui::Text("%.2f FPS, %.6f ms/frame",
                     frameRateInfo.framesPerSecond,
                     frameRateInfo.msPerFrame);
         constexpr std::array selectableAPIs{
@@ -278,7 +278,7 @@ void Gui::confirmRestartDialog(RenderingAPI& renderingAPI)
     const ImGuiViewport* viewport = ImGui::GetMainViewport();
     ImGui::SetNextWindowPos(viewport->GetCenter(),
                             ImGuiCond_Always,
-                            ImVec2(0.5F, 0.5F));
+                            ImVec2(0.5f, 0.5f));
     ImGui::Begin("##Confirm renderer restart", nullptr, flags);
     ImGui::Text(
         "Changing rendering API requires restarting the renderer. Application "
@@ -286,11 +286,11 @@ void Gui::confirmRestartDialog(RenderingAPI& renderingAPI)
     ImGui::Spacing();
     ImGui::Text("Are you sure you want to restart the renderer?");
     ImGui::Spacing();
-    const float buttonWidth = 120.0F;
+    const float buttonWidth = 120.0f;
     const float totalWidth
         = (buttonWidth * 2) + ImGui::GetStyle().ItemSpacing.x;
     const float windowWidth = ImGui::GetWindowSize().x;
-    const float startX = (windowWidth - totalWidth) * 0.5F;
+    const float startX = (windowWidth - totalWidth) * 0.5f;
     ImGui::SetCursorPosX(startX);
 
     if (ImGui::Button("Yes", ImVec2(buttonWidth, 0)))
@@ -449,8 +449,8 @@ void Gui::sceneNodeSection(DrawProperties& drawProps, Scene& scene) const
     {
         ImGui::SliderFloat3("Direction",
                             drawProps.lightDirection.data(),
-                            -1.0F,
-                            1.0F);
+                            -1.0f,
+                            1.0f);
         ImGui::Checkbox("Diffuse", &drawProps.diffuseEnabled);
         ImGui::Checkbox("Specular", &drawProps.specularEnabled);
     }
@@ -462,10 +462,10 @@ void Gui::sceneNodeSection(DrawProperties& drawProps, Scene& scene) const
         if (ImGui::CollapsingHeader("Transform",
                                     ImGuiTreeNodeFlags_DefaultOpen))
         {
-            constexpr float itemWidth = 80.0F;
-            constexpr float minPosition = -100.0F;
-            constexpr float maxPosition = 100.0F;
-            constexpr float positionStep = 0.1F;
+            constexpr float itemWidth = 80.0f;
+            constexpr float minPosition = -100.0f;
+            constexpr float maxPosition = 100.0f;
+            constexpr float positionStep = 0.1f;
             ImGui::Text("Position");
             ImGui::SetNextItemWidth(itemWidth);
             ImGui::DragFloat("##Translate X",
@@ -491,9 +491,9 @@ void Gui::sceneNodeSection(DrawProperties& drawProps, Scene& scene) const
                              maxPosition,
                              "Z: %.3f");
 
-            constexpr float minRotation = 0.0F;
-            constexpr float maxRotation = 360.0F;
-            constexpr float rotationStep = 1.0F;
+            constexpr float minRotation = 0.0f;
+            constexpr float maxRotation = 360.0f;
+            constexpr float rotationStep = 1.0f;
             ImGui::Text("Rotation");
             ImGui::SetNextItemWidth(itemWidth);
             ImGui::DragFloat("##Rotate X",

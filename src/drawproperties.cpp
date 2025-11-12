@@ -16,9 +16,9 @@ constexpr RenderingAPI DEFAULT_RENDERING_API =
 DrawProperties DrawProperties::createDefault()
 {
     return DrawProperties{
-        .backgroundColor{0.5F, 0.5F, 0.5F},
-        .lightDirection{-0.5F, -1.0F, 0.0F},
-        .fieldOfView = 60.0F,
+        .backgroundColor{0.5f, 0.5f, 0.5f},
+        .lightDirection{-0.5f, -1.0f, 0.0f},
+        .fieldOfView = 60.0f,
 #ifndef __EMSCRIPTEN__
         .renderingAPI = DEFAULT_RENDERING_API,
         .vsyncEnabled = false,

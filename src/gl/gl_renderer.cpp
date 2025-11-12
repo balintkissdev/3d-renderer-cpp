@@ -204,8 +204,8 @@ void GLRenderer::draw(const Scene& scene)
         = glm::perspectiveRH(glm::radians(drawProps_.fieldOfView),
                              static_cast<float>(frameBufferWidth)
                                  / static_cast<float>(frameBufferHeight),
-                             0.1F,
-                             100.0F);
+                             0.1f,
+                             100.0f);
 
     view_ = camera_.calculateViewMatrix();
 
@@ -213,7 +213,7 @@ void GLRenderer::draw(const Scene& scene)
     glClearColor(drawProps_.backgroundColor[0],
                  drawProps_.backgroundColor[1],
                  drawProps_.backgroundColor[2],
-                 1.0F);
+                 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     drawModels(scene);
@@ -285,18 +285,18 @@ void GLRenderer::drawModels(const Scene& scene)
         // Model transform
         // Translate
         glm::mat4 modelMatrix
-            = glm::translate(glm::mat4(1.0F), sceneNode.position);
+            = glm::translate(glm::mat4(1.0f), sceneNode.position);
 
         // Avoid Gimbal-lock by converting Euler angles to quaternions
         const glm::quat quatX
             = glm::angleAxis(glm::radians(sceneNode.rotation.x),
-                             glm::vec3(1.0F, 0.0F, 0.0F));
+                             glm::vec3(1.0f, 0.0f, 0.0f));
         const glm::quat quatY
             = glm::angleAxis(glm::radians(sceneNode.rotation.y),
-                             glm::vec3(0.0F, 1.0F, 0.0F));
+                             glm::vec3(0.0f, 1.0f, 0.0f));
         const glm::quat quatZ
             = glm::angleAxis(glm::radians(sceneNode.rotation.z),
-                             glm::vec3(0.0F, 0.0F, 1.0F));
+                             glm::vec3(0.0f, 0.0f, 1.0f));
         const glm::quat quat = quatZ * quatY * quatX;
         modelMatrix *= glm::mat4_cast(quat);
 
@@ -349,7 +349,7 @@ void GLRenderer::drawSkybox()
     // rotation in the view matrix. If you don't do this, skybox will be shown
     // as a shrinked down cube around model.
     glm::mat4 normalizedView = view_;
-    normalizedView[3] = glm::vec4(0.0F, 0.0F, 0.0F, 0.0F);
+    normalizedView[3] = glm::vec4(0.0f, 0.0f, 0.0f, 0.0f);
     // Concat matrix transformations on CPU to avoid unnecessary
     // multiplications in GLSL. Results would be the same for all vertices.
     const glm::mat4 projectionView = projection_ * normalizedView;

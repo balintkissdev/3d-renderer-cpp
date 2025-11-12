@@ -141,14 +141,14 @@ std::optional<GLSkybox> GLSkyboxBuilder::build()
 
     // clang-format off
     const std::array skyboxVertices{
-        -1.0F,  1.0F, -1.0F,
-        -1.0F, -1.0F, -1.0F,
-         1.0F, -1.0F, -1.0F,
-         1.0F,  1.0F, -1.0F,
-        -1.0F,  1.0F,  1.0F,
-        -1.0F, -1.0F,  1.0F,
-         1.0F, -1.0F,  1.0F,
-         1.0F,  1.0F,  1.0F
+        -1.0f,  1.0f, -1.0f,
+        -1.0f, -1.0f, -1.0f,
+         1.0f, -1.0f, -1.0f,
+         1.0f,  1.0f, -1.0f,
+        -1.0f,  1.0f,  1.0f,
+        -1.0f, -1.0f,  1.0f,
+         1.0f, -1.0f,  1.0f,
+         1.0f,  1.0f,  1.0f
     };
 
     const std::array skyboxIndices{

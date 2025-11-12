@@ -91,7 +91,7 @@ bool D3D12SkyboxBuilder::createRootSignature(ID3D12Device* device,
     sampler.MaxAnisotropy = 0;
     sampler.ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER;
     sampler.BorderColor = D3D12_STATIC_BORDER_COLOR_OPAQUE_WHITE;
-    sampler.MinLOD = 0.0F;
+    sampler.MinLOD = 0.0f;
     sampler.MaxLOD = D3D12_FLOAT32_MAX;
     sampler.ShaderRegister = 0;
     sampler.RegisterSpace = 0;
@@ -203,35 +203,35 @@ bool D3D12SkyboxBuilder::createVertexBuffer(
     // clang-format off
     const XMFLOAT3 vertices[] = {
         // Front face (+Z)
-        {-1.0F, -1.0F,  1.0F},
-        { 1.0F, -1.0F,  1.0F},
-        { 1.0F,  1.0F,  1.0F},
-        {-1.0F,  1.0F,  1.0F},
+        {-1.0f, -1.0f,  1.0f},
+        { 1.0f, -1.0f,  1.0f},
+        { 1.0f,  1.0f,  1.0f},
+        {-1.0f,  1.0f,  1.0f},
         // Back face (-Z)
-        { 1.0F, -1.0F, -1.0F},
-        {-1.0F, -1.0F, -1.0F},
-        {-1.0F,  1.0F, -1.0F},
-        { 1.0F,  1.0F, -1.0F},
+        { 1.0f, -1.0f, -1.0f},
+        {-1.0f, -1.0f, -1.0f},
+        {-1.0f,  1.0f, -1.0f},
+        { 1.0f,  1.0f, -1.0f},
         // Top face (+Y)
-        {-1.0F,  1.0F,  1.0F},
-        { 1.0F,  1.0F,  1.0F},
-        { 1.0F,  1.0F, -1.0F},
-        {-1.0F,  1.0F, -1.0F},
+        {-1.0f,  1.0f,  1.0f},
+        { 1.0f,  1.0f,  1.0f},
+        { 1.0f,  1.0f, -1.0f},
+        {-1.0f,  1.0f, -1.0f},
         // Bottom face (-Y)
-        {-1.0F, -1.0F, -1.0F},
-        { 1.0F, -1.0F, -1.0F},
-        { 1.0F, -1.0F,  1.0F},
-        {-1.0F, -1.0F,  1.0F},
+        {-1.0f, -1.0f, -1.0f},
+        { 1.0f, -1.0f, -1.0f},
+        { 1.0f, -1.0f,  1.0f},
+        {-1.0f, -1.0f,  1.0f},
         // Right face (+X)
-        { 1.0F, -1.0F,  1.0F},
-        { 1.0F, -1.0F, -1.0F},
-        { 1.0F,  1.0F, -1.0F},
-        { 1.0F,  1.0F,  1.0F},
+        { 1.0f, -1.0f,  1.0f},
+        { 1.0f, -1.0f, -1.0f},
+        { 1.0f,  1.0f, -1.0f},
+        { 1.0f,  1.0f,  1.0f},
         // Left face (-X)
-        {-1.0F, -1.0F, -1.0F},
-        {-1.0F, -1.0F,  1.0F},
-        {-1.0F,  1.0F,  1.0F},
-        {-1.0F,  1.0F, -1.0F}
+        {-1.0f, -1.0f, -1.0f},
+        {-1.0f, -1.0f,  1.0f},
+        {-1.0f,  1.0f,  1.0f},
+        {-1.0f,  1.0f, -1.0f}
     };
     // clang-format on
     const UINT vertexBufferSize = sizeof(vertices);
@@ -494,7 +494,7 @@ bool D3D12SkyboxBuilder::createTexture(
     srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
     srvDesc.TextureCube.MipLevels = 1;
     srvDesc.TextureCube.MostDetailedMip = 0;
-    srvDesc.TextureCube.ResourceMinLODClamp = 0.0F;
+    srvDesc.TextureCube.ResourceMinLODClamp = 0.0f;
     device->CreateShaderResourceView(skybox.textureResource_.get(),
                                      &srvDesc,
                                      srvCpuHandle);

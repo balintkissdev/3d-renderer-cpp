@@ -27,8 +27,8 @@ D3D12Renderer::D3D12Renderer(Window& window,
                              const Camera& camera)
     : Renderer{window, drawProps, camera}
     , viewport_{CD3DX12_VIEWPORT(
-          0.0F,
-          0.0F,
+          0.0f,
+          0.0f,
           static_cast<float>(window_.frameBufferSize().first),
           static_cast<float>(window_.frameBufferSize().second))}
     , scissorRect_{0,
@@ -290,7 +290,7 @@ bool D3D12Renderer::createDSV()
     const D3D12_CLEAR_VALUE depthOptimizedClearValue = {
         .Format = DEPTH_STENCIL_FORMAT,
         .DepthStencil = {
-            .Depth = 1.0F,
+            .Depth = 1.0f,
             .Stencil = 0,
         },
     };
@@ -654,9 +654,9 @@ void D3D12Renderer::draw(const Scene& scene)
     MVPConstantBuffer mvpConstantBufferData;
     XMMATRIX projection
         = XMMatrixPerspectiveFovRH(XMConvertToRadians(drawProps_.fieldOfView),
-                                   1024.0F / 768.0F,
-                                   0.1F,
-                                   100.0F);
+                                   1024.0f / 768.0f,
+                                   0.1f,
+                                   100.0f);
     XMStoreFloat4x4(&mvpConstantBufferData.projection,
                     XMMatrixTranspose(projection));
 
@@ -729,14 +729,14 @@ void D3D12Renderer::draw(const Scene& scene)
     const std::array<float, 4> clearColor = {drawProps_.backgroundColor[0],
                                              drawProps_.backgroundColor[1],
                                              drawProps_.backgroundColor[2],
-                                             1.0F};
+                                             1.0f};
     commandList_->ClearRenderTargetView(rtvHandle,
                                         clearColor.data(),
                                         0,
                                         nullptr);
     commandList_->ClearDepthStencilView(dsvHandle,
                                         D3D12_CLEAR_FLAG_DEPTH,
-                                        1.0F,
+                                        1.0f,
                                         0,
                                         0,
                                         nullptr);
@@ -783,13 +783,13 @@ void D3D12Renderer::drawModels(
 
         // Avoid Gimbal-lock by converting Euler angles to quaternions
         const XMVECTOR quatX = XMQuaternionRotationAxis(
-            XMVectorSet(1.0F, 0.0F, 0.0F, 0.0F),
+            XMVectorSet(1.0f, 0.0f, 0.0f, 0.0f),
             XMConvertToRadians(sceneNode.rotation.x));
         const XMVECTOR quatY = XMQuaternionRotationAxis(
-            XMVectorSet(0.0F, 1.0F, 0.0F, 0.0F),
+            XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f),
             XMConvertToRadians(sceneNode.rotation.y));
         const XMVECTOR quatZ = XMQuaternionRotationAxis(
-            XMVectorSet(0.0F, 0.0F, 1.0F, 0.0F),
+            XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f),
             XMConvertToRadians(sceneNode.rotation.z));
         const XMVECTOR quat
             = XMQuaternionMultiply(XMQuaternionMultiply(quatX, quatY), quatZ);

@@ -9,16 +9,16 @@
 namespace
 {
 // TODO: Make them configurable
-constexpr float MOVEMENT_SPEED = 2.5F;
-constexpr float LOOK_SENSITIVITY = 0.1F;
+constexpr float MOVEMENT_SPEED = 2.5f;
+constexpr float LOOK_SENSITIVITY = 0.1f;
 
-constexpr float ROTATION_Y_LIMIT = 89.0F;
+constexpr float ROTATION_Y_LIMIT = 89.0f;
 
 /// Normalized mapping of positive Y axis in world coordinate space, always
 /// pointing upwards in the viewport (x:0, y:1, z:0). Required to determine
 /// the Right vector (mapping of positive X axis, done by GLM) when creating
 /// the view matrix.
-constexpr glm::vec3 UP_VECTOR{0.0F, 1.0F, 0.0F};
+constexpr glm::vec3 UP_VECTOR{0.0f, 1.0f, 0.0f};
 }  // namespace
 
 Camera::Camera(const glm::vec3& position, const glm::vec2& rotation)
@@ -68,7 +68,7 @@ void Camera::look(const float xOffset, const float yOffset)
 {
     rotation_.x += xOffset * LOOK_SENSITIVITY;
     // Wrap to keep rotation degrees displayed between 0 and 360 on debug UI
-    utils::wrap(rotation_.x, 0.0F, 359.9F);
+    utils::wrap(rotation_.x, 0.0f, 359.9f);
     rotation_.y += yOffset * LOOK_SENSITIVITY;
     // Avoid user to do a backflip
     rotation_.y = glm::clamp(rotation_.y, -ROTATION_Y_LIMIT, ROTATION_Y_LIMIT);

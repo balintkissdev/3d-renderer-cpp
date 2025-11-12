@@ -19,9 +19,9 @@ struct SceneNode
 
     SceneNode(const char* label, const size_t modelID)
         : label{label}
-        , position{0.0F}
-        , rotation{0.0F}
-        , color{0.0F, 0.8F, 1.0F}
+        , position{0.0f}
+        , rotation{0.0f}
+        , color{0.0f, 0.8f, 1.0f}
         , modelID{modelID}
     {
     }

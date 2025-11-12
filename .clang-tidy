@@ -12,10 +12,11 @@ Checks: >
   readability-*,
   -readability-avoid-const-params-in-decls,
   -readability-convert-member-functions-to-static,
-  -readability-implicit-bool-conversion,
   -readability-identifier-length,
+  -readability-implicit-bool-conversion,
   -readability-isolate-declaration,
   -readability-magic-numbers,
+  -readability-uppercase-literal-suffix
 WarningsAsErrors: ""
 HeaderFilterRegex: ""
 CheckOptions:

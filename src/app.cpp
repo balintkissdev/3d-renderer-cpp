@@ -42,8 +42,8 @@ const char* GPU_REQUIREMENTS_MESSAGE =
 // control, at the cost of CPU load. Keep mobile devices in mind.
 // - Lower update rate (30) reduces CPU load, runs game logic less frequently,
 // but can make game less responsive.
-constexpr float MAX_LOGIC_UPDATE_PER_SECOND = 60.0F;
-constexpr float FIXED_UPDATE_TIMESTEP = 1.0F / MAX_LOGIC_UPDATE_PER_SECOND;
+constexpr float MAX_LOGIC_UPDATE_PER_SECOND = 60.0f;
+constexpr float FIXED_UPDATE_TIMESTEP = 1.0f / MAX_LOGIC_UPDATE_PER_SECOND;
 }  // namespace
 
 App::App()
@@ -53,10 +53,10 @@ App::App()
     // coordinate system with positive Z going farther from model, but this
     // setting is done because of initial orientation of the loaded Stanford
     // Bunny mesh.
-    , camera_{{1.7F, 1.3F, 4.0F}, {240.0F, -15.0F}}
+    , camera_{{1.7f, 1.3f, 4.0f}, {240.0f, -15.0f}}
     , drawProps_{DrawProperties::createDefault()}
 #ifndef __EMSCRIPTEN__
-    , frameRateInfo_{.framesPerSecond = 0.0F, .msPerFrame = 0.0F}
+    , frameRateInfo_{.framesPerSecond = 0.0f, .msPerFrame = 0.0f}
     , vsyncEnabled_{false}
     , currentRenderingAPI_{drawProps_.renderingAPI}
 #endif
@@ -224,7 +224,7 @@ void App::run()
     // even on high framerate. Here, think of it as renderer dictating time, and
     // logic update adapting to it.
 
-    float elapsedFrameTime = 0.0F;
+    float elapsedFrameTime = 0.0f;
     int frameCount = 0;
 
     // Prefer steady_clock over high_resolution_clock, because
@@ -232,7 +232,7 @@ void App::run()
     auto previousTime = std::chrono::steady_clock::now();
     // How much application "clock" is behind real time. Also known as
     // "accumulator"
-    float lag = 0.0F;
+    float lag = 0.0f;
     while (!window_.shouldQuit())
     {
         const auto currentTime = std::chrono::steady_clock::now();
@@ -268,10 +268,10 @@ void App::run()
             frameRateInfo_.framesPerSecond
                 = static_cast<float>(frameCount) / elapsedFrameTime;
             frameRateInfo_.msPerFrame
-                = 1000.0F / static_cast<float>(frameCount);
+                = 1000.0f / static_cast<float>(frameCount);
 
             // Reset framerate counter
-            elapsedFrameTime -= 1.0;
+            elapsedFrameTime -= 1.0f;
             frameCount = 0;
         }
     }
