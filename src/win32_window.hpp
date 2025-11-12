@@ -96,16 +96,6 @@ public:
 private:
     static const wchar_t* APPLICATION_NAME;
 
-    // This converter turns a basic UTF-8 string into a 2-byte UTF-16 string.
-    //
-    // See Window doc comment about reasoning to stick with UTF-16.
-    //
-    // std::u16string was considered for the sake of explicitness, but the
-    // resulting occurrences of reinterpret_cast<LPWSTR>() resulted in
-    // boilerplate code and std::wstring is guaranteed to be 2 bytes on Windows
-    // anyway (only platform difference is that wchar_t is 4 bytes on Linux,
-    // but that platform is irrelevant here).
-    static std::wstring ToWideString(std::string_view str);
     static LRESULT CALLBACK WndProc(HWND hWnd,
                                     UINT uMsg,
                                     WPARAM wParam,

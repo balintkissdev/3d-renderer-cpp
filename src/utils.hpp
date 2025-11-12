@@ -28,22 +28,35 @@ namespace utils
     DISABLE_COPY(T)              \
     DISABLE_MOVE(T)
 
+#ifdef _WIN32
+// This converter turns a basic UTF-8 string into a 2-byte UTF-16 string.
+//
+// See Window doc comment about reasoning to stick with UTF-16.
+//
+// std::u16string was considered for the sake of explicitness, but the
+// resulting occurrences of reinterpret_cast<LPWSTR>() resulted in
+// boilerplate code and std::wstring is guaranteed to be 2 bytes on Windows
+// anyway (only platform difference is that wchar_t is 4 bytes on Linux).
+std::wstring ToWideString(std::string_view str);
+#endif
+
 /// Log a formatted error message accepting any number of arguments to console.
 /// An error message box is displayed on Windows and WebAssembly builds.
 template <typename... Args>
 inline void showErrorMessage(Args... args)
 {
-    std::ostringstream messageStream;
-    messageStream << "ERROR: ";
-    (messageStream << ... << args);
-    const std::string errorMessage = messageStream.str();
-    std::cerr << errorMessage << '\n';
+    std::ostringstream msgStream;
+    msgStream << "ERROR: ";
+    (msgStream << ... << args);
+    const std::string errorMsg = msgStream.str();
+    std::cerr << errorMsg << '\n';
 
 #ifdef _WIN32
-    MessageBox(nullptr, errorMessage.c_str(), "ERROR", MB_ICONERROR);
+    const std::wstring wideErrorMsg = ToWideString(errorMsg);
+    ::MessageBoxW(nullptr, wideErrorMsg.c_str(), L"ERROR", MB_ICONERROR);
 #elif __EMSCRIPTEN__
     std::ostringstream alertStream;
-    alertStream << "alert('" << errorMessage << "');";
+    alertStream << "alert('" << errorMsg << "');";
     emscripten_run_script(alertStream.str().c_str());
 #endif
 }

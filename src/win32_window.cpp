@@ -122,7 +122,7 @@ bool Window::createWindow(HINSTANCE hInstance,
 
     hWnd_ = ::CreateWindowExW(0,
                               APPLICATION_NAME,
-                              ToWideString(title).data(),
+                              utils::ToWideString(title).data(),
                               WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU
                                   | WS_MINIMIZEBOX | WS_CLIPSIBLINGS
                                   | WS_CLIPCHILDREN,
@@ -170,35 +170,6 @@ void Window::poll()
         ::TranslateMessage(&msg);
         ::DispatchMessage(&msg);
     }
-}
-
-std::wstring Window::ToWideString(std::string_view str)
-{
-    if (str.empty())
-    {
-        return {};
-    }
-
-    const int byteCount = ::MultiByteToWideChar(CP_UTF8,
-                                                0,
-                                                str.data(),
-                                                static_cast<int>(str.size()),
-                                                nullptr,
-                                                0);
-    if (byteCount <= 0)
-    {
-        return {};
-    }
-
-    std::wstring wstr(byteCount, '0');
-    const int ok = ::MultiByteToWideChar(CP_UTF8,
-                                         0,
-                                         str.data(),
-                                         static_cast<int>(str.size()),
-                                         wstr.data(),
-                                         byteCount);
-
-    return (0 < ok) ? wstr : std::wstring();
 }
 
 LRESULT CALLBACK Window::WndProc(HWND hWnd,

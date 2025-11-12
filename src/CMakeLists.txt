@@ -42,6 +42,7 @@ target_sources(${PROJECT_NAME}
         renderer.hpp
         scene.cpp
         scene.hpp
+        utils.cpp
         utils.hpp
         window.hpp
         "${WINDOW_PLATFORM_PREFIX}_window.cpp"
