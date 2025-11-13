@@ -4,7 +4,7 @@ cmake_minimum_required(VERSION 3.16 FATAL_ERROR)
 set(PROJECT_NAME 3DRenderer)
 project(${PROJECT_NAME})
 
-set(THIRDPARTY_DIR "${CMAKE_CURRENT_SOURCE_DIR}/thirdparty")
+set(THIRDPARTY_DIR "${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/")
 
 # Set default build type to Release if not specified
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
@@ -45,59 +45,6 @@ option(WEBBUILD_CI "Specify if an Emscripten build is running in CI" OFF)
 # dependencies built by this project too.
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>" CACHE STRING "" FORCE)
 # set(MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>" CACHE STRING "" FORCE)
-
-# Download and build dependencies without requiring the user to manually search
-# the internet to download and copy libraries (Windows) or pollute the user's
-# system with globally installed system packages (Linux).
-include(FetchContent)
-
-# Download GLFW for desktop build, otherwise skip this and use bundled
-# Emscripten package
-if(NOT EMSCRIPTEN AND WINDOW_PLATFORM_GLFW)
-    FetchContent_Declare(
-        glfw
-        GIT_REPOSITORY https://github.com/glfw/glfw.git
-        GIT_TAG 3.4
-    )
-    set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
-    set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
-    set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
-    set(GLFW_INSTALL OFF CACHE BOOL "" FORCE)
-    FetchContent_MakeAvailable(glfw)
-endif()
-
-FetchContent_Declare(
-    glm
-    GIT_REPOSITORY https://github.com/g-truc/glm.git
-    GIT_TAG 1.0.1
-)
-FetchContent_MakeAvailable(glm)
-
-FetchContent_Declare(
-    assimp
-    GIT_REPOSITORY https://github.com/assimp/assimp.git
-    GIT_TAG v6.0.2
-)
-set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)  # TODO: Bugprone because not scoped to Assimp build
-set(ASSIMP_BUILD_ALL_IMPORTERS_BY_DEFAULT OFF CACHE BOOL "" FORCE)
-set(ASSIMP_BUILD_OBJ_IMPORTER ON CACHE BOOL "" FORCE)
-set(ASSIMP_BUILD_SAMPLES OFF CACHE BOOL "" FORCE)
-set(ASSIMP_BUILD_TESTS OFF CACHE BOOL "" FORCE)
-# HACK: CI unable to find Emscripten zlib
-if(WEBBUILD_CI)
-    set(ASSIMP_BUILD_ZLIB ON CACHE BOOL "" FORCE)
-endif()
-set(ASSIMP_INJECT_DEBUG_POSTFIX OFF CACHE BOOL "" FORCE)
-set(ASSIMP_INSTALL OFF CACHE BOOL "" FORCE)
-set(ASSIMP_NO_EXPORT ON CACHE BOOL "" FORCE)
-FetchContent_MakeAvailable(assimp)
-if(EMSCRIPTEN)
-    # zlib implementation required to build Assimp with Emscripten
-    set_target_properties(assimp PROPERTIES
-        COMPILE_OPTIONS "--use-port=zlib"
-        LINK_OPTIONS "--use-port=zlib"
-    )
-endif()
 
 add_executable(${PROJECT_NAME} "")
 
@@ -160,11 +107,10 @@ else()
     message(STATUS "clang-tidy is disabled.")
 endif()
 
-# Add sources to build
 add_subdirectory(src)
 add_subdirectory(${THIRDPARTY_DIR})
 
-# Add header include folders
+# Header includes
 target_include_directories(${PROJECT_NAME}
     PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/src"
@@ -174,17 +120,17 @@ target_include_directories(${PROJECT_NAME}
     SYSTEM
     PRIVATE
         "${THIRDPARTY_DIR}"
-        "${THIRDPARTY_DIR}/glad/include"
-        "${THIRDPARTY_DIR}/imgui"
-        "${THIRDPARTY_DIR}/imgui/backends"
-        "${assimp_SOURCE_DIR}/include"
-        "${glm_SOURCE_DIR}"
+        "${THIRDPARTY_DIR}assimp/include"
+        "${THIRDPARTY_DIR}glad/include"
+        "${THIRDPARTY_DIR}glm"
+        "${THIRDPARTY_DIR}imgui"
+        "${THIRDPARTY_DIR}imgui/backends"
 )
 if(WINDOW_PLATFORM_GLFW)
     target_include_directories(${PROJECT_NAME}
         SYSTEM
         PRIVATE
-            "${glfw_SOURCE_DIR}/include"
+            "${THIRDPARTY_DIR}glfw/include"
     )
 endif()
 
@@ -192,9 +138,9 @@ endif()
 target_link_libraries(${PROJECT_NAME}
     PRIVATE
         assimp
-        imgui
-        glm::glm
         glad
+        glm::glm
+        imgui
         # "-sUSE_GLFW=3" linker option uses Emscripten GLFW package for WebAssembly
 )
 if(WINDOW_PLATFORM_GLFW)
@@ -204,7 +150,6 @@ if(WINDOW_PLATFORM_GLFW)
     )
 endif()
 if(WIN32)
-    add_subdirectory("${THIRDPARTY_DIR}/DirectXTex")
     target_link_libraries(${PROJECT_NAME}
         PRIVATE
             d3d12
