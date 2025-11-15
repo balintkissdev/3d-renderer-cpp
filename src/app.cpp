@@ -1,5 +1,6 @@
 #include "app.hpp"
 
+#include "defs.hpp"
 #include "gl/gl_renderer.hpp"
 #include "utils.hpp"
 
@@ -17,12 +18,6 @@ namespace fs = std::filesystem;
 
 namespace
 {
-constexpr uint16_t WINDOW_WIDTH = 1024;
-constexpr uint16_t WINDOW_HEIGHT = 768;
-
-// NOLINTNEXTLINE(readability-identifier-naming)
-const char* WINDOW_TITLE = "3D Renderer by Bálint Kiss";
-
 // NOLINTNEXTLINE(readability-identifier-naming)
 const char* GPU_REQUIREMENTS_MESSAGE =
 #ifdef __EMSCRIPTEN__

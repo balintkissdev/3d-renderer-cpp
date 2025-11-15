@@ -1,6 +1,7 @@
 #ifndef GL_SHADER_HPP_
 #define GL_SHADER_HPP_
 
+#include "drawproperties.hpp"
 #include "utils.hpp"
 
 #ifdef __EMSCRIPTEN__
@@ -32,7 +33,8 @@ public:
     /// Factory method compiling vertex and fragment shaders from GLSL files.
     static std::optional<GLShader> createFromFile(
         const std::filesystem::path& vertexShaderPath,
-        const std::filesystem::path& fragmentShaderPath);
+        const std::filesystem::path& fragmentShaderPath,
+        const RenderingAPI api);
 
     DISABLE_COPY(GLShader)
     GLShader(GLShader&& other) noexcept;
@@ -62,6 +64,7 @@ public:
 private:
     static std::optional<GLuint> compile(
         const std::filesystem::path& shaderPath,
+        const RenderingAPI api,
         const GLenum shaderTpye);
     static std::string readFile(const std::filesystem::path& shaderPath);
     static bool checkCompileErrors(const GLuint shaderID,

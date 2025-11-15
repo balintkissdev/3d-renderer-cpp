@@ -1,6 +1,8 @@
 #ifndef UTILS_HPP_
 #define UTILS_HPP_
 
+#include "drawproperties.hpp"
+
 #include <cassert>
 #include <iostream>
 #include <sstream>
@@ -95,6 +97,9 @@ struct _ScopedDefer
 
     F f;
 };
+
+const char* RenderingAPIToGLSLDirective(const RenderingAPI api);
+
 }  // namespace utils
 
 #ifndef NDEBUG

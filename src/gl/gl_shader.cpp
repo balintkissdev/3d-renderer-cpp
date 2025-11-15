@@ -19,22 +19,25 @@ namespace fs = std::filesystem;
 
 std::optional<GLShader> GLShader::createFromFile(
     const fs::path& vertexShaderPath,
-    const fs::path& fragmentShaderPath)
+    const fs::path& fragmentShaderPath,
+    const RenderingAPI api)
 {
     // Compile vertex shader
-    const auto vertexShader = compile(vertexShaderPath, GL_VERTEX_SHADER);
+    const auto vertexShader = compile(vertexShaderPath, api, GL_VERTEX_SHADER);
     if (!vertexShader)
     {
         return std::nullopt;
     }
+    DEFER(glDeleteShader(vertexShader.value()));
 
     // Compile fragment shader
-    const auto fragmentShader = compile(fragmentShaderPath, GL_FRAGMENT_SHADER);
+    const auto fragmentShader
+        = compile(fragmentShaderPath, api, GL_FRAGMENT_SHADER);
     if (!fragmentShader)
     {
-        glDeleteShader(vertexShader.value());
         return std::nullopt;
     }
+    DEFER(glDeleteShader(fragmentShader.value()));
 
     // Link shader program
     GLuint shaderProgram = glCreateProgram();
@@ -43,8 +46,6 @@ std::optional<GLShader> GLShader::createFromFile(
     glLinkProgram(shaderProgram);
     // Vertex and fragment shader not needed anymore after linked as part for
     // program.
-    glDeleteShader(vertexShader.value());
-    glDeleteShader(fragmentShader.value());
     if (!checkLinkerErrors(shaderProgram))
     {
         return std::nullopt;
@@ -149,9 +150,11 @@ void GLShader::setUniform(const std::string& name, const glm::mat4& v)
 }
 
 std::optional<GLuint> GLShader::compile(const fs::path& shaderPath,
+                                        const RenderingAPI api,
                                         const GLenum shaderTpye)
 {
-    const std::string shaderSrc = readFile(shaderPath);
+    const std::string shaderSrc
+        = utils::RenderingAPIToGLSLDirective(api) + readFile(shaderPath);
     const GLchar* shaderGlSrc = shaderSrc.c_str();
     const GLuint shader = glCreateShader(shaderTpye);
     glShaderSource(shader, 1, &shaderGlSrc, nullptr);

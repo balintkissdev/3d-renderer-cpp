@@ -23,6 +23,7 @@ target_sources(${PROJECT_NAME}
         app.hpp
         camera.cpp
         camera.hpp
+        defs.hpp
         drawproperties.cpp
         drawproperties.hpp
         gl/gl_model.cpp

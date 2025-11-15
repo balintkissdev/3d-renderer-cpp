@@ -146,7 +146,7 @@ bool D3D12SkyboxBuilder::createPSO(ID3D12Device* device, D3D12Skybox& skybox)
     // Shaders
     com_ptr<ID3DBlob> vertexShader;
     if (!D3D12Shader::CompileShader(
-            "skybox.vs.hlsl",
+            "skybox.vert.hlsl",
             D3D12Shader::ShaderCompileType::VertexShader,
             vertexShader))
     {
@@ -155,7 +155,7 @@ bool D3D12SkyboxBuilder::createPSO(ID3D12Device* device, D3D12Skybox& skybox)
     psoDesc.VS = CD3DX12_SHADER_BYTECODE(vertexShader.get());
 
     com_ptr<ID3DBlob> pixelShader;
-    if (!D3D12Shader::CompileShader("skybox.ps.hlsl",
+    if (!D3D12Shader::CompileShader("skybox.pixel.hlsl",
                                     D3D12Shader::ShaderCompileType::PixelShader,
                                     pixelShader))
     {

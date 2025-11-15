@@ -53,6 +53,7 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
     CXX_STANDARD 20
     CXX_STANDARD_REQUIRED YES
     WIN32_EXECUTABLE $<BOOL:${WIN32}>
+    VS_DEBUGGER_WORKING_DIRECTORY "$(OutDir)"
 )
 # Treating compiler warnings as errors is turned off by default but can be
 # enabled with `-DBUILD_WERROR=ON` during the CMake configuration. This is

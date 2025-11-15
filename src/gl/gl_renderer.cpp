@@ -1,6 +1,7 @@
 #include "gl_renderer.hpp"
 
 #include "camera.hpp"
+#include "defs.hpp"
 #include "gl_model.hpp"
 #include "gl_skybox.hpp"
 #include "scene.hpp"
@@ -55,7 +56,6 @@ bool GLRenderer::init()
     {
         return false;
     }
-
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -69,38 +69,18 @@ bool GLRenderer::init()
 bool GLRenderer::loadShaders()
 {
     const fs::path glslShaderBasePath("assets/shaders/glsl/");
-#ifdef __EMSCRIPTEN__
     const fs::path modelVertexShaderPath
-        = glslShaderBasePath / "model_gles3.vert.glsl";
+        = glslShaderBasePath / "model.vert.glsl";
     const fs::path modelFragmentShaderPath
-        = glslShaderBasePath / "model_gles3.frag.glsl";
+        = glslShaderBasePath / "model.frag.glsl";
     const fs::path skyboxVertexShaderPath
-        = glslShaderBasePath / "skybox_gles3.vert.glsl";
+        = glslShaderBasePath / "skybox.vert.glsl";
     const fs::path skyboxFragmentShaderPath
-        = glslShaderBasePath / "skybox_gles3.frag.glsl";
-#else
-    fs::path modelVertexShaderPath;
-    fs::path modelFragmentShaderPath;
-    fs::path skyboxVertexShaderPath;
-    fs::path skyboxFragmentShaderPath;
-    if (glVersionAPI_ == RenderingAPI::OpenGL46)
-    {
-        modelVertexShaderPath = glslShaderBasePath / "model_gl4.vert.glsl";
-        modelFragmentShaderPath = glslShaderBasePath / "model_gl4.frag.glsl";
-        skyboxVertexShaderPath = glslShaderBasePath / "skybox_gl4.vert.glsl";
-        skyboxFragmentShaderPath = glslShaderBasePath / "skybox_gl4.frag.glsl";
-    }
-    else
-    {
-        modelVertexShaderPath = glslShaderBasePath / "model_gl3.vert.glsl";
-        modelFragmentShaderPath = glslShaderBasePath / "model_gl3.frag.glsl";
-        skyboxVertexShaderPath = glslShaderBasePath / "skybox_gl3.vert.glsl";
-        skyboxFragmentShaderPath = glslShaderBasePath / "skybox_gl3.frag.glsl";
-    }
-#endif
+        = glslShaderBasePath / "skybox.frag.glsl";
     std::optional<GLShader> modelShader
         = GLShader::createFromFile(modelVertexShaderPath,
-                                   modelFragmentShaderPath);
+                                   modelFragmentShaderPath,
+                                   glVersionAPI_);
     if (!modelShader)
     {
         return false;
@@ -108,7 +88,8 @@ bool GLRenderer::loadShaders()
 
     std::optional<GLShader> skyboxShader
         = GLShader::createFromFile(skyboxVertexShaderPath,
-                                   skyboxFragmentShaderPath);
+                                   skyboxFragmentShaderPath,
+                                   glVersionAPI_);
     if (!skyboxShader)
     {
         return false;
@@ -161,14 +142,7 @@ void GLRenderer::initImGuiBackend()
     ImGui_ImplGlfw_InitForOpenGL(window_.raw(), true);
 #endif
 
-    const char* glslVersion =
-#ifdef __EMSCRIPTEN__
-        "#version 300 es"
-#else
-        glVersionAPI_ == RenderingAPI::OpenGL46 ? "#version 460 core"
-                                                : "#version 330 core"
-#endif
-        ;
+    const char* glslVersion = utils::RenderingAPIToGLSLDirective(glVersionAPI_);
     ImGui_ImplOpenGL3_Init(glslVersion);
 }
 
@@ -204,8 +178,8 @@ void GLRenderer::draw(const Scene& scene)
         = glm::perspectiveRH(glm::radians(drawProps_.fieldOfView),
                              static_cast<float>(frameBufferWidth)
                                  / static_cast<float>(frameBufferHeight),
-                             0.1f,
-                             100.0f);
+                             NEAR_CLIP_DISTANCE_Z,
+                             FAR_CLIP_DISTANCE_Z);
 
     view_ = camera_.calculateViewMatrix();
 
@@ -312,7 +286,6 @@ void GLRenderer::drawModels(const Scene& scene)
         shader.setUniform("u_normalMatrix", normalMatrix);
         shader.setUniform("u_color", sceneNode.color);
 
-        // Issue draw call
         glDrawElements(GL_TRIANGLES,
                        static_cast<GLsizei>(model->indices().size()),
                        GL_UNSIGNED_INT,
@@ -359,10 +332,7 @@ void GLRenderer::drawSkybox()
     constexpr int textureUnit = 0;
     shader.setUniform("u_skyboxTexture", textureUnit);
 
-    // Issue draw call
     glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, nullptr);
-
-    // Reset state
     glDepthFunc(GL_LESS);  // Reset depth testing to default
 }
 

@@ -10,7 +10,7 @@ cbuffer MVPConstantBuffer : register(b0)
 struct VSOutput
 {
     float4 position : SV_POSITION;
-    float3 texCoord : TEXCOORD0;
+    float3 uv : TEXCOORD0;
 };
 
 VSOutput main(float3 position : POSITION)
@@ -23,7 +23,7 @@ VSOutput main(float3 position : POSITION)
 
     VSOutput output;
     output.position = pos.xyww;
-    output.texCoord = position;
+    output.uv = position;
     return output;
 }
 

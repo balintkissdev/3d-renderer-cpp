@@ -2,6 +2,7 @@
 
 #include "camera.hpp"
 #include "d3d12_shader.hpp"
+#include "defs.hpp"
 #include "drawproperties.hpp"
 #include "scene.hpp"
 #include "utils.hpp"
@@ -491,7 +492,7 @@ bool D3D12Renderer::createModelPSO()
     // TODO: Revisit HLSL file organization when using precompiled CSO bytecode
     com_ptr<ID3DBlob> vertexShader;
     if (!D3D12Shader::CompileShader(
-            "model.vs.hlsl",
+            "model.vert.hlsl",
             D3D12Shader::ShaderCompileType::VertexShader,
             vertexShader))
     {
@@ -500,7 +501,7 @@ bool D3D12Renderer::createModelPSO()
     psoDesc.VS = CD3DX12_SHADER_BYTECODE(vertexShader.get());
 
     com_ptr<ID3DBlob> pixelShader;
-    if (!D3D12Shader::CompileShader("model.ps.hlsl",
+    if (!D3D12Shader::CompileShader("model.pixel.hlsl",
                                     D3D12Shader::ShaderCompileType::PixelShader,
                                     pixelShader))
     {
@@ -654,9 +655,9 @@ void D3D12Renderer::draw(const Scene& scene)
     MVPConstantBuffer mvpConstantBufferData;
     XMMATRIX projection
         = XMMatrixPerspectiveFovRH(XMConvertToRadians(drawProps_.fieldOfView),
-                                   1024.0f / 768.0f,
-                                   0.1f,
-                                   100.0f);
+                                   ASPECT_RATIO,
+                                   NEAR_CLIP_DISTANCE_Z,
+                                   FAR_CLIP_DISTANCE_Z);
     XMStoreFloat4x4(&mvpConstantBufferData.projection,
                     XMMatrixTranspose(projection));
 
