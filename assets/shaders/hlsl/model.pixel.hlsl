@@ -1,3 +1,5 @@
+#include "model.hlsli"
+
 #define ADS_FLAG_DIFFUSE_ENABLED  1
 #define ADS_FLAG_SPECULAR_ENABLED 2
 
@@ -8,13 +10,6 @@ cbuffer MaterialBuffer : register(b1)
     float3 cb_viewPos;
     float padding;
     float3 cb_lightDirection;
-};
-
-struct PSInput
-{
-    float4 screenPosition : SV_POSITION;
-    float3 worldPosition : POSITION;
-    float3 normal : NORMAL;
 };
 
 float3 createDiffuse(float3 normal, float3 lightDirection)
@@ -43,7 +38,7 @@ float3 createSpecular(float3 normal, float3 lightDirection, float3 worldPosition
     return specular;
 }
 
-float4 main(PSInput input) : SV_TARGET
+float4 main_ps(VSOut input) : SV_TARGET0
 {
     float ambientStrength = 0.2;
     float3 ambient = ambientStrength * cb_color;
@@ -52,7 +47,7 @@ float4 main(PSInput input) : SV_TARGET
     float3 diffuse =  createDiffuse(input.normal, lightDirection);
     float3 specular = createSpecular(input.normal, lightDirection, input.worldPosition);
 
-    float3 result = ambient + diffuse + specular;
+    float3 output = ambient + diffuse + specular;
 
-    return float4(result, 1.0f);
+    return float4(output, 1.0f);
 }

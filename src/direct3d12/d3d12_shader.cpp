@@ -10,9 +10,9 @@ namespace fs = std::filesystem;
 
 namespace D3D12Shader
 {
-bool CompileShader(std::string_view hlslFilename,
-                   const ShaderCompileType shaderType,
-                   com_ptr<ID3DBlob>& shaderOut)
+bool Compile(std::string_view hlslFilename,
+             const ShaderCompileType shaderType,
+             com_ptr<ID3DBlob>& shaderOut)
 {
     com_ptr<ID3DBlob> error;
     constexpr UINT compileFlags =
@@ -25,17 +25,20 @@ bool CompileShader(std::string_view hlslFilename,
     ;
 
     const fs::path shaderPath = fs::path("assets/shaders/hlsl/") / hlslFilename;
+    const char* entryFunction
+        = shaderType == ShaderCompileType::VertexShader ? "main_vs" : "main_ps";
+    const char* shaderModel
+        = shaderType == ShaderCompileType::VertexShader ? "vs_5_0" : "ps_5_0";
     // UWP apps don't support D3DCompileFromFile() outside of development
-    HRESULT hr = D3DCompileFromFile(
-        shaderPath.c_str(),
-        nullptr,
-        D3D_COMPILE_STANDARD_FILE_INCLUDE,
-        "main",
-        shaderType == ShaderCompileType::VertexShader ? "vs_5_0" : "ps_5_0",
-        compileFlags,
-        0,
-        shaderOut.put(),
-        error.put());
+    HRESULT hr = D3DCompileFromFile(shaderPath.c_str(),
+                                    nullptr,
+                                    D3D_COMPILE_STANDARD_FILE_INCLUDE,
+                                    entryFunction,
+                                    shaderModel,
+                                    compileFlags,
+                                    0,
+                                    shaderOut.put(),
+                                    error.put());
     if (FAILED(hr))
     {
         std::string errorCause

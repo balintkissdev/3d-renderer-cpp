@@ -25,7 +25,7 @@ IncludeCategories:
   - Regex: '^"pch\.hpp"'
     Priority: 0
     # Local third party dependency headers
-  - Regex: '^"(assimp|glad|GLFW|glm|imgui|stb).*"'
+  - Regex: '^"(assimp|DirectXTex|glad|GLFW|glm|imgui|stb).*"'
     Priority: 2
     # System headers
   - Regex: '^<.*'

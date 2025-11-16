@@ -491,19 +491,18 @@ bool D3D12Renderer::createModelPSO()
     // Shaders
     // TODO: Revisit HLSL file organization when using precompiled CSO bytecode
     com_ptr<ID3DBlob> vertexShader;
-    if (!D3D12Shader::CompileShader(
-            "model.vert.hlsl",
-            D3D12Shader::ShaderCompileType::VertexShader,
-            vertexShader))
+    if (!D3D12Shader::Compile("model.vert.hlsl",
+                              D3D12Shader::ShaderCompileType::VertexShader,
+                              vertexShader))
     {
         return false;
     }
     psoDesc.VS = CD3DX12_SHADER_BYTECODE(vertexShader.get());
 
     com_ptr<ID3DBlob> pixelShader;
-    if (!D3D12Shader::CompileShader("model.pixel.hlsl",
-                                    D3D12Shader::ShaderCompileType::PixelShader,
-                                    pixelShader))
+    if (!D3D12Shader::Compile("model.pixel.hlsl",
+                              D3D12Shader::ShaderCompileType::PixelShader,
+                              pixelShader))
     {
         return false;
     }

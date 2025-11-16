@@ -13,9 +13,9 @@ enum class ShaderCompileType : uint8_t
     PixelShader,
 };
 
-bool CompileShader(std::string_view hlslFilename,
-                   const ShaderCompileType shaderType,
-                   winrt::com_ptr<ID3DBlob>& shaderOut);
+bool Compile(std::string_view hlslFilename,
+             const ShaderCompileType shaderType,
+             winrt::com_ptr<ID3DBlob>& shaderOut);
 
 };  // namespace D3D12Shader
 

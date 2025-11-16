@@ -60,8 +60,7 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
 # because the common practice in open-source projects is to **not** enable
 # build warnigns as errors by default, avoiding situations where people with
 # different build environments encounter warnings that prevent them from
-# building without modifying the `CMakeLists.txt` file. Warnings as errors are
-# enabled for automated CI builds.
+# building without modifying the `CMakeLists.txt` file.
 option(BUILD_WERROR "Treat compiler warnings as errors")
 target_compile_options(${PROJECT_NAME} PRIVATE
     # Disable exceptions
@@ -112,61 +111,51 @@ add_subdirectory(src)
 add_subdirectory(${THIRDPARTY_DIR})
 
 # Header includes
-target_include_directories(${PROJECT_NAME}
-    PRIVATE
-        "${CMAKE_CURRENT_SOURCE_DIR}/src"
-)
+set(INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/src")
 # Make sure to use system includes to avoid clang-tidy checks on them
-target_include_directories(${PROJECT_NAME}
-    SYSTEM
-    PRIVATE
-        "${THIRDPARTY_DIR}"
-        "${THIRDPARTY_DIR}assimp/include"
-        "${THIRDPARTY_DIR}glad/include"
-        "${THIRDPARTY_DIR}glm"
-        "${THIRDPARTY_DIR}imgui"
-        "${THIRDPARTY_DIR}imgui/backends"
+set(SYSTEM_INCLUDE_DIRS
+    "${THIRDPARTY_DIR}"
+    "${THIRDPARTY_DIR}assimp/include"
+    "${THIRDPARTY_DIR}glad/include"
+    "${THIRDPARTY_DIR}glm"
+    "${THIRDPARTY_DIR}imgui"
+    "${THIRDPARTY_DIR}imgui/backends"
 )
 if(WINDOW_PLATFORM_GLFW)
-    target_include_directories(${PROJECT_NAME}
-        SYSTEM
-        PRIVATE
-            "${THIRDPARTY_DIR}glfw/include"
-    )
+    list(APPEND SYSTEM_INCLUDE_DIRS "${THIRDPARTY_DIR}glfw/include")
+elseif(WINDOW_PLATFORM_WIN32)
+    list(APPEND SYSTEM_INCLUDE_DIRS "${THIRDPARTY_DIR}DirectXTex")
 endif()
 
+target_include_directories(${PROJECT_NAME}
+    PRIVATE ${INCLUDE_DIRS}
+    SYSTEM PRIVATE ${SYSTEM_INCLUDE_DIRS}
+)
+
 # Link libraries
-target_link_libraries(${PROJECT_NAME}
-    PRIVATE
-        assimp
-        glad
-        glm::glm
-        imgui
-        # "-sUSE_GLFW=3" linker option uses Emscripten GLFW package for WebAssembly
+set(LINKER_LIBS
+    assimp
+    glad
+    glm::glm
+    imgui
+    # "-sUSE_GLFW=3" linker option uses Emscripten GLFW package for WebAssembly
 )
 if(WINDOW_PLATFORM_GLFW)
-    target_link_libraries(${PROJECT_NAME}
-        PRIVATE
-            glfw
-    )
-endif()
-if(WIN32)
-    target_link_libraries(${PROJECT_NAME}
-        PRIVATE
-            d3d12
-            dxgi
-            d3dcompiler
-            dxguid  # Dependency for DirectXTex, see https://learn.microsoft.com/en-us/windows/win32/prog-dx-with-com#guids
-            DirectXTex
+    list(APPEND LINKER_LIBS glfw)
+elseif(WINDOW_PLATFORM_WIN32)
+    list(APPEND LINKER_LIBS
+        d3d12
+        dxgi
+        d3dcompiler
+        dxguid  # Dependency for DirectXTex, see https://learn.microsoft.com/en-us/windows/win32/prog-dx-with-com#guids
+        DirectXTex
     )
 endif()
 if(NOT EMSCRIPTEN)
     find_package(OpenGL REQUIRED)
-    target_link_libraries(${PROJECT_NAME}
-        PRIVATE
-            OpenGL::GL
-    )
+    list(APPEND LINKER_LIBS OpenGL::GL)
 endif()
+target_link_libraries(${PROJECT_NAME} PRIVATE ${LINKER_LIBS})
 
 # Copy assets
 add_custom_command(
