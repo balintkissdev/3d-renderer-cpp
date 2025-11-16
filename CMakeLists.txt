@@ -68,6 +68,8 @@ target_compile_options(${PROJECT_NAME} PRIVATE
     $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-fno-exceptions>
     # Disable RTTI
     $<IF:$<CXX_COMPILER_ID:MSVC>,/GR-,-fno-rtti>
+    # Optimize using fast floating point behavior
+    $<IF:$<CXX_COMPILER_ID:MSVC>,/fp:fast,-ffast-math>
     # Enable warnings
     # TODO: Only disable -Wlanguage-extension-token on clang running on Windows
     $<IF:$<CXX_COMPILER_ID:MSVC>,/W4,-Wall -Wextra -Wpedantic -Wno-language-extension-token>
