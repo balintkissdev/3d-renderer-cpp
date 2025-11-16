@@ -98,7 +98,11 @@ struct _ScopedDefer
     F f;
 };
 
-const char* RenderingAPIToGLSLDirective(const RenderingAPI api);
+const char* RenderingAPIToGLSLDirective(
+#ifndef __EMSCRIPTEN__
+    const RenderingAPI api
+#endif
+);
 
 }  // namespace utils
 

@@ -34,11 +34,10 @@ std::wstring ToWideString(std::string_view str)
 }
 #endif
 
-const char* RenderingAPIToGLSLDirective(const RenderingAPI api)
+const char* RenderingAPIToGLSLDirective(
+#ifndef __EMSCRIPTEN__
+    const RenderingAPI api)
 {
-#ifdef __EMSCRIPTEN__
-    return "#version 300 es\n";
-#else
     switch (api)
     {
         case RenderingAPI::OpenGL33:
@@ -49,6 +48,10 @@ const char* RenderingAPIToGLSLDirective(const RenderingAPI api)
             assert("illegal API to GLSL directive conversion");
             return {};
     }
+#else
+)
+{
+    return "#version 300 es\n";
 #endif
 }
 

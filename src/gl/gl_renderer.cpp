@@ -79,8 +79,12 @@ bool GLRenderer::loadShaders()
         = glslShaderBasePath / "skybox.frag.glsl";
     std::optional<GLShader> modelShader
         = GLShader::createFromFile(modelVertexShaderPath,
-                                   modelFragmentShaderPath,
-                                   glVersionAPI_);
+                                   modelFragmentShaderPath
+#ifndef __EMSCRIPTEN__
+                                   ,
+                                   glVersionAPI_
+#endif
+        );
     if (!modelShader)
     {
         return false;
@@ -88,8 +92,12 @@ bool GLRenderer::loadShaders()
 
     std::optional<GLShader> skyboxShader
         = GLShader::createFromFile(skyboxVertexShaderPath,
-                                   skyboxFragmentShaderPath,
-                                   glVersionAPI_);
+                                   skyboxFragmentShaderPath
+#ifndef __EMSCRIPTEN__
+                                   ,
+                                   glVersionAPI_
+#endif
+        );
     if (!skyboxShader)
     {
         return false;
@@ -142,7 +150,11 @@ void GLRenderer::initImGuiBackend()
     ImGui_ImplGlfw_InitForOpenGL(window_.raw(), true);
 #endif
 
-    const char* glslVersion = utils::RenderingAPIToGLSLDirective(glVersionAPI_);
+    const char* glslVersion = utils::RenderingAPIToGLSLDirective(
+#ifndef __EMSCRIPTEN__
+        glVersionAPI_
+#endif
+    );
     ImGui_ImplOpenGL3_Init(glslVersion);
 }
 

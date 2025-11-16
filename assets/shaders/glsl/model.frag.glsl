@@ -1,12 +1,13 @@
+#if __VERSION__ <= 310
+precision mediump float;
+#endif
+
 #if 460 <= __VERSION__
     #define OPENGL_4_6
 #endif
 
-in block
-{
-    vec3 fragPos;
-    vec3 normal;
-} In;
+in vec3 v_fragPos;
+in vec3 v_normal;
 
 struct Light
 {
@@ -37,7 +38,7 @@ vec3 DiffuseEnabled(vec3 norm, vec3 lightDir)
 subroutine ( CreateSpecular )
 vec3 SpecularEnabled(vec3 norm, vec3 lightDir)
 {
-    vec3 viewDir = normalize(u_viewPos - In.fragPos);
+    vec3 viewDir = normalize(u_viewPos - v_fragPos);
     vec3 reflectDir = reflect(-lightDir, norm);
     float spec = pow(max(dot(viewDir, reflectDir), 0.0), 64.0);
     vec3 specular = 1.0 * spec * u_color;
@@ -66,7 +67,7 @@ vec3 createDiffuse(vec3 norm, vec3 lightDir)
 
 vec3 createSpecular(vec3 norm, vec3 lightDir)
 {
-    vec3 viewDir = normalize(u_viewPos - In.fragPos);
+    vec3 viewDir = normalize(u_viewPos - v_fragPos);
     vec3 reflectDir = reflect(-lightDir, norm);
     float spec = pow(max(dot(viewDir, reflectDir), 0.0), 64.0);
     vec3 specular = 1.0 * spec * u_color;
@@ -80,7 +81,7 @@ void main()
     float ambientStrength = 0.2;
     vec3 ambient = ambientStrength * u_color;
 
-    vec3 norm = normalize(In.normal);
+    vec3 norm = normalize(v_normal);
     vec3 lightDir = normalize(-u_light.direction);
 
     #if defined(OPENGL_4_6)

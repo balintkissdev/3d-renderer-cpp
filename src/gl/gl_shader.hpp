@@ -33,8 +33,12 @@ public:
     /// Factory method compiling vertex and fragment shaders from GLSL files.
     static std::optional<GLShader> createFromFile(
         const std::filesystem::path& vertexShaderPath,
-        const std::filesystem::path& fragmentShaderPath,
-        const RenderingAPI api);
+        const std::filesystem::path& fragmentShaderPath
+#ifndef __EMSCRIPTEN__
+        ,
+        const RenderingAPI api
+#endif
+    );
 
     DISABLE_COPY(GLShader)
     GLShader(GLShader&& other) noexcept;
@@ -64,7 +68,9 @@ public:
 private:
     static std::optional<GLuint> compile(
         const std::filesystem::path& shaderPath,
+#ifndef __EMSCRIPTEN__
         const RenderingAPI api,
+#endif
         const GLenum shaderTpye);
     static std::string readFile(const std::filesystem::path& shaderPath);
     static bool checkCompileErrors(const GLuint shaderID,

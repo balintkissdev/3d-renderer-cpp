@@ -1,3 +1,7 @@
+#if __VERSION__ <= 310
+precision mediump float;
+#endif
+
 in vec3 v_uv;
 
 uniform samplerCube u_skyboxTexture;
