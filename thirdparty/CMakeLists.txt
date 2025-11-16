@@ -83,7 +83,11 @@ target_include_directories(imgui
         "${IMGUI_INCLUDE_DIRS}"
 )
 
-# DirectXText
+# DirectXTex
 if(WIN32)
+    set(BUILD_TOOLS OFF CACHE BOOL "" FORCE)
+    set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+    set(BUILD_SAMPLE OFF CACHE BOOL "" FORCE)
+    set(BC_USE_OPENMP OFF CACHE BOOL "" FORCE)
     add_subdirectory("${THIRDPARTY_DIR}DirectXTex")
 endif()

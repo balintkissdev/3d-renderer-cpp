@@ -37,8 +37,8 @@ target_sources(${PROJECT_NAME}
         gui.cpp
         gui.hpp
         main.cpp
-        modelimporter.cpp
-        modelimporter.hpp
+        meshimporter.cpp
+        meshimporter.hpp
         renderer.cpp
         renderer.hpp
         scene.cpp

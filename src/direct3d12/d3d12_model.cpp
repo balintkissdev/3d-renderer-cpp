@@ -1,6 +1,6 @@
 #include "d3d12_model.hpp"
 
-#include "modelimporter.hpp"
+#include "meshimporter.hpp"
 #include "utils.hpp"
 
 #include <cstddef>
@@ -15,10 +15,10 @@ std::optional<D3D12Model> D3D12Model::create(ID3D12Device* device,
     std::vector<Vertex> vertices;
     std::vector<uint32_t> indices;
     D3D12Model model;
-    if (!ModelImporter::loadFromFile(filePath,
-                                     vertices,
-                                     indices,
-                                     ModelImporter::Winding::Clockwise))
+    if (!MeshImporter::loadFromFile(filePath,
+                                    vertices,
+                                    indices,
+                                    MeshImporter::Winding::Clockwise))
     {
         return std::nullopt;
     }

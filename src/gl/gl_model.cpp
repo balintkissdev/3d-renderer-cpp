@@ -1,6 +1,6 @@
 #include "gl_model.hpp"
 
-#include "modelimporter.hpp"
+#include "meshimporter.hpp"
 #include "utils.hpp"
 
 #include <cstddef>
@@ -12,19 +12,19 @@ std::optional<GLModel> GLModel::create(const fs::path& filePath)
 {
     std::vector<Vertex> vertices;
     GLModel model;
-    if (!ModelImporter::loadFromFile(filePath,
-                                     vertices,
-                                     model.indices_,
-                                     ModelImporter::Winding::CounterClockwise))
+    if (!MeshImporter::loadFromFile(filePath,
+                                    vertices,
+                                    model.indices_,
+                                    MeshImporter::Winding::CounterClockwise))
     {
         return std::nullopt;
     }
 
-    // Create vertex array
+    // Vertex array
     glGenVertexArrays(1, &model.vertexArray_);
     glBindVertexArray(model.vertexArray_);
 
-    // Create vertex buffer
+    // Vertex buffer
     glGenBuffers(1, &model.vertexBuffer_);
     glBindBuffer(GL_ARRAY_BUFFER, model.vertexBuffer_);
     glBufferData(GL_ARRAY_BUFFER,
@@ -32,7 +32,7 @@ std::optional<GLModel> GLModel::create(const fs::path& filePath)
                  vertices.data(),
                  GL_STATIC_DRAW);
 
-    // Create index buffer
+    // Index buffer
     glGenBuffers(1, &model.indexBuffer_);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, model.indexBuffer_);
     glBufferData(
@@ -41,7 +41,7 @@ std::optional<GLModel> GLModel::create(const fs::path& filePath)
         model.indices_.data(),
         GL_STATIC_DRAW);
 
-    // Setup vertex array layout
+    // Vertex Attribute layout
     constexpr GLuint positionVertexAttribute = 0;
     glEnableVertexAttribArray(positionVertexAttribute);
     glVertexAttribPointer(positionVertexAttribute,

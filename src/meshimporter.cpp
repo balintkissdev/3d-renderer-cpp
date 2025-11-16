@@ -1,4 +1,4 @@
-#include "modelimporter.hpp"
+#include "meshimporter.hpp"
 
 #include "utils.hpp"
 
@@ -8,7 +8,7 @@
 
 namespace fs = std::filesystem;
 
-namespace ModelImporter
+namespace MeshImporter
 {
 bool loadFromFile(const fs::path& filePath,
                   std::vector<Vertex>& outVertices,
@@ -66,5 +66,5 @@ bool loadFromFile(const fs::path& filePath,
 
     return true;
 }
-}  // namespace ModelImporter
+}  // namespace MeshImporter
 
