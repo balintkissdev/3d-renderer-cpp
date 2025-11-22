@@ -100,10 +100,14 @@ Required dependencies on Fedora, Red Hat:
 sudo dnf install wayland-devel libxkbcommon-devel libXcursor-devel libXi-devel libXinerama-devel libXrandr-devel
 ```
 
-All other dependencies are either included in `thirdparty` folder or automatically downloaded and built by `FetchContent` feature of CMake.
+All other dependencies are included in `thirdparty` folder.
+
+## Included third-party libraries.
 
 - [Assimp](https://assimp.org/)
 - [Dear ImGui](https://github.com/ocornut/imgui)
+- [DirectX-Headers (d3dx12.h, dxguids.h)](https://github.com/microsoft/DirectX-Headers)
+- [DirectXTex](https://github.com/microsoft/DirectXTex)
 - [GLFW](glfw.org)
 - [OpenGL Mathematics (GLM)](https://github.com/g-truc/glm)
 - [glad](https://gen.glad.sh/)
@@ -146,7 +150,7 @@ cmake --build ./build --config Release
 This will be a ZIP file on Windows.
 
 ```sh
-cpack -B ./build -C "Release"
+cpack -B build -C "Release"
 ```
 
 ### Generate Linux release
