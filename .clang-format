@@ -30,6 +30,9 @@ IncludeCategories:
     # System headers
   - Regex: '^<.*'
     Priority: 3
+    # PIX headers must come after d3d12.h
+  - Regex: '^"WinPixEventRuntime.*"'
+    Priority: 4
     # Project headers
   - Regex: '.*'
     Priority: 1

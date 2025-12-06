@@ -40,7 +40,7 @@ namespace utils
 // boilerplate code and std::wstring is guaranteed to be 2 bytes on Windows
 // anyway (only platform difference is that wchar_t is 4 bytes on Linux).
 std::wstring ToWideString(std::string_view str);
-#endif
+#endif  // _WIN32
 
 /// Log a formatted error message accepting any number of arguments to console.
 /// An error message box is displayed on Windows and WebAssembly builds.
@@ -121,6 +121,13 @@ const char* RenderingAPIToGLSLDirective(
 #else
 #define DEBUG_ASSERT_GL_VERSION(requestedMajorGLVersion, \
                                 requestedMinorGLVersion)
-#endif
+#endif  // NDEBUG
+
+#ifdef PIX_ENABLED
+#define PIX_EVENT(commandList, str) \
+    PIXScopedEvent(commandList, PIX_COLOR_INDEX(0), str);
+#else
+#define PIX_EVENT(commandList, str)
+#endif  // PIX_ENABLED
 
 #endif

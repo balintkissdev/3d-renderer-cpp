@@ -5,7 +5,8 @@
 #include "DirectXTex/DirectXTex.h"
 
 #include <d3dcompiler.h>
-#include <d3dx12.h>
+
+#include "WinPixEventRuntime/pix3.h"
 
 using namespace DirectX;
 using namespace winrt;
@@ -19,6 +20,8 @@ D3D12Skybox::D3D12Skybox()
 void D3D12Skybox::draw(ID3D12GraphicsCommandList* commandList,
                        ID3D12Resource* mvpConstantBuffer)
 {
+    PIX_EVENT(commandList, "D3D12Skybox::draw");
+
     commandList->SetGraphicsRootSignature(rootSignature_.get());
     commandList->SetPipelineState(pso_.get());
 

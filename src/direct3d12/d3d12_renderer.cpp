@@ -12,16 +12,22 @@
 #include "imgui_impl_win32.h"
 
 #include <combaseapi.h>
-#include <d3d12.h>
 #include <d3d12sdklayers.h>
 #include <d3dcompiler.h>
 #include <directxmath.h>
 #include <dxgi1_4.h>
 #include <synchapi.h>
 
+#include "WinPixEventRuntime/pix3.h"
+
 namespace fs = std::filesystem;
 using namespace DirectX;
 using namespace winrt;
+
+namespace
+{
+D3D12_GPU_DESCRIPTOR_HANDLE s_nullCbvGpuHandle;
+}
 
 D3D12Renderer::D3D12Renderer(Window& window,
                              const DrawProperties& drawProps,
@@ -322,6 +328,20 @@ bool D3D12Renderer::createDSV()
 // TODO: Refactor duplicate code
 bool D3D12Renderer::createCBVs()
 {
+    // Null resource CBV (for debugging)
+    UINT cbvIndexOffset = 0;
+    CD3DX12_CPU_DESCRIPTOR_HANDLE nullCbvCpuHandle(
+        cbvSrvUavDescriptorHeap_->GetCPUDescriptorHandleForHeapStart(),
+        cbvIndexOffset,
+        cbvSrvUavDescriptorHeapSize_);
+    D3D12_CONSTANT_BUFFER_VIEW_DESC nullCbvDesc{};
+    device_->CreateConstantBufferView(&nullCbvDesc, nullCbvCpuHandle);
+    s_nullCbvGpuHandle = CD3DX12_GPU_DESCRIPTOR_HANDLE(
+        cbvSrvUavDescriptorHeap_->GetGPUDescriptorHandleForHeapStart(),
+        cbvIndexOffset,
+        cbvSrvUavDescriptorHeapSize_);
+    ++cbvIndexOffset;
+
     mvpConstantBuffers_.resize(MAX_MODEL_SCENE_NODE_COUNT);
     mvpCbvDataBegin_.resize(MAX_MODEL_SCENE_NODE_COUNT);
     materialConstantBuffers_.resize(MAX_MODEL_SCENE_NODE_COUNT);
@@ -333,7 +353,7 @@ bool D3D12Renderer::createCBVs()
         if (!createConstantBufferAndView<MVPConstantBuffer>(
                 heapProperties,
                 mvpConstantBuffers_[i],
-                i,
+                cbvIndexOffset + i,
                 mvpCbvDataBegin_[i]))
         {
             return false;
@@ -343,7 +363,7 @@ bool D3D12Renderer::createCBVs()
         if (!createConstantBufferAndView<MaterialConstantBuffer>(
                 heapProperties,
                 materialConstantBuffers_[i],
-                MAX_MODEL_SCENE_NODE_COUNT + i,
+                cbvIndexOffset + MAX_MODEL_SCENE_NODE_COUNT + i,
                 materialCbvDataBegin_[i]))
         {
             return false;
@@ -695,6 +715,7 @@ void D3D12Renderer::draw(const Scene& scene)
     // Begin frame
     commandAllocator_->Reset();
     commandList_->Reset(commandAllocator_.get(), modelPso_.get());
+    PIX_EVENT(commandList_.get(), "D3D12Renderer::draw");
 
     // Set render state
     commandList_->SetGraphicsRootSignature(modelRootSignature_.get());
@@ -770,6 +791,8 @@ void D3D12Renderer::drawModels(
     MVPConstantBuffer& mvpConstantBufferData,
     MaterialConstantBuffer& materialConstantBufferData)
 {
+    PIX_EVENT(commandList_.get(), "D3D12Renderer::drawModels");
+
     for (size_t i = 0; i < scene.children().size(); ++i)
     {
         const SceneNode& sceneNode = scene.children()[i];
@@ -808,11 +831,11 @@ void D3D12Renderer::drawModels(
         std::memcpy(mvpCbvDataBegin_[i],
                     &mvpConstantBufferData,
                     sizeof(mvpConstantBufferData));
-        CD3DX12_GPU_DESCRIPTOR_HANDLE mpvCbvGpuHandle(
+        CD3DX12_GPU_DESCRIPTOR_HANDLE mvpCbvGpuHandle(
             cbvSrvUavDescriptorHeap_->GetGPUDescriptorHandleForHeapStart(),
-            static_cast<int>(i),
+            NULL_CBV_COUNT + static_cast<int>(i),
             cbvSrvUavDescriptorHeapSize_);
-        commandList_->SetGraphicsRootDescriptorTable(0, mpvCbvGpuHandle);
+        commandList_->SetGraphicsRootDescriptorTable(0, mvpCbvGpuHandle);
 
         // Material constant buffer
         materialConstantBufferData.color.x = sceneNode.color.r;
@@ -824,7 +847,7 @@ void D3D12Renderer::drawModels(
                     sizeof(materialConstantBufferData));
         CD3DX12_GPU_DESCRIPTOR_HANDLE materialCbvGpuHandle(
             cbvSrvUavDescriptorHeap_->GetGPUDescriptorHandleForHeapStart(),
-            static_cast<int>(mvpConstantBuffers_.size() + i),
+            NULL_CBV_COUNT + static_cast<int>(mvpConstantBuffers_.size() + i),
             cbvSrvUavDescriptorHeapSize_);
         commandList_->SetGraphicsRootDescriptorTable(1, materialCbvGpuHandle);
 
@@ -842,6 +865,7 @@ void D3D12Renderer::drawModels(
 
 void D3D12Renderer::drawGui()
 {
+    PIX_EVENT(commandList_.get(), "D3D12Renderer::drawGui");
     ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), commandList_.get());
 }
 

@@ -39,6 +39,16 @@ endif()
 
 option(WEBBUILD_CI "Specify if an Emscripten build is running in CI" OFF)
 
+option(WITH_PIX "Use PIX Event Runtime (available only with native Win32 window implementation)" OFF)
+if(WITH_PIX)
+    if(WINDOW_PLATFORM_WIN32)
+        message(STATUS "Using PIX Event Runtime")
+    else()
+        message(FATAL_ERROR "PIX Event Runtime is only available on native Win32 window implementation")
+    endif()
+endif()
+
+
 # Globally build without need to link to Visual C++ Runtime DLLs (needs Visual
 # C++ Redistributable installed on user's system, use "dumpbin /dependents" in MSVC Developer
 # Command Prompt to verify required DLLs to ship) not for just app but
@@ -79,6 +89,7 @@ target_compile_options(${PROJECT_NAME} PRIVATE
 target_compile_definitions(${PROJECT_NAME} PRIVATE
     $<$<PLATFORM_ID:Windows>:WIN32_LEAN_AND_MEAN>
     "${WINDOW_PLATFORM_DEF}"
+    $<$<BOOL:${WITH_PIX}>:PIX_ENABLED>
 )
 
 option(ENABLE_CLANG_TIDY "Enable static code analysis with clang-tidy during build")
@@ -151,6 +162,7 @@ elseif(WINDOW_PLATFORM_WIN32)
         d3dcompiler
         dxguid  # Dependency for DirectXTex, see https://learn.microsoft.com/en-us/windows/win32/prog-dx-with-com#guids
         DirectXTex
+        $<$<BOOL:${WITH_PIX}>:PixEvents>
     )
 endif()
 if(NOT EMSCRIPTEN)
@@ -161,11 +173,19 @@ target_link_libraries(${PROJECT_NAME} PRIVATE ${LINKER_LIBS})
 
 # Copy assets
 add_custom_command(
-    TARGET ${PROJECT_NAME}
+    TARGET ${PROJECT_NAME} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory
         "${PROJECT_SOURCE_DIR}/assets"
         "$<TARGET_FILE_DIR:${PROJECT_NAME}>/assets"
 )
+if(WITH_PIX)
+    add_custom_command(
+        TARGET ${PROJECT_NAME} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "$<TARGET_PROPERTY:PixEvents,IMPORTED_LOCATION>"
+            "$<TARGET_FILE_DIR:${PROJECT_NAME}>"
+    )
+endif()
 
 # Linker options for WebAssembly build
 if(EMSCRIPTEN)

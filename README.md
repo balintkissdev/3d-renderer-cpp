@@ -52,6 +52,7 @@ The project showcases confident usage of the following technologies:
 - Immediate mode overlay GUI using Dear ImGui (as opposed to retained mode GUI frameworks like Qt)
 - Building for WebAssembly using Emscripten
 - Clang Tooling (clang-format, clang-tidy)
+- Integration of Microsoft PIX frame debugger tool
 
 Future additions will include Direct3D, Vulkan rendering backends and additional post-processing effects.
 
@@ -106,6 +107,7 @@ All other dependencies are either included in `thirdparty` folder or automatical
 - [GLFW](glfw.org)
 - [OpenGL Mathematics (GLM)](https://github.com/g-truc/glm)
 - [glad](https://gen.glad.sh/)
+- [Pix Event Runtime](https://github.com/microsoft/PixEvents)
 - [stb_image](https://github.com/nothings/stb/blob/master/stb_image.h)
 
 ## Build instructions

@@ -79,11 +79,12 @@ private:
     size_t rtvDescriptorHeapSize_;
     winrt::com_ptr<ID3D12DescriptorHeap> dsvDescriptorHeap_;
 
+    static constexpr size_t NULL_CBV_COUNT = 1;
     static constexpr size_t CB_PER_MODEL_COUNT = 2;
     static constexpr size_t SKYBOX_TEXTURE_SRV_COUNT = 1;
     static constexpr size_t IMGUI_FONT_TEXTURE_SRV_COUNT = 1;
     static constexpr UINT MAX_CBV_SRV_UAV_DESCRIPTOR_COUNT
-        = (MAX_MODEL_SCENE_NODE_COUNT * CB_PER_MODEL_COUNT)
+        = NULL_CBV_COUNT + (MAX_MODEL_SCENE_NODE_COUNT * CB_PER_MODEL_COUNT)
         + SKYBOX_TEXTURE_SRV_COUNT + IMGUI_FONT_TEXTURE_SRV_COUNT;
     winrt::com_ptr<ID3D12DescriptorHeap> cbvSrvUavDescriptorHeap_;
     size_t cbvSrvUavDescriptorHeapSize_;

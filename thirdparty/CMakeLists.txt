@@ -10,7 +10,6 @@ if(NOT EMSCRIPTEN AND WINDOW_PLATFORM_GLFW)
     add_subdirectory("${THIRDPARTY_DIR}glfw")
 endif()
 
-
 # GLAD
 set(GLAD_SRC_DIR "${THIRDPARTY_DIR}glad/src/")
 if(EMSCRIPTEN)
@@ -83,11 +82,24 @@ target_include_directories(imgui
         "${IMGUI_INCLUDE_DIRS}"
 )
 
-# DirectXTex
-if(WIN32)
+if(WINDOW_PLATFORM_WIN32)
+    # DirectXTex
     set(BUILD_TOOLS OFF CACHE BOOL "" FORCE)
     set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
     set(BUILD_SAMPLE OFF CACHE BOOL "" FORCE)
     set(BC_USE_OPENMP OFF CACHE BOOL "" FORCE)
     add_subdirectory("${THIRDPARTY_DIR}DirectXTex")
+
+    # Pix Event Runtime
+    if(WITH_PIX)
+        add_library(PixEvents SHARED IMPORTED GLOBAL)
+        set(PIX_EVENTS_DIR "${THIRDPARTY_DIR}PixEvents/")
+        set(PIX_EVENTS_BIN_DIR "${PIX_EVENTS_DIR}bin/x64/")
+        set_target_properties(PixEvents PROPERTIES
+            IMPORTED_LOCATION "${PIX_EVENTS_BIN_DIR}WinPixEventRuntime.dll"
+            IMPORTED_IMPLIB "${PIX_EVENTS_BIN_DIR}WinPixEventRuntime.lib"
+            INTERFACE_INCLUDE_DIRECTORIES "${PIX_EVENTS_DIR}Include"
+        )
+    endif()
 endif()
+
