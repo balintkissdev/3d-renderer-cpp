@@ -1,7 +1,7 @@
 #include "app.hpp"
 
-#include "defs.hpp"
 #include "gl/gl_renderer.hpp"
+#include "globals.hpp"
 #include "utils.hpp"
 
 #if defined(WINDOW_PLATFORM_WIN32)

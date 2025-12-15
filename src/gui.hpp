@@ -84,6 +84,7 @@ private:
     void rendererSection(const FrameRateInfo& frameRateInfo,
                          DrawProperties& drawProps);
     void confirmRestartDialog(RenderingAPI& renderingAPI);
+    [[nodiscard]] bool isDirect3DEnabled() const;
 #endif
 
     // BUG: Jank on right-click context menu because camera is also activated at

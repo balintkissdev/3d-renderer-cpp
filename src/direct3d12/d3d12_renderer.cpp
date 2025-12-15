@@ -2,14 +2,16 @@
 
 #include "camera.hpp"
 #include "d3d12_shader.hpp"
-#include "defs.hpp"
 #include "drawproperties.hpp"
+#include "globals.hpp"
 #include "scene.hpp"
 #include "utils.hpp"
 
 #include "imgui.h"
 #include "imgui_impl_dx12.h"
 #include "imgui_impl_win32.h"
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "stb_image_write.h"
 
 #include <combaseapi.h>
 #include <d3d12sdklayers.h>
@@ -29,7 +31,7 @@ using namespace winrt;
 namespace
 {
 D3D12_GPU_DESCRIPTOR_HANDLE s_nullCbvGpuHandle;
-}
+}  // namespace
 
 D3D12Renderer::D3D12Renderer(Window& window,
                              const DrawProperties& drawProps,
@@ -784,6 +786,12 @@ void D3D12Renderer::draw(const Scene& scene)
     commandQueue_->ExecuteCommandLists(commandLists.size(),
                                        commandLists.data());
 
+    if (Globals::takingScreenshot)
+    {
+        screenshot();
+        Globals::takingScreenshot = false;
+    }
+
     swapChain_->Present(vsyncEnabled_, 0);
     waitForPreviousFrame();
 }
@@ -869,6 +877,115 @@ void D3D12Renderer::drawGui()
 {
     PIX_EVENT(commandList_.get(), "D3D12Renderer::drawGui");
     ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), commandList_.get());
+}
+
+void D3D12Renderer::screenshot()
+{
+    // Wait for drawing to finish
+    waitForPreviousFrame();
+
+    commandAllocator_->Reset();
+    commandList_->Reset(commandAllocator_.get(), nullptr);
+
+    // Backbuffer (GPU)
+    com_ptr<ID3D12Resource> backBuffer;
+    HRESULT hr
+        = swapChain_->GetBuffer(frameIndex_, IID_PPV_ARGS(backBuffer.put()));
+    if (FAILED(hr))
+    {
+        utils::showErrorMessage("unable to query backbuffer for screenshot");
+        return;
+    }
+    D3D12_RESOURCE_DESC backBufferDesc = backBuffer->GetDesc();
+
+    D3D12_PLACED_SUBRESOURCE_FOOTPRINT footprint;
+    UINT rowCount;
+    UINT64 rowByteSize;
+    UINT64 totalByteCount;
+    device_->GetCopyableFootprints(&backBufferDesc,
+                                   0,
+                                   1,
+                                   0,
+                                   &footprint,
+                                   &rowCount,
+                                   &rowByteSize,
+                                   &totalByteCount);
+
+    // Readback buffer (readback Heap, CPU, also known as Staging Texture)
+    const CD3DX12_HEAP_PROPERTIES readbackHeapProps(D3D12_HEAP_TYPE_READBACK);
+    CD3DX12_RESOURCE_DESC readbackBufferDesc
+        = CD3DX12_RESOURCE_DESC::Buffer(totalByteCount);
+    com_ptr<ID3D12Resource> readbackBuffer;
+    hr = device_->CreateCommittedResource(&readbackHeapProps,
+                                          D3D12_HEAP_FLAG_NONE,
+                                          &readbackBufferDesc,
+                                          D3D12_RESOURCE_STATE_COPY_DEST,
+                                          nullptr,
+                                          IID_PPV_ARGS(readbackBuffer.put()));
+    if (FAILED(hr))
+    {
+        utils::showErrorMessage(
+            "unable to allocate readback buffer for screenshot");
+        return;
+    }
+
+    // Copy texture
+    CD3DX12_RESOURCE_BARRIER transitionBarrier
+        = CD3DX12_RESOURCE_BARRIER::Transition(
+            backBuffer.get(),
+            D3D12_RESOURCE_STATE_PRESENT,
+            D3D12_RESOURCE_STATE_COPY_SOURCE);
+    commandList_->ResourceBarrier(1, &transitionBarrier);
+
+    const CD3DX12_TEXTURE_COPY_LOCATION src(backBuffer.get(), 0);
+    const CD3DX12_TEXTURE_COPY_LOCATION dst(readbackBuffer.get(), footprint);
+    commandList_->CopyTextureRegion(&dst, 0, 0, 0, &src, nullptr);
+
+    transitionBarrier
+        = CD3DX12_RESOURCE_BARRIER::Transition(backBuffer.get(),
+                                               D3D12_RESOURCE_STATE_COPY_SOURCE,
+                                               D3D12_RESOURCE_STATE_PRESENT);
+    commandList_->ResourceBarrier(1, &transitionBarrier);
+
+    commandList_->Close();
+    ID3D12CommandList* commandLists[] = {commandList_.get()};
+    commandQueue_->ExecuteCommandLists(1, commandLists);
+
+    // Wait until copy is finished
+    waitForPreviousFrame();
+
+    // Read data into CPU buffer
+    void* readbackBufferData = nullptr;
+    D3D12_RANGE readRange{0, totalByteCount};
+    hr = readbackBuffer->Map(0, &readRange, &readbackBufferData);
+    if (FAILED(hr))
+    {
+        utils::showErrorMessage(
+            "unable to map screenshot readback buffer into memory");
+        return;
+    }
+    DEFER({
+        D3D12_RANGE writeRange(0, 0);
+        readbackBuffer->Unmap(0, &writeRange);
+    });
+
+    constexpr const char* screenshotFilename = "screenshot.png";
+    constexpr int rgbaComp = 4;
+    const int fileWriteSuccess
+        = stbi_write_png(screenshotFilename,
+                         // back buffer and reaadback buffer are not supposed to
+                         // have the same dimensions
+                         static_cast<int>(backBufferDesc.Width),
+                         static_cast<int>(backBufferDesc.Height),
+                         rgbaComp,
+                         readbackBufferData,
+                         static_cast<int>(footprint.Footprint.RowPitch));
+    if (fileWriteSuccess == 0)
+    {
+        utils::showErrorMessage("unable to write screenshot into file",
+                                screenshotFilename);
+        return;
+    }
 }
 
 void D3D12Renderer::waitForPreviousFrame()

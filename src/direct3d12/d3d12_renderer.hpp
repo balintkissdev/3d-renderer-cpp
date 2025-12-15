@@ -129,6 +129,7 @@ private:
                     MVPConstantBuffer& mvpConstantBufferData,
                     MaterialConstantBuffer& materialConstantBufferData);
     void drawGui();
+    void screenshot();
     void waitForPreviousFrame();
 };
 

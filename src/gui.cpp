@@ -2,6 +2,7 @@
 
 #include "camera.hpp"
 #include "drawproperties.hpp"
+#include "globals.hpp"
 #include "renderer.hpp"
 #include "scene.hpp"
 
@@ -258,14 +259,18 @@ void Gui::rendererSection(const FrameRateInfo& frameRateInfo,
         ImGui::Checkbox("Vertical sync", &drawProps.vsyncEnabled);
         // TODO: Wireframe fill mode requires creation of a separate PSO on
         // D3D12
-        const bool direct3DEnabled
-            = currentRenderingAPI_ == RenderingAPI::Direct3D12;
-        ImGui::BeginDisabled(direct3DEnabled);
+        ImGui::BeginDisabled(isDirect3DEnabled());
         bool tmpDisabled = false;
-        ImGui::Checkbox(
-            "Wireframe mode",
-            direct3DEnabled ? &tmpDisabled : &drawProps.wireframeModeEnabled);
+        ImGui::Checkbox("Wireframe mode",
+                        isDirect3DEnabled() ? &tmpDisabled
+                                            : &drawProps.wireframeModeEnabled);
         ImGui::EndDisabled();
+
+        if (isDirect3DEnabled() && ImGui::Button("Take screenshot"))
+        {
+            // TODO: Add visual feedback for screenshot success
+            Globals::takingScreenshot = true;
+        }
     }
 }
 
@@ -305,6 +310,11 @@ void Gui::confirmRestartDialog(RenderingAPI& renderingAPI)
         selectedRenderingAPI_ = renderingAPI;
     }
     ImGui::End();
+}
+
+bool Gui::isDirect3DEnabled() const
+{
+    return currentRenderingAPI_ == RenderingAPI::Direct3D12;
 }
 #endif
 

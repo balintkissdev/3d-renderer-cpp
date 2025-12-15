@@ -1,5 +1,5 @@
-#ifndef DEFS_HPP_
-#define DEFS_HPP_
+#ifndef GLOBALS_HPP_
+#define GLOBALS_HPP_
 
 #include <cstdint>
 #include <string_view>
@@ -14,5 +14,10 @@ constexpr float ASPECT_RATIO
 
 constexpr float NEAR_CLIP_DISTANCE_Z = 0.1f;
 constexpr float FAR_CLIP_DISTANCE_Z = 100.0f;
+
+namespace Globals
+{
+extern bool takingScreenshot;
+}
 
 #endif

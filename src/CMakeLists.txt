@@ -23,7 +23,6 @@ target_sources(${PROJECT_NAME}
         app.hpp
         camera.cpp
         camera.hpp
-        defs.hpp
         drawproperties.cpp
         drawproperties.hpp
         gl/gl_model.cpp
@@ -34,6 +33,8 @@ target_sources(${PROJECT_NAME}
         gl/gl_shader.hpp
         gl/gl_skybox.cpp
         gl/gl_skybox.hpp
+        globals.cpp
+        globals.hpp
         gui.cpp
         gui.hpp
         main.cpp

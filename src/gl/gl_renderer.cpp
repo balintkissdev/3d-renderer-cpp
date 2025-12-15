@@ -1,9 +1,9 @@
 #include "gl_renderer.hpp"
 
 #include "camera.hpp"
-#include "defs.hpp"
 #include "gl_model.hpp"
 #include "gl_skybox.hpp"
+#include "globals.hpp"
 #include "scene.hpp"
 #include "utils.hpp"
 #include "window.hpp"
