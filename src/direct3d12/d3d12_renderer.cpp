@@ -18,7 +18,9 @@
 #include <dxgi1_4.h>
 #include <synchapi.h>
 
+#ifdef PIX_ENABLED
 #include "WinPixEventRuntime/pix3.h"
+#endif
 
 namespace fs = std::filesystem;
 using namespace DirectX;

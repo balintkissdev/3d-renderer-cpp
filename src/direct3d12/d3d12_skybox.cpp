@@ -6,7 +6,9 @@
 
 #include <d3dcompiler.h>
 
+#ifdef PIX_ENABLED
 #include "WinPixEventRuntime/pix3.h"
+#endif
 
 using namespace DirectX;
 using namespace winrt;
