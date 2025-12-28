@@ -10,7 +10,6 @@
 #include "imgui.h"
 #include "imgui_impl_dx12.h"
 #include "imgui_impl_win32.h"
-#define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
 
 #include <combaseapi.h>
@@ -969,15 +968,20 @@ void D3D12Renderer::screenshot()
         readbackBuffer->Unmap(0, &writeRange);
     });
 
+    // TODO: PNG output is not optimal, it is 20-50% larger than a file
+    // written by a decent optimizing implementation
     constexpr const char* screenshotFilename = "screenshot.png";
-    constexpr int rgbaComp = 4;
+    constexpr int rgbaChannelCount = 4;
+    // Psst, switching to OpenGL backend changes flip, so switch back to default
+    // orientation
+    stbi_flip_vertically_on_write(false);
     const int fileWriteSuccess
         = stbi_write_png(screenshotFilename,
                          // back buffer and reaadback buffer are not supposed to
                          // have the same dimensions
                          static_cast<int>(backBufferDesc.Width),
                          static_cast<int>(backBufferDesc.Height),
-                         rgbaComp,
+                         rgbaChannelCount,
                          readbackBufferData,
                          static_cast<int>(footprint.Footprint.RowPitch));
     if (fileWriteSuccess == 0)

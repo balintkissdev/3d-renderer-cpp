@@ -103,3 +103,8 @@ if(WINDOW_PLATFORM_WIN32)
     endif()
 endif()
 
+# stb_image_write
+target_sources(${PROJECT_NAME}
+    PRIVATE
+        "${THIRDPARTY_DIR}stb_image_write.c"
+)

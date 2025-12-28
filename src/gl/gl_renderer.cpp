@@ -23,6 +23,7 @@
 #include "glad/gles2.h"
 #else
 #include "glad/gl.h"
+#include "stb_image_write.h"
 #endif
 
 #include <filesystem>
@@ -173,9 +174,8 @@ void GLRenderer::draw(const Scene& scene)
     // never know how framebuffer size might differ from window size, especially
     // on high-DPI displays. Not doing so can lead to display bugs like clipping
     // top part of the view.
-    const auto [frameBufferWidth, frameBufferHeight]
-        = window_.frameBufferSize();
-    if (frameBufferWidth <= 0 || frameBufferHeight <= 0)
+    const auto [width, height] = window_.frameBufferSize();
+    if (width <= 0 || height <= 0)
     {
         // If frame buffer size is currently (0,0), that means window is
         // minimized (on Windows). Skip drawing.
@@ -185,13 +185,12 @@ void GLRenderer::draw(const Scene& scene)
         return;
     }
 
-    glViewport(0, 0, frameBufferWidth, frameBufferHeight);
-    projection_
-        = glm::perspectiveRH(glm::radians(drawProps_.fieldOfView),
-                             static_cast<float>(frameBufferWidth)
-                                 / static_cast<float>(frameBufferHeight),
-                             NEAR_CLIP_DISTANCE_Z,
-                             FAR_CLIP_DISTANCE_Z);
+    glViewport(0, 0, width, height);
+    projection_ = glm::perspectiveRH(
+        glm::radians(drawProps_.fieldOfView),
+        static_cast<float>(width) / static_cast<float>(height),
+        NEAR_CLIP_DISTANCE_Z,
+        FAR_CLIP_DISTANCE_Z);
 
     view_ = camera_.calculateViewMatrix();
 
@@ -209,6 +208,12 @@ void GLRenderer::draw(const Scene& scene)
     }
 
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
+    if (Globals::takingScreenshot)
+    {
+        screenshot();
+        Globals::takingScreenshot = false;
+    }
 
     // Buffer swapping behavior is different between OpenGL and Direct3D. While
     // Direct3D manages its own API-specific Swap Chain, buffer swapping in this
@@ -346,6 +351,43 @@ void GLRenderer::drawSkybox()
 
     glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, nullptr);
     glDepthFunc(GL_LESS);  // Reset depth testing to default
+}
+
+void GLRenderer::screenshot()
+{
+#ifndef __EMSCRIPTEN__
+    glReadBuffer(GL_BACK);  // Set backbuffer as read target
+    glPixelStorei(GL_PACK_ALIGNMENT, 1);  // Disable padding on GPU->CPU copy
+
+    const auto [width, height] = window_.frameBufferSize();
+    constexpr int rgbChannelCount = 3;
+    std::vector<GLubyte> frameBufferData(width * height * rgbChannelCount);
+    glReadPixels(0,
+                 0,
+                 width,
+                 height,
+                 GL_RGB,
+                 GL_UNSIGNED_BYTE,
+                 frameBufferData.data());
+
+    // TODO: PNG output is not optimal, it is 20-50% larger than a file
+    // written by a decent optimizing implementation
+    constexpr const char* screenshotFilename = "screenshot.png";
+    // OpenGL's origin is bottom-left, PNG is top-left
+    stbi_flip_vertically_on_write(true);
+    const int fileWriteSuccess = stbi_write_png(screenshotFilename,
+                                                width,
+                                                height,
+                                                rgbChannelCount,
+                                                frameBufferData.data(),
+                                                width * rgbChannelCount);
+    if (fileWriteSuccess == 0)
+    {
+        utils::showErrorMessage("unable to write screenshot into file",
+                                screenshotFilename);
+        return;
+    }
+#endif
 }
 
 void GLRenderer::setVSyncEnabled(const bool vsyncEnabled)

@@ -59,6 +59,7 @@ private:
     bool loadAssets();
     void drawModels(const Scene& scene);
     void drawSkybox();
+    void screenshot();
 };
 
 #endif

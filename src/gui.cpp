@@ -266,7 +266,7 @@ void Gui::rendererSection(const FrameRateInfo& frameRateInfo,
                                             : &drawProps.wireframeModeEnabled);
         ImGui::EndDisabled();
 
-        if (isDirect3DEnabled() && ImGui::Button("Take screenshot"))
+        if (ImGui::Button("Take screenshot"))
         {
             // TODO: Add visual feedback for screenshot success
             Globals::takingScreenshot = true;
