@@ -39,6 +39,15 @@ endif()
 
 option(WEBBUILD_CI "Specify if an Emscripten build is running in CI" OFF)
 
+option(WITH_GAMEINPUT "Use Microsoft GameInput API (available only with native Win32 window implementation)" OFF)
+if(WITH_GAMEINPUT)
+    if(WINDOW_PLATFORM_WIN32)
+        message(STATUS "Using Microsoft GameInput API Event Runtime")
+    else()
+        message(FATAL_ERROR "Microsoft GameInput API is only available on native Win32 window implementation")
+    endif()
+endif()
+
 option(WITH_PIX "Use PIX Event Runtime (available only with native Win32 window implementation)" OFF)
 if(WITH_PIX)
     if(WINDOW_PLATFORM_WIN32)
@@ -47,7 +56,6 @@ if(WITH_PIX)
         message(FATAL_ERROR "PIX Event Runtime is only available on native Win32 window implementation")
     endif()
 endif()
-
 
 # Globally build without need to link to Visual C++ Runtime DLLs (needs Visual
 # C++ Redistributable installed on user's system, use "dumpbin /dependents" in MSVC Developer
@@ -89,6 +97,7 @@ target_compile_options(${PROJECT_NAME} PRIVATE
 target_compile_definitions(${PROJECT_NAME} PRIVATE
     $<$<PLATFORM_ID:Windows>:WIN32_LEAN_AND_MEAN>
     "${WINDOW_PLATFORM_DEF}"
+    $<$<BOOL:${WITH_GAMEINPUT}>:GAMEINPUT_ENABLED>
     $<$<BOOL:${WITH_PIX}>:PIX_ENABLED>
 )
 
@@ -162,6 +171,7 @@ elseif(WINDOW_PLATFORM_WIN32)
         d3dcompiler
         dxguid  # Dependency for DirectXTex, see https://learn.microsoft.com/en-us/windows/win32/prog-dx-with-com#guids
         DirectXTex
+        $<$<BOOL:${WITH_GAMEINPUT}>:GameInput>
         $<$<BOOL:${WITH_PIX}>:PixEvents>
     )
 endif()

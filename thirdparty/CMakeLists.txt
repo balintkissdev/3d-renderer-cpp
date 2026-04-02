@@ -90,6 +90,16 @@ if(WINDOW_PLATFORM_WIN32)
     set(BC_USE_OPENMP OFF CACHE BOOL "" FORCE)
     add_subdirectory("${THIRDPARTY_DIR}DirectXTex")
 
+    # Microsoft GameInput API
+    if(WITH_GAMEINPUT)
+        add_library(GameInput STATIC IMPORTED GLOBAL)
+        set(GAMEINPUT_DIR "${THIRDPARTY_DIR}GameInput/native/")
+        set_target_properties(GameInput PROPERTIES
+            IMPORTED_LOCATION "${GAMEINPUT_DIR}lib/x64/GameInput.lib"
+            INTERFACE_INCLUDE_DIRECTORIES "${GAMEINPUT_DIR}include"
+        )
+    endif()
+
     # Pix Event Runtime
     if(WITH_PIX)
         add_library(PixEvents SHARED IMPORTED GLOBAL)

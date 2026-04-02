@@ -48,6 +48,7 @@ The project showcases confident usage of the following technologies:
 
 - 3D graphics programming with Direct3D 12, OpenGL 4.6, WebGL2 (based on OpenGL ES 3.0)
 - Native Windows application development using Win32 API for window management and OpenGL context creation
+    - Native Windows input handling using either Raw Input or GameInput API
 - Advanced CMake practices (modern CMake targets, FetchContent, CPack)
 - Immediate mode overlay GUI using Dear ImGui (as opposed to retained mode GUI frameworks like Qt)
 - Building for WebAssembly using Emscripten
@@ -111,6 +112,7 @@ All other dependencies are included in `thirdparty` folder.
 - [GLFW](glfw.org)
 - [OpenGL Mathematics (GLM)](https://github.com/g-truc/glm)
 - [glad](https://gen.glad.sh/)
+- [Microsoft GameInput](https://www.nuget.org/packages/Microsoft.GameInput)
 - [Pix Event Runtime](https://github.com/microsoft/PixEvents)
 - [stb_image](https://github.com/nothings/stb/blob/master/stb_image.h)
 

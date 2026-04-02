@@ -5,6 +5,10 @@
 
 #include "imgui_impl_win32.h"
 
+#ifdef GAMEINPUT_ENABLED
+using namespace GameInput::v3;
+#endif  // GAMEINPUT_ENABLED
+
 #include <cassert>
 #include <hidusage.h>
 
@@ -13,7 +17,14 @@ extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd,
                                                              WPARAM wParam,
                                                              LPARAM lParam);
 
-const wchar_t* Window::APPLICATION_NAME = L"3DRenderer";
+namespace
+{
+const wchar_t* APPLICATION_NAME = L"3DRenderer";
+
+// 255 (0xff) is invalid key that shows up for Shift+Home or
+// NumLock off. Above this are very specific OEM keys.
+constexpr uint8_t INVALID_VIRTUALKEY = 0xff;
+}  // namespace
 
 Window::Window(App& app)
     : app_{app}
@@ -22,6 +33,9 @@ Window::Window(App& app)
     , keys_{false}
     , rightMouseButton_{false}
     , cursorVisible_{true}
+#ifdef GAMEINPUT_ENABLED
+    , gameInputKeyState_{0}
+#endif
 {
 }
 
@@ -74,27 +88,39 @@ bool Window::init(const uint16_t width,
         return false;
     }
 
-    // Register mouse and keyboard as raw input devices
-    std::array<RAWINPUTDEVICE, 2> rawDevices = {};
-    rawDevices[0].usUsagePage = HID_USAGE_PAGE_GENERIC;
-    rawDevices[0].usUsage = HID_USAGE_GENERIC_MOUSE;
-    rawDevices[0].dwFlags = RIDEV_INPUTSINK;
-    rawDevices[0].hwndTarget = hWnd_;
-
-    rawDevices[1].usUsagePage = HID_USAGE_PAGE_GENERIC;
-    rawDevices[1].usUsage = HID_USAGE_GENERIC_KEYBOARD;
-    // As much as I would like to use RIDEV_NOLEGACY, ImGui does not handle
-    // WM_INPUT messages yet, leading to not accepting key presses in text
-    // boxes.
-    rawDevices[1].hwndTarget = hWnd_;
-
-    if (!::RegisterRawInputDevices(rawDevices.data(),
-                                   rawDevices.size(),
-                                   sizeof(rawDevices[0])))
+#ifdef GAMEINPUT_ENABLED
+    HRESULT hr = GameInputCreate(gameInput_.put());
+    if (FAILED(hr))
+#endif  // GAMEINPUT_ENABLED
     {
+#ifdef GAMEINPUT_ENABLED
         utils::showErrorMessage(
-            "Raw Input API is not supported on this system");
-        return false;
+            "GameInput API is not supported on this system. Please install "
+            "the the redistributable using GameInputRedist.msi");
+#endif  // GAMEINPUT_ENABLED
+
+        // Register mouse and keyboard as raw input devices
+        std::array<RAWINPUTDEVICE, 2> rawDevices = {};
+        rawDevices[0].usUsagePage = HID_USAGE_PAGE_GENERIC;
+        rawDevices[0].usUsage = HID_USAGE_GENERIC_MOUSE;
+        rawDevices[0].dwFlags = RIDEV_INPUTSINK;
+        rawDevices[0].hwndTarget = hWnd_;
+
+        rawDevices[1].usUsagePage = HID_USAGE_PAGE_GENERIC;
+        rawDevices[1].usUsage = HID_USAGE_GENERIC_KEYBOARD;
+        // As much as I would like to use RIDEV_NOLEGACY, ImGui does not handle
+        // WM_INPUT messages yet, leading to not accepting key presses in text
+        // boxes.
+        rawDevices[1].hwndTarget = hWnd_;
+
+        if (!::RegisterRawInputDevices(rawDevices.data(),
+                                       rawDevices.size(),
+                                       sizeof(rawDevices[0])))
+        {
+            utils::showErrorMessage(
+                "Raw Input API is not supported on this system");
+            return false;
+        }
     }
 
     ::ShowWindow(hWnd_, SW_SHOW);
@@ -155,7 +181,7 @@ void Window::cleanup()
 
 void Window::poll()
 {
-    MSG msg;
+    MSG msg{};
     while (::PeekMessageW(&msg, nullptr, 0, 0, PM_REMOVE))
     {
         // WM_QUIT is sent by PostQuitMessage() and should not be dispatched
@@ -170,6 +196,89 @@ void Window::poll()
         ::TranslateMessage(&msg);
         ::DispatchMessage(&msg);
     }
+
+#ifdef GAMEINPUT_ENABLED
+    // Based on sample from
+    // https://github.com/microsoft/Xbox-GDK-Samples/blob/main/Samples/System/GamepadKeyboardMouse/GamepadKeyboardMouse.cpp
+    if (gameInput_)
+    {
+        // Mouse
+        if (SUCCEEDED(gameInput_->GetCurrentReading(GameInputKindMouse,
+                                                    nullptr,
+                                                    gameInputReading_.put())))
+        {
+            static int64_t previousXOffset = 0;
+            static int64_t previousYOffset = 0;
+            static GameInputMouseState previousMouseState{};
+
+            if (gameInputReading_->GetMouseState(&gameInputMouseState_))
+            {
+                rightMouseButton_
+                    = gameInputMouseState_.buttons & GameInputMouseRightButton;
+
+                // GameInput mouse position are not relative deltas, but
+                // accumulated distances the mouse travelled since GameInput
+                // initialization.
+                const int64_t xOffset = gameInputMouseState_.positionX
+                                      - previousMouseState.positionX;
+                const int64_t yOffset = gameInputMouseState_.positionY
+                                      - previousMouseState.positionY;
+
+                previousXOffset = xOffset ? xOffset : previousXOffset;
+                previousYOffset = yOffset ? yOffset : previousYOffset;
+                previousMouseState = gameInputMouseState_;
+
+                if (xOffset != 0 || yOffset != 0)
+                {
+                    // Inverted Y because it's bottom to up in OpenGL
+                    // TODO: And what about Direct3D?
+                    onMouseMove_(app_,
+                                 static_cast<float>(xOffset),
+                                 static_cast<float>(-yOffset));
+                }
+            }
+        }
+
+        // Keyboard
+        keys_ = {false};
+        if (SUCCEEDED(gameInput_->GetCurrentReading(GameInputKindKeyboard,
+                                                    nullptr,
+                                                    gameInputReading_.put())))
+        {
+            if (0 < gameInputReading_->GetKeyCount())
+            {
+                const uint32_t keyCount
+                    = gameInputReading_->GetKeyState(GAMEINPUT_MAX_KEYCOUNT,
+                                                     gameInputKeyState_.data());
+                for (uint32_t i = 0; i < keyCount; ++i)
+                {
+                    uint8_t virtualKey = gameInputKeyState_[i].virtualKey;
+                    if (virtualKey < INVALID_VIRTUALKEY)
+                    {
+                        // TODO: Add Right Shift/NumLock handling to Raw Input
+                        // API too
+                        if (virtualKey == 0)
+                        {
+                            switch (gameInputKeyState_[i].scanCode)
+                            {
+                                case 0xe036:
+                                    virtualKey = VK_RSHIFT;
+                                    break;
+                                case 0xe045:
+                                    virtualKey = VK_NUMLOCK;
+                                    break;
+                                default:
+                                    break;
+                            }
+                        }
+
+                        keys_[virtualKey] = true;
+                    }
+                }
+            }
+        }
+    }
+#endif  // GAMEINPUT_ENABLED
 }
 
 LRESULT CALLBACK Window::WndProc(HWND hWnd,
@@ -222,6 +331,13 @@ LRESULT CALLBACK Window::WndProc(HWND hWnd,
 
 void Window::handleRawInput(const LPARAM lParam)
 {
+#ifdef GAMEINPUT_ENABLED
+    if (!gameInput_)
+    {
+        return;
+    }
+#endif
+
     assert(onMouseMove_);
 
     UINT dwSize = sizeof(RAWINPUT);
@@ -273,10 +389,7 @@ void Window::handleRawInput(const LPARAM lParam)
     {
         const RAWKEYBOARD& keyboard = raw->data.keyboard;
         const USHORT virtualKey = keyboard.VKey;
-        // 255 (0xFF) is invalid key that shows up for Shift+Home or NumLock
-        // off. Above this are very specific OEM keys.
-        constexpr uint8_t invalidKey = 0xFF;
-        if (virtualKey < invalidKey)
+        if (virtualKey < INVALID_VIRTUALKEY)
         {
             // The flag that is active during key press is RI_KEY_MAKE.
             // RI_KEY_E0 and RI_KEY_E1 are active both during key press and key

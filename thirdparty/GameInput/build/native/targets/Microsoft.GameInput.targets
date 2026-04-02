@@ -1,0 +1,28 @@
+<?xml version="1.0"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+
+  <PropertyGroup>
+    <GameInputNativeBuildDirectory>$(MSBuildThisFileDirectory)..\..\..\native\</GameInputNativeBuildDirectory>
+  </PropertyGroup>
+
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <PreprocessorDefinitions>USING_GAMEINPUT;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(GameInputNativeBuildDirectory)include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+  </ItemDefinitionGroup>
+
+  <ItemDefinitionGroup>
+    <!-- Everything that is not ARM64 is assumed to be x64 (ie 'xbox') -->
+    <Link Condition="'$(Platform)'!='ARM64'">
+      <AdditionalLibraryDirectories>$(GameInputNativeBuildDirectory)lib\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+    </Link>
+    <Link Condition="'$(Platform)'=='ARM64'">
+      <AdditionalLibraryDirectories>$(GameInputNativeBuildDirectory)lib\arm64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+    </Link>
+    <Link>
+      <AdditionalDependencies>%(AdditionalDependencies);GameInput.lib</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+
+</Project>

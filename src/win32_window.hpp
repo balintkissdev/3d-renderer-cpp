@@ -5,6 +5,12 @@
 #include "gl/wgl_context.hpp"
 #include "utils.hpp"
 
+#ifdef GAMEINPUT_ENABLED
+#include "GameInput.h"
+
+#include <winrt/base.h>
+#endif  // GAMEINPUT_ENABLED
+
 #include <Windows.h>
 #include <array>
 #include <functional>
@@ -38,19 +44,18 @@ constexpr char W = 'W';
 /// Keep in mind that GLAD still needs to reload OpenGL function pointers on
 /// context recreation.
 ///
-/// NOTE about using Unicode (UTF-16) instead of ANSI: A rule of thumb is to only use
-/// ANSI if the application is expected to work on old Windows systems that do not
-/// support Unicode (Windows 95, 98, ME). ANSI code pages are a legacy feature
-/// and the code pages on Windows depend on system settings that can be different
-/// between computers, leading to string corruption between machines and unreliable
-/// behavior when relying on Win32 API
-/// calls that only accept ANSI string parameters (suffixed with "A").
-/// The wide UTF-16 parameter ("W") variants of Win32 API calls are
-/// expected to work consistently between different systems and new Windows
-/// applications should use that instead. In fact, there are even newer Windows
-/// API functions that don't even have an ANSI variant at all.
-/// To learn more about how ANSI code pages used to work, see:
-/// https://learn.microsoft.com/en-us/windows/win32/intl/code-pages
+/// NOTE about using Unicode (UTF-16) instead of ANSI: A rule of thumb is to
+/// only use ANSI if the application is expected to work on old Windows systems
+/// that do not support Unicode (Windows 95, 98, ME). ANSI code pages are a
+/// legacy feature and the code pages on Windows depend on system settings that
+/// can be different between computers, leading to string corruption between
+/// machines and unreliable behavior when relying on Win32 API calls that only
+/// accept ANSI string parameters (suffixed with "A"). The wide UTF-16 parameter
+/// ("W") variants of Win32 API calls are expected to work consistently between
+/// different systems and new Windows applications should use that instead. In
+/// fact, there are even newer Windows API functions that don't even have an
+/// ANSI variant at all. To learn more about how ANSI code pages used to work,
+/// see: https://learn.microsoft.com/en-us/windows/win32/intl/code-pages
 ///
 /// TODO: Unlike GLFW, this implementation does not take DPI scaling into
 /// account when creating raw window.
@@ -94,8 +99,6 @@ public:
     [[nodiscard]] Raw raw() const;
 
 private:
-    static const wchar_t* APPLICATION_NAME;
-
     static LRESULT CALLBACK WndProc(HWND hWnd,
                                     UINT uMsg,
                                     WPARAM wParam,
@@ -122,6 +125,20 @@ private:
     std::array<bool, 256> keys_;
     bool rightMouseButton_;
     bool cursorVisible_;
+
+#ifdef GAMEINPUT_ENABLED
+    winrt::com_ptr<GameInput::v3::IGameInput> gameInput_;
+    winrt::com_ptr<GameInput::v3::IGameInputReading> gameInputReading_;
+    GameInput::v3::GameInputMouseState gameInputMouseState_;
+    // Even the most high-end gaming keyboards rarely support more
+    // than 16 simultaneous keypresses at a time.
+    // If needed, max keycount can be queried through
+    // IGameInputDevice::GetDeviceInfo() as
+    // GameInputKeyboardInfo::keyCount.
+    static constexpr size_t GAMEINPUT_MAX_KEYCOUNT = 16;
+    std::array<GameInput::v3::GameInputKeyState, GAMEINPUT_MAX_KEYCOUNT>
+        gameInputKeyState_;
+#endif  // GAMEINPUT_ENABLED
 
     MouseOffsetCallback onMouseMove_;
 
@@ -179,4 +196,3 @@ inline Window::Raw Window::raw() const
 }
 
 #endif
-
