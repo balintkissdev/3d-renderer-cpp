@@ -5,12 +5,6 @@
 #include "gl/wgl_context.hpp"
 #include "utils.hpp"
 
-#ifdef GAMEINPUT_ENABLED
-#include "GameInput.h"
-
-#include <winrt/base.h>
-#endif  // GAMEINPUT_ENABLED
-
 #include <Windows.h>
 #include <array>
 #include <functional>
@@ -108,37 +102,9 @@ private:
     bool shouldQuit_;
     HWND hWnd_;
     WGLContext wglContext_;
-    // Key map is filled from Raw Input API using clean hardware events instead
-    // of legacy WM_KEYDOWN and WM_KEYUP messages. Raw Input messages have
-    // better timing and reliability
-    // (~500ms initial delay on first WM_KEYDOWN and repeated ~30ms intervals on
-    // helds). WM_KEYDOWN messages in Win32 event queue come in
-    // periodically when being held, while Raw Input messages fire only once.
-    // Because the key events are not continous when being held, separate array
-    // tracks current held state.
-    //
-    // There's alternatively GetAsyncKeystate, but that can miss
-    // important key presses and can introduce bugs by listening on key presses
-    // even when the window is not focused or minimized to system tray
-    // (disencouraged by the book Game Coding Complete, but encouraged by
-    // Tricks of the Windows Game Programming Gurus book).
     std::array<bool, 256> keys_;
     bool rightMouseButton_;
     bool cursorVisible_;
-
-#ifdef GAMEINPUT_ENABLED
-    winrt::com_ptr<GameInput::v3::IGameInput> gameInput_;
-    winrt::com_ptr<GameInput::v3::IGameInputReading> gameInputReading_;
-    GameInput::v3::GameInputMouseState gameInputMouseState_;
-    // Even the most high-end gaming keyboards rarely support more
-    // than 16 simultaneous keypresses at a time.
-    // If needed, max keycount can be queried through
-    // IGameInputDevice::GetDeviceInfo() as
-    // GameInputKeyboardInfo::keyCount.
-    static constexpr size_t GAMEINPUT_MAX_KEYCOUNT = 16;
-    std::array<GameInput::v3::GameInputKeyState, GAMEINPUT_MAX_KEYCOUNT>
-        gameInputKeyState_;
-#endif  // GAMEINPUT_ENABLED
 
     MouseOffsetCallback onMouseMove_;
 

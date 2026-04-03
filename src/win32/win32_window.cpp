@@ -1,16 +1,15 @@
 #include "win32_window.hpp"
 
 #include "app.hpp"
+#ifdef GAMEINPUT_ENABLED
+#include "gameinput_system.hpp";
+#endif  // GAMEINPUT_ENABLED
+#include "rawinput_system.hpp"
 #include "utils.hpp"
 
 #include "imgui_impl_win32.h"
 
-#ifdef GAMEINPUT_ENABLED
-using namespace GameInput::v3;
-#endif  // GAMEINPUT_ENABLED
-
 #include <cassert>
-#include <hidusage.h>
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd,
                                                              UINT msg,
@@ -20,10 +19,6 @@ extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd,
 namespace
 {
 const wchar_t* APPLICATION_NAME = L"3DRenderer";
-
-// 255 (0xff) is invalid key that shows up for Shift+Home or
-// NumLock off. Above this are very specific OEM keys.
-constexpr uint8_t INVALID_VIRTUALKEY = 0xff;
 }  // namespace
 
 Window::Window(App& app)
@@ -33,9 +28,6 @@ Window::Window(App& app)
     , keys_{false}
     , rightMouseButton_{false}
     , cursorVisible_{true}
-#ifdef GAMEINPUT_ENABLED
-    , gameInputKeyState_{0}
-#endif
 {
 }
 
@@ -89,8 +81,7 @@ bool Window::init(const uint16_t width,
     }
 
 #ifdef GAMEINPUT_ENABLED
-    HRESULT hr = GameInputCreate(gameInput_.put());
-    if (FAILED(hr))
+    if (!GameInputSystem::init())
 #endif  // GAMEINPUT_ENABLED
     {
 #ifdef GAMEINPUT_ENABLED
@@ -99,23 +90,7 @@ bool Window::init(const uint16_t width,
             "the the redistributable using GameInputRedist.msi");
 #endif  // GAMEINPUT_ENABLED
 
-        // Register mouse and keyboard as raw input devices
-        std::array<RAWINPUTDEVICE, 2> rawDevices = {};
-        rawDevices[0].usUsagePage = HID_USAGE_PAGE_GENERIC;
-        rawDevices[0].usUsage = HID_USAGE_GENERIC_MOUSE;
-        rawDevices[0].dwFlags = RIDEV_INPUTSINK;
-        rawDevices[0].hwndTarget = hWnd_;
-
-        rawDevices[1].usUsagePage = HID_USAGE_PAGE_GENERIC;
-        rawDevices[1].usUsage = HID_USAGE_GENERIC_KEYBOARD;
-        // As much as I would like to use RIDEV_NOLEGACY, ImGui does not handle
-        // WM_INPUT messages yet, leading to not accepting key presses in text
-        // boxes.
-        rawDevices[1].hwndTarget = hWnd_;
-
-        if (!::RegisterRawInputDevices(rawDevices.data(),
-                                       rawDevices.size(),
-                                       sizeof(rawDevices[0])))
+        if (!RawInputSystem::init(hWnd_))
         {
             utils::showErrorMessage(
                 "Raw Input API is not supported on this system");
@@ -198,85 +173,17 @@ void Window::poll()
     }
 
 #ifdef GAMEINPUT_ENABLED
-    // Based on sample from
-    // https://github.com/microsoft/Xbox-GDK-Samples/blob/main/Samples/System/GamepadKeyboardMouse/GamepadKeyboardMouse.cpp
-    if (gameInput_)
+    if (GameInputSystem::valid())
     {
-        // Mouse
-        if (SUCCEEDED(gameInput_->GetCurrentReading(GameInputKindMouse,
-                                                    nullptr,
-                                                    gameInputReading_.put())))
-        {
-            static int64_t previousXOffset = 0;
-            static int64_t previousYOffset = 0;
-            static GameInputMouseState previousMouseState{};
-
-            if (gameInputReading_->GetMouseState(&gameInputMouseState_))
+        GameInputSystem::process(
+            keys_,
+            rightMouseButton_,
+            [this](const float offsetX, const float offsetY)
             {
-                rightMouseButton_
-                    = gameInputMouseState_.buttons & GameInputMouseRightButton;
-
-                // GameInput mouse position are not relative deltas, but
-                // accumulated distances the mouse travelled since GameInput
-                // initialization.
-                const int64_t xOffset = gameInputMouseState_.positionX
-                                      - previousMouseState.positionX;
-                const int64_t yOffset = gameInputMouseState_.positionY
-                                      - previousMouseState.positionY;
-
-                previousXOffset = xOffset ? xOffset : previousXOffset;
-                previousYOffset = yOffset ? yOffset : previousYOffset;
-                previousMouseState = gameInputMouseState_;
-
-                if (xOffset != 0 || yOffset != 0)
-                {
-                    // Inverted Y because it's bottom to up in OpenGL
-                    // TODO: And what about Direct3D?
-                    onMouseMove_(app_,
-                                 static_cast<float>(xOffset),
-                                 static_cast<float>(-yOffset));
-                }
-            }
-        }
-
-        // Keyboard
-        keys_ = {false};
-        if (SUCCEEDED(gameInput_->GetCurrentReading(GameInputKindKeyboard,
-                                                    nullptr,
-                                                    gameInputReading_.put())))
-        {
-            if (0 < gameInputReading_->GetKeyCount())
-            {
-                const uint32_t keyCount
-                    = gameInputReading_->GetKeyState(GAMEINPUT_MAX_KEYCOUNT,
-                                                     gameInputKeyState_.data());
-                for (uint32_t i = 0; i < keyCount; ++i)
-                {
-                    uint8_t virtualKey = gameInputKeyState_[i].virtualKey;
-                    if (virtualKey < INVALID_VIRTUALKEY)
-                    {
-                        // TODO: Add Right Shift/NumLock handling to Raw Input
-                        // API too
-                        if (virtualKey == 0)
-                        {
-                            switch (gameInputKeyState_[i].scanCode)
-                            {
-                                case 0xe036:
-                                    virtualKey = VK_RSHIFT;
-                                    break;
-                                case 0xe045:
-                                    virtualKey = VK_NUMLOCK;
-                                    break;
-                                default:
-                                    break;
-                            }
-                        }
-
-                        keys_[virtualKey] = true;
-                    }
-                }
-            }
-        }
+                // Inverted Y because it's bottom to up in OpenGL
+                // TODO: And what about Direct3D?
+                onMouseMove_(app_, offsetX, -offsetY);
+            });
     }
 #endif  // GAMEINPUT_ENABLED
 }
@@ -304,8 +211,8 @@ LRESULT CALLBACK Window::WndProc(HWND hWnd,
             // Avoid issuing PostQuitMessage() calls in WM_DESTROY, because
             // temporary window creation is done due to WGL
             // extension loading and destroying a temp window sends
-            // WM_DESTROY to message queue. Avoid temp window cleanup to trigger
-            // application shutdown.
+            // WM_DESTROY to message queue. Avoid temp window cleanup to
+            // trigger application shutdown.
             break;
         }
         case WM_INPUT:
@@ -332,76 +239,22 @@ LRESULT CALLBACK Window::WndProc(HWND hWnd,
 void Window::handleRawInput(const LPARAM lParam)
 {
 #ifdef GAMEINPUT_ENABLED
-    if (!gameInput_)
+    if (GameInputSystem::valid())
     {
         return;
     }
 #endif
 
-    assert(onMouseMove_);
-
-    UINT dwSize = sizeof(RAWINPUT);
-    std::array<BYTE, sizeof(RAWINPUT)> lpb;
-    // NOLINTNEXTLINE(performance-no-int-to-ptr)
-    ::GetRawInputData(reinterpret_cast<HRAWINPUT>(lParam),
-                      RID_INPUT,
-                      lpb.data(),
-                      &dwSize,
-                      sizeof(RAWINPUTHEADER));
-    auto* raw = reinterpret_cast<RAWINPUT*>(lpb.data());
-    const RAWINPUTHEADER& header = raw->header;
-
-    // Mouse
-    if (header.dwType == RIM_TYPEMOUSE)
-    {
-        const RAWMOUSE& mouse = raw->data.mouse;
-
-        // https://learn.microsoft.com/en-us/windows/win32/api/winuser/ns-winuser-rawmouse
-        const USHORT mouseButtonFlags = mouse.usButtonFlags;
-        if (mouseButtonFlags & RI_MOUSE_RIGHT_BUTTON_DOWN)
-        {
-            rightMouseButton_ = true;
-        }
-        if (mouseButtonFlags & RI_MOUSE_RIGHT_BUTTON_UP)
-        {
-            rightMouseButton_ = false;
-        }
-
-        const auto xOffset = static_cast<float>(mouse.lLastX);
-        // Inverted Y because it's bottom to up in OpenGL
-        // TODO: And what about Direct3D?
-        const auto yOffset = static_cast<float>(-mouse.lLastY);
-        if (xOffset != 0 || yOffset != 0)
-        {
-            // TODO: MOUSE_MOVE_RELATIVE (0) flag is
-            // active and positions are still recorded. Callback is being
-            // processed even when window is not focused. No behavior change due
-            // to no right mouse click, but can be source of potential bugs.
-            onMouseMove_(app_, xOffset, yOffset);
-        }
-
-        // If you want to implement mouse wheel, make sure to check for unsigned
-        // negative overflow errors.
-    }
-
-    // Keyboard
-    if (header.dwType == RIM_TYPEKEYBOARD)
-    {
-        const RAWKEYBOARD& keyboard = raw->data.keyboard;
-        const USHORT virtualKey = keyboard.VKey;
-        if (virtualKey < INVALID_VIRTUALKEY)
-        {
-            // The flag that is active during key press is RI_KEY_MAKE.
-            // RI_KEY_E0 and RI_KEY_E1 are active both during key press and key
-            // release.
-            // - RI_KEY_E0 is used to distinguish between modifier keys
-            //   from left/right and Numpad or regular keys.
-            // - RI_KEY_E1 is very rare, either for Pause/Break or old or
-            //   specialized keyboards.
-            const bool keyPressed = !(keyboard.Flags & RI_KEY_BREAK);
-            keys_[virtualKey] = keyPressed;
-        }
-    }
+    RawInputSystem::process(lParam,
+                            keys_,
+                            rightMouseButton_,
+                            [this](const float offsetX, const float offsetY)
+                            {
+                                // Inverted Y because it's bottom to up in
+                                // OpenGL
+                                // TODO: And what about Direct3D?
+                                onMouseMove_(app_, offsetX, -offsetY);
+                            });
 }
 
 void Window::setCursorEnabled(const bool enabled)
@@ -436,8 +289,8 @@ void Window::setCursorVisible(const bool visible)
     // ShowCursor(FALSE) calls decrement it, and the cursor won't be hidden
     // until the internal counter reaches zero.
     //
-    // To avoid bugs, the internal counter is only allowed to be incremented and
-    // decremented once.
+    // To avoid bugs, the internal counter is only allowed to be incremented
+    // and decremented once.
     //
     // See:
     // https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-showcursor#remarks

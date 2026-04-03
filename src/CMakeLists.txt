@@ -1,5 +1,4 @@
 if(WINDOW_PLATFORM_WIN32)
-    set(WINDOW_PLATFORM_PREFIX win32)
     target_sources(${PROJECT_NAME}
         PRIVATE
             direct3d12/d3d12_model.cpp
@@ -12,9 +11,26 @@ if(WINDOW_PLATFORM_WIN32)
             direct3d12/d3d12_skybox.hpp
             gl/wgl_context.cpp
             gl/wgl_context.hpp
+            win32/rawinput_system.cpp
+            win32/rawinput_system.hpp
+            win32/win32_inpututils.hpp
+            win32/win32_window.cpp
+            win32/win32_window.hpp
     )
+
+    if(WITH_GAMEINPUT)
+        target_sources(${PROJECT_NAME}
+            PRIVATE
+                win32/gameinput_system.cpp
+                win32/gameinput_system.hpp
+        )
+    endif()
 else()
-    set(WINDOW_PLATFORM_PREFIX glfw)
+    target_sources(${PROJECT_NAME}
+        PRIVATE
+            glfw_window.cpp
+            glfw_window.hpp
+    )
 endif()
 
 target_sources(${PROJECT_NAME}
@@ -47,7 +63,5 @@ target_sources(${PROJECT_NAME}
         utils.cpp
         utils.hpp
         window.hpp
-        "${WINDOW_PLATFORM_PREFIX}_window.cpp"
-        "${WINDOW_PLATFORM_PREFIX}_window.hpp"
 )
 

@@ -8,7 +8,7 @@
 #if defined(WINDOW_PLATFORM_GLFW)
 #include "glfw_window.hpp"
 #elif defined(WINDOW_PLATFORM_WIN32)
-#include "win32_window.hpp"
+#include "win32/win32_window.hpp"
 #else
 #error "Invalid case: no window platform selected"
 #endif

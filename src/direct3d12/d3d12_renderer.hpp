@@ -5,7 +5,7 @@
 #include "d3d12_skybox.hpp"
 #include "renderer.hpp"
 #include "utils.hpp"
-#include "win32_window.hpp"
+#include "win32/win32_window.hpp"
 
 #include <d3d12.h>
 #include <d3dx12.h>
