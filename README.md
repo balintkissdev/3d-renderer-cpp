@@ -54,7 +54,7 @@ The project showcases confident usage of the following technologies:
 - Clang Tooling (clang-format, clang-tidy)
 - Integration of Microsoft PIX frame debugger tool
 
-Future additions will include Direct3D, Vulkan rendering backends and additional post-processing effects.
+Future additions will include Vulkan rendering backend and additional post-processing effects.
 
 ## Features
 
