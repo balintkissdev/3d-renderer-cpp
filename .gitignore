@@ -460,4 +460,5 @@ CMakeSettings.json
 !thirdparty/GameInput/build/
 !thirdparty/GameInput/native/lib/arm64/GameInput.lib
 !thirdparty/GameInput/native/lib/x64/GameInput.lib
+!thirdparty/GameInput/redist/GameInputRedist.msi
 !src/win32/
