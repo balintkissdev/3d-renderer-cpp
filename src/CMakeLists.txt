@@ -53,6 +53,7 @@ target_sources(${PROJECT_NAME}
         globals.hpp
         gui.cpp
         gui.hpp
+        logger.hpp
         main.cpp
         meshimporter.cpp
         meshimporter.hpp

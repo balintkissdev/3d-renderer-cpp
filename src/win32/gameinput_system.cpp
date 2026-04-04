@@ -1,5 +1,8 @@
 #include "gameinput_system.hpp"
 
+#include "logger.hpp"
+#include "utils.hpp"
+
 #include "GameInput.h"
 
 #include <winrt/base.h>
@@ -20,6 +23,65 @@ GameInputMouseState s_mouseState{};
 // GameInputKeyboardInfo::keyCount.
 constexpr size_t GAMEINPUT_MAX_KEYCOUNT = 16;
 std::array<GameInputKeyState, GAMEINPUT_MAX_KEYCOUNT> s_keyState{0};
+
+GameInputCallbackToken s_deviceCallbackToken;
+
+void deviceConnectionsCallback(GameInputCallbackToken token,
+                               void* context,
+                               IGameInputDevice* device,
+                               uint64_t timestamp,
+                               GameInputDeviceStatus currentStatus,
+                               GameInputDeviceStatus previousStatus)
+{
+    const char* deviceEventStr;
+    const bool previousConnected = previousStatus & GameInputDeviceConnected;
+    const bool currentConnected = currentStatus & GameInputDeviceConnected;
+    if (!previousConnected && currentConnected)
+    {
+        deviceEventStr = "connected";
+    }
+    else if (previousConnected && !currentConnected)
+    {
+        deviceEventStr = "disconnected";
+    }
+    else
+    {
+        return;
+    }
+
+    const GameInputDeviceInfo* info = nullptr;
+    device->GetDeviceInfo(&info);
+    const GameInputKind& deviceKind = info->supportedInput;
+
+    const char* deviceKindStr;
+    if (deviceKind & GameInputKindMouse)
+    {
+        deviceKindStr = "mouse";
+    }
+    else if (deviceKind & GameInputKindKeyboard)
+    {
+        deviceKindStr = "keyboard";
+    }
+    else if (deviceKind & GameInputKindGamepad)
+    {
+        deviceKindStr = "gamepad";
+    }
+    else
+    {
+        deviceKindStr = "unknown";
+    }
+
+    logger::trace(
+        "GameInput: {} {} {} ({}), vendorID: 0x{:04x}, productID: "
+        "0x{:04x}",
+        deviceEventStr,
+        deviceKindStr,
+        info->displayName,
+        info->pnpPath,
+        info->vendorId,
+        info->productId);
+}
+
 }  // namespace
 
 namespace GameInputSystem
@@ -27,7 +89,24 @@ namespace GameInputSystem
 bool init()
 {
     HRESULT hr = GameInputCreate(s_gameInput.put());
-    return SUCCEEDED(hr) && s_gameInput;
+    if (FAILED(hr) || !s_gameInput)
+    {
+        return false;
+    }
+
+    constexpr auto callbackDeviceKinds
+        = GameInputKindUnknown | GameInputKindRawDeviceReport
+        | GameInputKindKeyboard | GameInputKindMouse | GameInputKindGamepad
+        | GameInputKindController;
+    s_gameInput->RegisterDeviceCallback(nullptr,
+                                        callbackDeviceKinds,
+                                        GameInputDeviceAnyStatus,
+                                        GameInputAsyncEnumeration,
+                                        nullptr,
+                                        &deviceConnectionsCallback,
+                                        &s_deviceCallbackToken);
+
+    return true;
 }
 
 bool valid()

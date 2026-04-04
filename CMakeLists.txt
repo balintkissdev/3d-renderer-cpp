@@ -68,7 +68,7 @@ add_executable(${PROJECT_NAME} "")
 
 # Set executable compiler flags
 set_target_properties(${PROJECT_NAME} PROPERTIES
-    CXX_STANDARD 20
+    CXX_STANDARD 23
     CXX_STANDARD_REQUIRED YES
     WIN32_EXECUTABLE $<BOOL:${WIN32}>
     VS_DEBUGGER_WORKING_DIRECTORY "$(OutDir)"
