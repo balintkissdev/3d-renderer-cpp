@@ -21,8 +21,8 @@ GameInputMouseState s_mouseState{};
 // If needed, max keycount can be queried through
 // IGameInputDevice::GetDeviceInfo() as
 // GameInputKeyboardInfo::keyCount.
-constexpr size_t GAMEINPUT_MAX_KEYCOUNT = 16;
-std::array<GameInputKeyState, GAMEINPUT_MAX_KEYCOUNT> s_keyState{0};
+constexpr size_t MAX_SIMULTANEOUS_KEYPRESS_COUNT = 16;
+std::array<GameInputKeyState, MAX_SIMULTANEOUS_KEYPRESS_COUNT> s_keyState{0};
 
 GameInputCallbackToken s_deviceCallbackToken;
 
@@ -161,7 +161,8 @@ void process(std::array<bool, 256>& keys,
                                                  s_reading.put())))
     {
         const uint32_t keyCount
-            = s_reading->GetKeyState(GAMEINPUT_MAX_KEYCOUNT, s_keyState.data());
+            = s_reading->GetKeyState(MAX_SIMULTANEOUS_KEYPRESS_COUNT,
+                                     s_keyState.data());
         for (uint32_t i = 0; i < keyCount; ++i)
         {
             uint8_t virtualKey = s_keyState[i].virtualKey;
