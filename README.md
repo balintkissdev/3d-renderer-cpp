@@ -86,7 +86,7 @@ Web browser live demo requires support for WebGL2.
 
 Required build tools:
 
-- C++20 compiler
+- C++23 compiler
 - CMake 3.16 or newer
 
 Required dependencies on Debian, Ubuntu, Linux Mint:
