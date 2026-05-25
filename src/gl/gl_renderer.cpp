@@ -1,6 +1,7 @@
 #include "gl_renderer.hpp"
 
 #include "camera.hpp"
+#include "drawproperties.hpp"
 #include "gl_model.hpp"
 #include "gl_skybox.hpp"
 #include "globals.hpp"
@@ -69,42 +70,31 @@ bool GLRenderer::init()
 
 bool GLRenderer::loadShaders()
 {
-    const fs::path glslShaderBasePath("assets/shaders/glsl/");
-    const fs::path modelVertexShaderPath
-        = glslShaderBasePath / "model.vert.glsl";
-    const fs::path modelFragmentShaderPath
-        = glslShaderBasePath / "model.frag.glsl";
-    const fs::path skyboxVertexShaderPath
-        = glslShaderBasePath / "skybox.vert.glsl";
-    const fs::path skyboxFragmentShaderPath
-        = glslShaderBasePath / "skybox.frag.glsl";
-    std::optional<GLShader> modelShader
-        = GLShader::createFromFile(modelVertexShaderPath,
-                                   modelFragmentShaderPath
-#ifndef __EMSCRIPTEN__
-                                   ,
-                                   glVersionAPI_
-#endif
-        );
-    if (!modelShader)
+    struct ShaderPathNames
     {
-        return false;
-    }
+        std::string sourceName;
+        std::string includeName;
+    };
+    std::array<ShaderPathNames, static_cast<size_t>(ShaderInstance::Count)>
+        pathNames{{{.sourceName = "gouraud", .includeName = "classic_ads"},
+                   {.sourceName = "phong", .includeName = "classic_ads"},
+                   {.sourceName = "skybox"}}};
+    for (const ShaderPathNames& p : pathNames)
+    {
+        std::optional<GLShader> shader
+            = GLShader::createFromFile(p.sourceName,
+#ifndef __EMSCRIPTEN__
+                                       glVersionAPI_,
+#endif
+                                       p.includeName);
+        if (!shader)
+        {
+            utils::showErrorMessage("unable to compile " + p.sourceName);
+            return false;
+        }
 
-    std::optional<GLShader> skyboxShader
-        = GLShader::createFromFile(skyboxVertexShaderPath,
-                                   skyboxFragmentShaderPath
-#ifndef __EMSCRIPTEN__
-                                   ,
-                                   glVersionAPI_
-#endif
-        );
-    if (!skyboxShader)
-    {
-        return false;
+        shaders_.emplace_back(std::move(shader.value()));
     }
-    shaders_.emplace_back(std::move(modelShader.value()));
-    shaders_.emplace_back(std::move(skyboxShader.value()));
 
     return true;
 }
@@ -170,10 +160,10 @@ void GLRenderer::draw(const Scene& scene)
 {
     // Viewport setup
     //
-    // Always query framebuffer size even if the window is not resizable. You'll
-    // never know how framebuffer size might differ from window size, especially
-    // on high-DPI displays. Not doing so can lead to display bugs like clipping
-    // top part of the view.
+    // Always query framebuffer size even if the window is not resizable.
+    // You'll never know how framebuffer size might differ from window size,
+    // especially on high-DPI displays. Not doing so can lead to display
+    // bugs like clipping top part of the view.
     const auto [width, height] = window_.frameBufferSize();
     if (width <= 0 || height <= 0)
     {
@@ -215,9 +205,10 @@ void GLRenderer::draw(const Scene& scene)
         Globals::takingScreenshot = false;
     }
 
-    // Buffer swapping behavior is different between OpenGL and Direct3D. While
-    // Direct3D manages its own API-specific Swap Chain, buffer swapping in this
-    // OpenGL code architecture is delegated to the Win32/GLFW window.
+    // Buffer swapping behavior is different between OpenGL and Direct3D.
+    // While Direct3D manages its own API-specific Swap Chain, buffer
+    // swapping in this OpenGL code architecture is delegated to the
+    // Win32/GLFW window.
     window_.swapBuffers();
 }
 
@@ -229,33 +220,19 @@ void GLRenderer::drawModels(const Scene& scene)
     }
 
     // Set model draw shader
-    auto& shader = shaders_[static_cast<uint8_t>(ShaderInstance::ModelShader)];
+    const ShaderInstance selectedShader
+        = drawProps_.lightingModel == LightingModel::Phong
+            ? ShaderInstance::PhongModelShader
+            : ShaderInstance::GouraudModelShader;
+    GLShader& shader = shaders_[static_cast<size_t>(selectedShader)];
     shader.use();
 
     // Setup uniform values shared by all scene nodes, avoiding doing
     // unnecessary work during iteration
     shader.setUniform("u_light.direction", drawProps_.lightDirection);
     shader.setUniform("u_viewPos", camera_.position());
-#ifdef __EMSCRIPTEN__
-    shader.setUniform("u_adsProps.diffuseEnabled", drawProps_.diffuseEnabled);
-    shader.setUniform("u_adsProps.specularEnabled", drawProps_.specularEnabled);
-#else
-    if (glVersionAPI_ == RenderingAPI::OpenGL46)
-    {
-        // GLSL subroutines only became supported starting from OpenGL 4.0
-        shader.updateSubroutines(
-            GL_FRAGMENT_SHADER,
-            {drawProps_.diffuseEnabled ? "DiffuseEnabled" : "Disabled",
-             drawProps_.specularEnabled ? "SpecularEnabled" : "Disabled"});
-    }
-    else
-    {
-        shader.setUniform("u_adsProps.diffuseEnabled",
-                          drawProps_.diffuseEnabled);
-        shader.setUniform("u_adsProps.specularEnabled",
-                          drawProps_.specularEnabled);
-    }
 
+#ifndef __EMSCRIPTEN__
     // glPolygonMode is not supported in OpenGL ES 3.0
     glPolygonMode(GL_FRONT_AND_BACK,
                   drawProps_.wireframeModeEnabled ? GL_LINE : GL_FILL);
@@ -292,7 +269,8 @@ void GLRenderer::drawModels(const Scene& scene)
         modelMatrix *= glm::mat4_cast(quat);
 
         // Concat matrix transformations on CPU to avoid unnecessary
-        // multiplications in GLSL. Results would be the same for all vertices.
+        // multiplications in GLSL. Results would be the same for all
+        // vertices.
         const glm::mat4 mvp = projection_ * view_ * modelMatrix;
         const glm::mat3 normalMatrix
             = glm::mat3(glm::transpose(glm::inverse(modelMatrix)));
@@ -301,7 +279,10 @@ void GLRenderer::drawModels(const Scene& scene)
         shader.setUniform("u_model", modelMatrix);
         shader.setUniform("u_mvp", mvp);
         shader.setUniform("u_normalMatrix", normalMatrix);
-        shader.setUniform("u_color", sceneNode.color);
+        shader.setUniform("u_material.color", sceneNode.color);
+        shader.setUniform("u_material.specularReflectivity",
+                          sceneNode.specularReflectivity);
+        shader.setUniform("u_material.shininess", sceneNode.shininess);
 
         glDrawElements(GL_TRIANGLES,
                        static_cast<GLsizei>(model->indices().size()),
@@ -318,12 +299,12 @@ void GLRenderer::drawModels(const Scene& scene)
 void GLRenderer::drawSkybox()
 {
     // Skybox needs to be drawn at the end of the rendering pipeline for
-    // efficiency, not the other way around before objects (like in Painter's
-    // Algorithm).
+    // efficiency, not the other way around before objects (like in
+    // Painter's Algorithm).
     //
-    // Allow skybox pixel depths to pass depth test even when depth buffer is
-    // filled with maximum 1.0 depth values. Everything drawn before skybox
-    // will be displayed in front of skybox.
+    // Allow skybox pixel depths to pass depth test even when depth buffer
+    // is filled with maximum 1.0 depth values. Everything drawn before
+    // skybox will be displayed in front of skybox.
     glDepthFunc(GL_LEQUAL);
     // Set skybox shader
     auto& shader
@@ -335,9 +316,9 @@ void GLRenderer::drawSkybox()
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_CUBE_MAP, skybox_.textureID());
 
-    // Remove camera position transformations by nullifying column 4, but keep
-    // rotation in the view matrix. If you don't do this, skybox will be shown
-    // as a shrinked down cube around model.
+    // Remove camera position transformations by nullifying column 4, but
+    // keep rotation in the view matrix. If you don't do this, skybox will
+    // be shown as a shrinked down cube around model.
     glm::mat4 normalizedView = view_;
     normalizedView[3] = glm::vec4(0.0f, 0.0f, 0.0f, 0.0f);
     // Concat matrix transformations on CPU to avoid unnecessary
@@ -357,7 +338,8 @@ void GLRenderer::screenshot()
 {
 #ifndef __EMSCRIPTEN__
     glReadBuffer(GL_BACK);  // Set backbuffer as read target
-    glPixelStorei(GL_PACK_ALIGNMENT, 1);  // Disable padding on GPU->CPU copy
+    // Disable padding on GPU->CPU copy
+    glPixelStorei(GL_PACK_ALIGNMENT, 1);
 
     const auto [width, height] = window_.frameBufferSize();
     constexpr int rgbChannelCount = 3;
@@ -385,7 +367,6 @@ void GLRenderer::screenshot()
     {
         utils::showErrorMessage("unable to write screenshot into file",
                                 screenshotFilename);
-        return;
     }
 #endif
 }

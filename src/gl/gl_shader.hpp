@@ -32,13 +32,11 @@ class GLShader
 public:
     /// Factory method compiling vertex and fragment shaders from GLSL files.
     static std::optional<GLShader> createFromFile(
-        const std::filesystem::path& vertexShaderPath,
-        const std::filesystem::path& fragmentShaderPath
+        std::string_view shaderBaseName,
 #ifndef __EMSCRIPTEN__
-        ,
-        const RenderingAPI api
+        const RenderingAPI api,
 #endif
-    );
+        std::string_view includeBaseName = {});
 
     DISABLE_COPY(GLShader)
     GLShader(GLShader&& other) noexcept;
@@ -71,7 +69,8 @@ private:
 #ifndef __EMSCRIPTEN__
         const RenderingAPI api,
 #endif
-        const GLenum shaderTpye);
+        const GLenum shaderTpye,
+        const std::filesystem::path& includePath);
     static std::string readFile(const std::filesystem::path& shaderPath);
     static bool checkCompileErrors(const GLuint shaderID,
                                    const GLenum shaderType);

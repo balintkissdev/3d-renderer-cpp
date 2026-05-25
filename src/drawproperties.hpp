@@ -11,6 +11,15 @@ enum class RenderingAPI : uint8_t
     OpenGL46,
     OpenGL33,
     Direct3D12,
+
+    Count,
+};
+
+enum class LightingModel : uint8_t
+{
+    Gouraud,
+    Phong,
+
     Count,
 };
 
@@ -40,10 +49,9 @@ struct DrawProperties
     RenderingAPI renderingAPI;
     bool vsyncEnabled;
 #endif
+    LightingModel lightingModel;
     bool skyboxEnabled;
     bool wireframeModeEnabled;
-    bool diffuseEnabled;
-    bool specularEnabled;
 };
 
 #endif

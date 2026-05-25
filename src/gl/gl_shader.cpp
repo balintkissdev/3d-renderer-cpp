@@ -17,21 +17,38 @@
 
 namespace fs = std::filesystem;
 
-std::optional<GLShader> GLShader::createFromFile(
-    const fs::path& vertexShaderPath,
-    const fs::path& fragmentShaderPath
-#ifndef __EMSCRIPTEN__
-    ,
-    const RenderingAPI api
-#endif
-)
+namespace
 {
+const char* GLSL_PREAMBLE
+    = "#if __VERSION__ <= 310\n"
+      "precision mediump float;\n"
+      "#endif\n"
+      "#if 460 <= __VERSION__\n"
+      "#define OPENGL_4_6\n"
+      "#endif\n";
+}
+
+std::optional<GLShader> GLShader::createFromFile(
+    std::string_view shaderBaseName,
+#ifndef __EMSCRIPTEN__
+    const RenderingAPI api,
+#endif
+    std::string_view includeBaseName)
+{
+    const fs::path glslShaderDirPath("assets/shaders/glsl/");
+    const fs::path glslShaderBasePath = glslShaderDirPath / shaderBaseName;
+    const fs::path includePath
+        = includeBaseName.empty()
+            ? fs::path()
+            : (glslShaderDirPath / includeBaseName).concat(".glsli");
+
     // Compile vertex shader
-    const auto vertexShader = compile(vertexShaderPath,
+    const auto vertexShader = compile(glslShaderBasePath,
 #ifndef __EMSCRIPTEN__
                                       api,
 #endif
-                                      GL_VERTEX_SHADER);
+                                      GL_VERTEX_SHADER,
+                                      includePath);
     if (!vertexShader)
     {
         return std::nullopt;
@@ -39,11 +56,12 @@ std::optional<GLShader> GLShader::createFromFile(
     DEFER(glDeleteShader(vertexShader.value()));
 
     // Compile fragment shader
-    const auto fragmentShader = compile(fragmentShaderPath,
+    const auto fragmentShader = compile(glslShaderBasePath,
 #ifndef __EMSCRIPTEN__
                                         api,
 #endif
-                                        GL_FRAGMENT_SHADER);
+                                        GL_FRAGMENT_SHADER,
+                                        includePath);
     if (!fragmentShader)
     {
         return std::nullopt;
@@ -125,6 +143,13 @@ void GLShader::setUniform(const std::string& name, const int& v)
 }
 
 template <>
+void GLShader::setUniform(const std::string& name, const float& v)
+{
+    ASSERT_UNIFORM(name);
+    glUniform1f(uniformCache_.at(name), v);
+}
+
+template <>
 void GLShader::setUniform(const std::string& name, const bool& v)
 {
     ASSERT_UNIFORM(name);
@@ -164,14 +189,25 @@ std::optional<GLuint> GLShader::compile(const fs::path& shaderPath,
 #ifndef __EMSCRIPTEN__
                                         const RenderingAPI api,
 #endif
-                                        const GLenum shaderTpye)
+                                        const GLenum shaderTpye,
+                                        const fs::path& includePath)
 {
-    const std::string shaderSrc = utils::RenderingAPIToGLSLDirective(
+    std::string shaderSrc = utils::RenderingAPIToGLSLDirective(
 #ifndef __EMSCRIPTEN__
-                                      api
+                                api
 #endif
-                                      )
-                                + readFile(shaderPath);
+                                )
+                          + std::string(GLSL_PREAMBLE);
+    if (!includePath.empty())
+    {
+        shaderSrc += readFile(includePath);
+    }
+
+    fs::path shaderFilePath = shaderPath;
+    shaderFilePath.concat(shaderTpye == GL_VERTEX_SHADER ? ".vert.glsl"
+                                                         : ".frag.glsl");
+    shaderSrc += readFile(shaderFilePath);
+
     const GLchar* shaderGlSrc = shaderSrc.c_str();
     const GLuint shader = glCreateShader(shaderTpye);
     glShaderSource(shader, 1, &shaderGlSrc, nullptr);

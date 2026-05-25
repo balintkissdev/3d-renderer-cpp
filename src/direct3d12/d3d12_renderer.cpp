@@ -205,7 +205,7 @@ bool D3D12Renderer::createCommandObjects()
     hr = device_->CreateCommandList(0,
                                     D3D12_COMMAND_LIST_TYPE_DIRECT,
                                     commandAllocator_.get(),
-                                    modelPso_.get(),
+                                    nullptr,
                                     IID_PPV_ARGS(commandList_.put()));
     if (FAILED(hr))
     {
@@ -448,9 +448,10 @@ bool D3D12Renderer::createModelRootSignature()
     rootParameters[0].InitAsDescriptorTable(1,
                                             ranges.data(),
                                             D3D12_SHADER_VISIBILITY_VERTEX);
-    rootParameters[1].InitAsDescriptorTable(1,
-                                            &ranges[1],
-                                            D3D12_SHADER_VISIBILITY_PIXEL);
+    rootParameters[1].InitAsDescriptorTable(
+        1,
+        &ranges[1],
+        D3D12_SHADER_VISIBILITY_ALL);  // TODO: Optimize
 
     constexpr D3D12_ROOT_SIGNATURE_FLAGS rootSignatureFlags
         = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
@@ -511,26 +512,6 @@ bool D3D12Renderer::createModelPSO()
     psoDesc.InputLayout = D3D12_INPUT_LAYOUT_DESC{inputElementDesc.data(),
                                                   inputElementDesc.size()};
 
-    // Shaders
-    // TODO: Revisit HLSL file organization when using precompiled CSO bytecode
-    com_ptr<ID3DBlob> vertexShader;
-    if (!D3D12Shader::Compile("model.vert.hlsl",
-                              D3D12Shader::ShaderCompileType::VertexShader,
-                              vertexShader))
-    {
-        return false;
-    }
-    psoDesc.VS = CD3DX12_SHADER_BYTECODE(vertexShader.get());
-
-    com_ptr<ID3DBlob> pixelShader;
-    if (!D3D12Shader::Compile("model.pixel.hlsl",
-                              D3D12Shader::ShaderCompileType::PixelShader,
-                              pixelShader))
-    {
-        return false;
-    }
-    psoDesc.PS = CD3DX12_SHADER_BYTECODE(pixelShader.get());
-
     // Topology type
     psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 
@@ -553,13 +534,43 @@ bool D3D12Renderer::createModelPSO()
     psoDesc.SampleDesc.Count = 1;
     psoDesc.SampleDesc.Quality = 0;
 
-    HRESULT hr
-        = device_->CreateGraphicsPipelineState(&psoDesc,
-                                               IID_PPV_ARGS(modelPso_.put()));
-    if (FAILED(hr))
+    const std::array<std::string, static_cast<size_t>(ModelPSOInstance::Count)>
+        shaderNames{
+            "gouraud",
+            "phong",
+        };
+    for (size_t i = 0; i < shaderNames.size(); ++i)
     {
-        utils::showErrorMessage("unable to create Pipeline State Object (PSO)");
-        return false;
+        // Shaders
+        // TODO: Revisit HLSL file organization when using precompiled CSO
+        // bytecode
+        com_ptr<ID3DBlob> vertexShader;
+        if (!D3D12Shader::Compile(shaderNames[i] + ".hlsl",
+                                  D3D12Shader::ShaderCompileType::VertexShader,
+                                  vertexShader))
+        {
+            return false;
+        }
+        psoDesc.VS = CD3DX12_SHADER_BYTECODE(vertexShader.get());
+
+        com_ptr<ID3DBlob> pixelShader;
+        if (!D3D12Shader::Compile(shaderNames[i] + ".hlsl",
+                                  D3D12Shader::ShaderCompileType::PixelShader,
+                                  pixelShader))
+        {
+            return false;
+        }
+        psoDesc.PS = CD3DX12_SHADER_BYTECODE(pixelShader.get());
+
+        HRESULT hr = device_->CreateGraphicsPipelineState(
+            &psoDesc,
+            IID_PPV_ARGS(modelPso_[i].put()));
+        if (FAILED(hr))
+        {
+            utils::showErrorMessage(
+                "unable to create Pipeline State Object (PSO)");
+            return false;
+        }
     }
     return true;
 }
@@ -703,25 +714,20 @@ void D3D12Renderer::draw(const Scene& scene)
     materialConstantBufferData.lightDirection.x = drawProps_.lightDirection[0];
     materialConstantBufferData.lightDirection.y = drawProps_.lightDirection[1];
     materialConstantBufferData.lightDirection.z = drawProps_.lightDirection[2];
-    materialConstantBufferData.adsPropertiesFlags = 0;
-    if (drawProps_.diffuseEnabled)
-    {
-        materialConstantBufferData.adsPropertiesFlags
-            |= ADS_FLAG_DIFFUSE_ENABLED;
-    }
-    if (drawProps_.specularEnabled)
-    {
-        materialConstantBufferData.adsPropertiesFlags
-            |= ADS_FLAG_SPECULAR_ENABLED;
-    }
 
     // Begin frame
     commandAllocator_->Reset();
-    commandList_->Reset(commandAllocator_.get(), modelPso_.get());
+    commandList_->Reset(commandAllocator_.get(), nullptr);
     PIX_EVENT(commandList_.get(), "D3D12Renderer::draw");
 
     // Set render state
     commandList_->SetGraphicsRootSignature(modelRootSignature_.get());
+    const ModelPSOInstance selectedModelPSO
+        = drawProps_.lightingModel == LightingModel::Phong
+            ? ModelPSOInstance::PhongModelPSO
+            : ModelPSOInstance::GouraudModelPSO;
+    commandList_->SetPipelineState(
+        modelPso_[static_cast<size_t>(selectedModelPSO)].get());
 
     // CBV/SRV/UAV heaps
     const std::array<ID3D12DescriptorHeap*, 1> cbvSrvUavHeaps
@@ -850,6 +856,9 @@ void D3D12Renderer::drawModels(
         materialConstantBufferData.color.x = sceneNode.color.r;
         materialConstantBufferData.color.y = sceneNode.color.g;
         materialConstantBufferData.color.z = sceneNode.color.b;
+        materialConstantBufferData.specularReflectivity
+            = sceneNode.specularReflectivity;
+        materialConstantBufferData.shininess = sceneNode.shininess;
 
         std::memcpy(materialCbvDataBegin_[i],
                     &materialConstantBufferData,

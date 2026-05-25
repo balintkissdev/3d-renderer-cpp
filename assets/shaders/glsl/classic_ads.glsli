@@ -1,0 +1,84 @@
+uniform mat4 u_model;
+uniform mat4 u_mvp;
+// Normal matrix is used for correctly transforming the input vertex normals
+// to world space. A normal matrix is the transpose of the
+// inverse of the upper-left 3x3 portion of the model matrix.
+//
+// normalMatrix = mat3(transpose(inverse(modelMatrix)))
+//
+uniform mat3 u_normalMatrix;
+
+struct Light
+{
+    vec3 direction; // Light direction vector is determined from origin (0,0,0)
+};
+
+struct Material
+{
+    vec3 color;
+    float specularReflectivity;
+    float shininess;
+};
+
+uniform vec3 u_viewPos;
+uniform Light u_light;
+uniform Material u_material;
+
+vec3 convertToWorldNormal(vec3 vertexNormal)
+{
+    return vertexNormal * u_normalMatrix;
+}
+
+float calculateCosineTerm(vec3 a, vec3 b)
+{
+    return max(dot(a, b), 0.0);
+}
+
+vec3 calculateAmbient()
+{
+    float ambientStrength = 0.2;
+    return ambientStrength * u_material.color;
+}
+
+vec3 calculateSpecular(vec3 worldPosition, vec3 surfaceNormal, vec3 lightDirection)
+{
+    vec3 viewDirection = normalize(u_viewPos - worldPosition);
+    // reflect(I,N) = I - 2.0 * dot(N, I) * N
+    // I: Incident vector
+    // N: Normal vector
+    vec3 reflectDirection = reflect(-lightDirection, surfaceNormal);
+    float specularIntensity = pow(calculateCosineTerm(reflectDirection, viewDirection), u_material.shininess);
+    return u_material.specularReflectivity * u_material.color * specularIntensity;
+}
+
+// ADS lighting equation is
+// I = Ia + Id + Is
+// L: light source intensity
+// K: surface material reflectivity
+// Ia (ambient): La * Ka
+// Id (diffuse): Ld * Kd * dot(s, n)
+//   s: light source
+//   n: surface point normal vector
+// Is (specular): Ls * Ks * dot(r, v)^f
+//   r: pure reflection, r = -s + 2 * dot(s, n) * n
+//   v: camera view position
+//   f: specular highlight "shininess" power
+vec3 classicADSLightModel(vec3 worldPosition, vec3 worldNormal)
+{
+    // Keep normalize() for normal vector. Interpolation between shader stages
+    // might change the normal vector length and it won't be a unit vector anymore,
+    // resulting in wrong results.
+    vec3 tnorm = normalize(worldNormal);
+    vec3 lightDirection = normalize(-u_light.direction);
+
+    vec3 ambient = calculateAmbient();
+    float sDotN = calculateCosineTerm(lightDirection, tnorm);
+    vec3 diffuse = sDotN * u_material.color;
+    // TODO: Optimize
+    vec3 specular = 0.0 < sDotN ?
+        calculateSpecular(worldPosition, tnorm, lightDirection) :
+        vec3(0.0);
+
+    return ambient + diffuse + specular;
+}
+

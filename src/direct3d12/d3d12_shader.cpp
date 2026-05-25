@@ -41,7 +41,7 @@ bool Compile(std::string_view hlslFilename,
                                     error.put());
     if (FAILED(hr))
     {
-        std::string errorCause
+        const std::string errorCause
             = error ? static_cast<const char*>(error->GetBufferPointer())
                     : "unknown error";
         utils::showErrorMessage("unable to compile HLSL shader",

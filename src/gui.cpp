@@ -10,6 +10,8 @@
 #include "imgui_impl_opengl3.h"
 
 #include <cassert>
+#include <string>
+#include <string_view>
 
 #if defined(WINDOW_PLATFORM_WIN32)
 #include "imgui_impl_dx12.h"
@@ -40,7 +42,53 @@ constexpr bool DIRECT3D12_SUPPORTED = false;
 namespace
 {
 const std::array SELECTABLE_MODELS{"Cube", "Utah Teapot", "Stanford Bunny"};
+
+template <size_t selectionSize, typename E, typename DisablePred>
+void DrawCombo(std::string_view label,
+               const std::array<std::string_view, selectionSize>& selections,
+               E& selectedOut,
+               DisablePred disabledPred)
+{
+    size_t selectionIndex = static_cast<size_t>(selectedOut);
+    std::string_view preview = selections[selectionIndex];
+    if (ImGui::BeginCombo(label.data(), preview.data()))
+    {
+        for (size_t i = 0; i < selectionSize; ++i)
+        {
+            const bool disabled = disabledPred(i);
+            if (disabled)
+            {
+                ImGui::BeginDisabled();
+            }
+
+            const bool selected = (selectionIndex == i);
+            if (ImGui::Selectable(selections[i].data(), selected))
+            {
+                selectedOut = static_cast<E>(i);
+            }
+
+            if (selected)
+            {
+                ImGui::SetItemDefaultFocus();
+            }
+            else if (disabled)
+            {
+                ImGui::EndDisabled();
+            }
+        }
+        ImGui::EndCombo();
+    }
 }
+
+template <size_t selectionSize, typename E>
+void DrawCombo(std::string_view label,
+               const std::array<std::string_view, selectionSize>& selections,
+               E& selectedOut)
+{
+    auto nopDisablePred = [](size_t) { return false; };
+    DrawCombo(label, selections, selectedOut, nopDisablePred);
+}
+}  // namespace
 
 // TODO: This preprocessor soup is getting ludicrous
 Gui::Gui()
@@ -217,46 +265,27 @@ void Gui::rendererSection(const FrameRateInfo& frameRateInfo,
         ImGui::Text("%.2f FPS, %.6f ms/frame",
                     frameRateInfo.framesPerSecond,
                     frameRateInfo.msPerFrame);
-        constexpr std::array selectableAPIs{
+        constexpr std::array<std::string_view, static_cast<size_t>(RenderingAPI::Count)> selectableAPIs{
             "OpenGL 4.6",
             "OpenGL 3.3",
             "Direct3D 12",
         };
-        auto renderingAPI = static_cast<size_t>(selectedRenderingAPI_);
-        if (ImGui::BeginCombo("##Rendering API", selectableAPIs[renderingAPI]))
-        {
-            for (size_t i = 0; i < static_cast<size_t>(RenderingAPI::Count);
-                 ++i)
-            {
-                // Display unsupported APIs as unselectable
-                if (!supportedRenderingAPIs_[i])
-                {
-                    ImGui::PushStyleColor(
-                        ImGuiCol_Text,
-                        ImGui::GetStyle().Colors[ImGuiCol_TextDisabled]);
-                    ImGui::Text("%s (Unsupported)", selectableAPIs[i]);
-                    ImGui::PopStyleColor();
-                    continue;
-                }
+        DrawCombo("Rendering API",
+                  selectableAPIs,
+                  selectedRenderingAPI_,
+                  [this](size_t apiIndex)
+                  { return !supportedRenderingAPIs_[apiIndex]; });
 
-                // Handle apply changes on selection
-                const bool selected = (renderingAPI == i);
-                if (ImGui::Selectable(selectableAPIs[i], selected))
-                {
-                    renderingAPI = i;
-                    selectedRenderingAPI_
-                        = static_cast<RenderingAPI>(renderingAPI);
-                }
-
-                // Set initial focus when opening
-                if (selected)
-                {
-                    ImGui::SetItemDefaultFocus();
-                }
-            }
-            ImGui::EndCombo();
-        }
         ImGui::Checkbox("Vertical sync", &drawProps.vsyncEnabled);
+
+        constexpr std::array<std::string_view, static_cast<size_t>(LightingModel::Count)> selectableLightingModels{
+            "Classic Gouraud (per-vertex)",
+            "Classic Phong (per-pixel)",
+        };
+        DrawCombo("Lighting model",
+                  selectableLightingModels,
+                  drawProps.lightingModel);
+
         // TODO: Wireframe fill mode requires creation of a separate PSO on
         // D3D12
         ImGui::BeginDisabled(isDirect3DEnabled());
@@ -461,8 +490,6 @@ void Gui::sceneNodeSection(DrawProperties& drawProps, Scene& scene) const
                             drawProps.lightDirection.data(),
                             -1.0f,
                             1.0f);
-        ImGui::Checkbox("Diffuse", &drawProps.diffuseEnabled);
-        ImGui::Checkbox("Specular", &drawProps.specularEnabled);
     }
 
     // Model
@@ -540,7 +567,22 @@ void Gui::sceneNodeSection(DrawProperties& drawProps, Scene& scene) const
 
         if (ImGui::CollapsingHeader("Material", ImGuiTreeNodeFlags_DefaultOpen))
         {
-            ImGui::ColorEdit3("##Solid Color", glm::value_ptr(sceneNode.color));
+            ImGui::ColorEdit3("Color", glm::value_ptr(sceneNode.color));
+            ImGui::InputFloat("Specular reflectivity",
+                              &sceneNode.specularReflectivity);
+            ImGui::DragFloat("Shininess",
+                             &sceneNode.shininess,
+                             1.0f,
+                             1.0f,
+                             256.0f,
+                             "X: %.1f");
+            if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNone))
+            {
+                ImGui::SetTooltip(
+                    "The higher the shininess, the more concentrated the "
+                    "specular highlight will be instead of being scattered "
+                    "around.");
+            }
         }
     }
 }

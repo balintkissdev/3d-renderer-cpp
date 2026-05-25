@@ -3,7 +3,7 @@
 struct VSOut
 {
     float4 position : SV_POSITION;
-    float3 uv : TEXCOORD;
+    float3 uv       : TEXCOORD;
 };
 
 VSOut main_vs(float3 position : POSITION)

@@ -41,21 +41,14 @@ private:
     static_assert((sizeof(MVPConstantBuffer) % CONSTANT_BUFFER_ALIGNMENT) == 0,
                   "MVP Constant Buffer size must be 256-byte aligned");
 
-    enum AdsPropertiesFlags : uint8_t
-    {
-        ADS_FLAG_DIFFUSE_ENABLED = 1,
-        ADS_FLAG_SPECULAR_ENABLED = 2,
-    };
-
     // See this link for HLSL Constant Buffer layout rules:
     // https://maraneshi.github.io/HLSL-ConstantBufferLayoutVisualizer/
     struct alignas(CONSTANT_BUFFER_ALIGNMENT) MaterialConstantBuffer
     {
         DirectX::XMFLOAT3 color;
-        // Bit packing instead of bools to avoid wasting 4 byte for each bool
-        uint32_t adsPropertiesFlags;
+        float specularReflectivity;
         DirectX::XMFLOAT3 viewPos;
-        float padding;
+        float shininess;
         DirectX::XMFLOAT3 lightDirection;
     };
     static_assert((sizeof(MaterialConstantBuffer) % CONSTANT_BUFFER_ALIGNMENT)
@@ -93,7 +86,18 @@ private:
     winrt::com_ptr<ID3D12Resource> depthStencil_;
     // TODO: Move model PSO out of D3D12Renderer
     winrt::com_ptr<ID3D12RootSignature> modelRootSignature_;
-    winrt::com_ptr<ID3D12PipelineState> modelPso_;
+
+    enum class ModelPSOInstance : uint8_t
+    {
+        GouraudModelPSO,
+        PhongModelPSO,
+
+        Count,
+    };
+    std::array<winrt::com_ptr<ID3D12PipelineState>,
+               static_cast<size_t>(ModelPSOInstance::Count)>
+        modelPso_;
+
     std::vector<winrt::com_ptr<ID3D12Resource>> mvpConstantBuffers_;
     std::vector<winrt::com_ptr<ID3D12Resource>> materialConstantBuffers_;
     std::vector<uint8_t*> mvpCbvDataBegin_;

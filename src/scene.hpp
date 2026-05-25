@@ -15,6 +15,8 @@ struct SceneNode
     glm::vec3 position;
     glm::vec3 rotation;
     glm::vec3 color;
+    float specularReflectivity;
+    float shininess;
     size_t modelID;
 
     SceneNode(const char* label, const size_t modelID)
@@ -22,6 +24,8 @@ struct SceneNode
         , position{0.0f}
         , rotation{0.0f}
         , color{0.0f, 0.8f, 1.0f}
+        , specularReflectivity{1.0f}
+        , shininess{64.0f}
         , modelID{modelID}
     {
     }

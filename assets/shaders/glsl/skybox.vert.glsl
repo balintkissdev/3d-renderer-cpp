@@ -1,7 +1,3 @@
-#if __VERSION__ <= 310
-precision mediump float;
-#endif
-
 layout (location = 0) in vec3 a_position;
 
 uniform mat4 u_projectionView;
