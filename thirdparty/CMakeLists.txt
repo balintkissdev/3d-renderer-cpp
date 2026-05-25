@@ -34,24 +34,16 @@ add_subdirectory("${THIRDPARTY_DIR}glm")
 # Assimp
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)  # TODO: Bugprone because not scoped to Assimp build
 set(ASSIMP_BUILD_ALL_IMPORTERS_BY_DEFAULT OFF CACHE BOOL "" FORCE)
+set(ASSIMP_BUILD_ALL_EXPORTERS_BY_DEFAULT OFF CACHE BOOL "" FORCE)
 set(ASSIMP_BUILD_OBJ_IMPORTER ON CACHE BOOL "" FORCE)
 set(ASSIMP_BUILD_SAMPLES OFF CACHE BOOL "" FORCE)
 set(ASSIMP_BUILD_TESTS OFF CACHE BOOL "" FORCE)
-# HACK: CI unable to find Emscripten zlib
-if(WEBBUILD_CI)
-    set(ASSIMP_BUILD_ZLIB ON CACHE BOOL "" FORCE)
-endif()
+set(ASSIMP_BUILD_ZLIB ON CACHE BOOL "" FORCE)
 set(ASSIMP_INJECT_DEBUG_POSTFIX OFF CACHE BOOL "" FORCE)
 set(ASSIMP_INSTALL OFF CACHE BOOL "" FORCE)
 set(ASSIMP_NO_EXPORT ON CACHE BOOL "" FORCE)
+set(ASSIMP_WARNINGS_AS_ERRORS OFF CACHE BOOL "" FORCE)
 add_subdirectory("${THIRDPARTY_DIR}assimp")
-if(EMSCRIPTEN)
-    # zlib implementation required to build Assimp with Emscripten
-    set_target_properties(assimp PROPERTIES
-        COMPILE_OPTIONS "--use-port=zlib"
-        LINK_OPTIONS "--use-port=zlib"
-    )
-endif()
 
 # Dear ImGUI
 if(WINDOW_PLATFORM_WIN32)
