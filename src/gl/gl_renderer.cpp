@@ -70,26 +70,31 @@ bool GLRenderer::init()
 
 bool GLRenderer::loadShaders()
 {
-    struct ShaderPathNames
+    const std::array<GLShader::Params,
+                     static_cast<size_t>(ShaderInstance::Count)>
+        shaderPermutations{{{.shaderBaseName = "gouraud",
+                             .includeBaseName = "classic_ads",
+                             .defines = {}},
+                            {.shaderBaseName = "phong",
+                             .includeBaseName = "classic_ads",
+                             .defines = {}},
+                            {.shaderBaseName = "phong",
+                             .includeBaseName = "classic_ads",
+                             .defines = {"BLINN_PHONG"}},
+                            {.shaderBaseName = "skybox",
+                             .includeBaseName = {},
+                             .defines = {}}}};
+    for (const GLShader::Params& p : shaderPermutations)
     {
-        std::string sourceName;
-        std::string includeName;
-    };
-    std::array<ShaderPathNames, static_cast<size_t>(ShaderInstance::Count)>
-        pathNames{{{.sourceName = "gouraud", .includeName = "classic_ads"},
-                   {.sourceName = "phong", .includeName = "classic_ads"},
-                   {.sourceName = "skybox", .includeName = {}}}};
-    for (const ShaderPathNames& p : pathNames)
-    {
-        std::optional<GLShader> shader
-            = GLShader::createFromFile(p.sourceName,
+        std::optional<GLShader> shader = GLShader::createFromFile(p
 #ifndef __EMSCRIPTEN__
-                                       glVersionAPI_,
+                                                                  ,
+                                                                  glVersionAPI_
 #endif
-                                       p.includeName);
+        );
         if (!shader)
         {
-            utils::showErrorMessage("unable to compile " + p.sourceName);
+            utils::showErrorMessage("unable to compile " + p.shaderBaseName);
             return false;
         }
 
@@ -220,11 +225,7 @@ void GLRenderer::drawModels(const Scene& scene)
     }
 
     // Set model draw shader
-    const ShaderInstance selectedShader
-        = drawProps_.lightingModel == LightingModel::Phong
-            ? ShaderInstance::PhongModelShader
-            : ShaderInstance::GouraudModelShader;
-    GLShader& shader = shaders_[static_cast<size_t>(selectedShader)];
+    GLShader& shader = shaders_[static_cast<size_t>(drawProps_.lightingModel)];
     shader.use();
 
     // Setup uniform values shared by all scene nodes, avoiding doing
@@ -311,8 +312,7 @@ void GLRenderer::drawSkybox()
     // skybox will be displayed in front of skybox.
     glDepthFunc(GL_LEQUAL);
     // Set skybox shader
-    auto& shader
-        = shaders_[static_cast<std::uint8_t>(ShaderInstance::SkyboxShader)];
+    auto& shader = shaders_[static_cast<std::uint8_t>(ShaderInstance::Skybox)];
     shader.use();
     glBindVertexArray(skybox_.vertexArray());
 

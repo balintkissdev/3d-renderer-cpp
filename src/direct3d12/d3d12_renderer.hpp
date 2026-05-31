@@ -92,14 +92,15 @@ private:
 
     enum class ModelPSOInstance : uint8_t
     {
-        GouraudModelPSO,
-        PhongModelPSO,
+        Gouraud,
+        Phong,
+        BlinnPhong,
 
         Count,
     };
     std::array<winrt::com_ptr<ID3D12PipelineState>,
                static_cast<size_t>(ModelPSOInstance::Count)>
-        modelPso_;
+        modelPsos_;
 
     std::vector<winrt::com_ptr<ID3D12Resource>> mvpConstantBuffers_;
     std::vector<winrt::com_ptr<ID3D12Resource>> materialConstantBuffers_;

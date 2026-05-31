@@ -23,7 +23,7 @@ DrawProperties DrawProperties::createDefault()
         .renderingAPI = DEFAULT_RENDERING_API,
         .vsyncEnabled = false,
 #endif
-        .lightingModel = LightingModel::Phong,
+        .lightingModel = LightingModel::BlinnPhong,
         .skyboxEnabled = true,
         .wireframeModeEnabled = false,
     };

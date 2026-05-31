@@ -43,11 +43,19 @@ vec3 calculateAmbient()
 vec3 calculateSpecular(vec3 worldPosition, vec3 surfaceNormal, vec3 lightDirection)
 {
     vec3 viewDirection = normalize(u_viewPos - worldPosition);
+#ifdef BLINN_PHONG
+    // Is: Ls * Ks * dot(h, n)
+    // h (halfway vector): v + s
+    vec3 halfWayVector = normalize(viewDirection + lightDirection);
+    float normalizedShininess = u_material.shininess * 4.0; // General rule is between 2-4. Results will still be different.
+    float specularIntensity = pow(calculateCosineTerm(halfWayVector, surfaceNormal), normalizedShininess);
+ #else
     // reflect(I,N) = I - 2.0 * dot(N, I) * N
     // I: Incident vector
     // N: Normal vector
     vec3 reflectDirection = reflect(-lightDirection, surfaceNormal);
     float specularIntensity = pow(calculateCosineTerm(reflectDirection, viewDirection), u_material.shininess);
+#endif
     return u_material.specularReflectivity * u_material.color * specularIntensity;
 }
 
@@ -62,7 +70,7 @@ vec3 calculateSpecular(vec3 worldPosition, vec3 surfaceNormal, vec3 lightDirecti
 // Is (specular): Ls * Ks * dot(r, v)^f
 //   r: pure reflection, r = -s + 2 * dot(s, n) * n
 //   v: camera view position
-//   f: specular highlight "shininess" power
+//   f: specular highlight Shininess exponent
 vec3 classicADSLightModel(vec3 worldPosition, vec3 worldNormal)
 {
     // Keep normalize() for normal vector. Interpolation between shader stages

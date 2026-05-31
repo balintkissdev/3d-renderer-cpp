@@ -2,10 +2,17 @@
 #define D3D12_SHADER_HPP_
 
 #include <d3d12.h>
+#include <string>
+#include <vector>
 #include <winrt/base.h>
 
 namespace D3D12Shader
 {
+struct Params
+{
+    std::string shaderBaseName;
+    std::vector<std::string> defines;
+};
 
 enum class ShaderCompileType : uint8_t
 {
@@ -13,7 +20,7 @@ enum class ShaderCompileType : uint8_t
     PixelShader,
 };
 
-bool Compile(std::string_view hlslFilename,
+bool Compile(const Params& param,
              const ShaderCompileType shaderType,
              winrt::com_ptr<ID3DBlob>& shaderOut);
 

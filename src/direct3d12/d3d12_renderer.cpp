@@ -535,18 +535,19 @@ bool D3D12Renderer::createModelPSO()
     psoDesc.SampleDesc.Count = 1;
     psoDesc.SampleDesc.Quality = 0;
 
-    const std::array<std::string, static_cast<size_t>(ModelPSOInstance::Count)>
-        shaderNames{
-            "gouraud",
-            "phong",
-        };
-    for (size_t i = 0; i < shaderNames.size(); ++i)
+    // Shaders
+    const std::array<D3D12Shader::Params,
+                     static_cast<size_t>(ModelPSOInstance::Count)>
+        shaderPermutations{
+            {{.shaderBaseName = "gouraud", .defines = {}},
+             {.shaderBaseName = "phong", .defines = {}},
+             {.shaderBaseName = "phong", .defines = {"BLINN_PHONG"}}}};
+    for (size_t i = 0; i < shaderPermutations.size(); ++i)
     {
-        // Shaders
         // TODO: Revisit HLSL file organization when using precompiled CSO
         // bytecode
         com_ptr<ID3DBlob> vertexShader;
-        if (!D3D12Shader::Compile(shaderNames[i] + ".hlsl",
+        if (!D3D12Shader::Compile(shaderPermutations[i],
                                   D3D12Shader::ShaderCompileType::VertexShader,
                                   vertexShader))
         {
@@ -555,7 +556,7 @@ bool D3D12Renderer::createModelPSO()
         psoDesc.VS = CD3DX12_SHADER_BYTECODE(vertexShader.get());
 
         com_ptr<ID3DBlob> pixelShader;
-        if (!D3D12Shader::Compile(shaderNames[i] + ".hlsl",
+        if (!D3D12Shader::Compile(shaderPermutations[i],
                                   D3D12Shader::ShaderCompileType::PixelShader,
                                   pixelShader))
         {
@@ -565,7 +566,7 @@ bool D3D12Renderer::createModelPSO()
 
         HRESULT hr = device_->CreateGraphicsPipelineState(
             &psoDesc,
-            IID_PPV_ARGS(modelPso_[i].put()));
+            IID_PPV_ARGS(modelPsos_[i].put()));
         if (FAILED(hr))
         {
             utils::showErrorMessage(
@@ -723,12 +724,8 @@ void D3D12Renderer::draw(const Scene& scene)
 
     // Set render state
     commandList_->SetGraphicsRootSignature(modelRootSignature_.get());
-    const ModelPSOInstance selectedModelPSO
-        = drawProps_.lightingModel == LightingModel::Phong
-            ? ModelPSOInstance::PhongModelPSO
-            : ModelPSOInstance::GouraudModelPSO;
     commandList_->SetPipelineState(
-        modelPso_[static_cast<size_t>(selectedModelPSO)].get());
+        modelPsos_[static_cast<size_t>(drawProps_.lightingModel)].get());
 
     // CBV/SRV/UAV heaps
     const std::array<ID3D12DescriptorHeap*, 1> cbvSrvUavHeaps

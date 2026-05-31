@@ -28,19 +28,20 @@ const char* GLSL_PREAMBLE
       "#endif\n";
 }
 
-std::optional<GLShader> GLShader::createFromFile(
-    std::string_view shaderBaseName,
+std::optional<GLShader> GLShader::createFromFile(const Params& params
 #ifndef __EMSCRIPTEN__
-    const RenderingAPI api,
+                                                 ,
+                                                 const RenderingAPI api
 #endif
-    std::string_view includeBaseName)
+)
 {
     const fs::path glslShaderDirPath("assets/shaders/glsl/");
-    const fs::path glslShaderBasePath = glslShaderDirPath / shaderBaseName;
+    const fs::path glslShaderBasePath
+        = glslShaderDirPath / params.shaderBaseName;
     const fs::path includePath
-        = includeBaseName.empty()
+        = params.includeBaseName.empty()
             ? fs::path()
-            : (glslShaderDirPath / includeBaseName).concat(".glsli");
+            : (glslShaderDirPath / params.includeBaseName).concat(".glsli");
 
     // Compile vertex shader
     const auto vertexShader = compile(glslShaderBasePath,
@@ -48,7 +49,8 @@ std::optional<GLShader> GLShader::createFromFile(
                                       api,
 #endif
                                       GL_VERTEX_SHADER,
-                                      includePath);
+                                      includePath,
+                                      params.defines);
     if (!vertexShader)
     {
         return std::nullopt;
@@ -61,7 +63,8 @@ std::optional<GLShader> GLShader::createFromFile(
                                         api,
 #endif
                                         GL_FRAGMENT_SHADER,
-                                        includePath);
+                                        includePath,
+                                        params.defines);
     if (!fragmentShader)
     {
         return std::nullopt;
@@ -190,7 +193,8 @@ std::optional<GLuint> GLShader::compile(const fs::path& shaderPath,
                                         const RenderingAPI api,
 #endif
                                         const GLenum shaderTpye,
-                                        const fs::path& includePath)
+                                        const fs::path& includePath,
+                                        const std::vector<std::string>& defines)
 {
     std::string shaderSrc = utils::RenderingAPIToGLSLDirective(
 #ifndef __EMSCRIPTEN__
@@ -198,6 +202,14 @@ std::optional<GLuint> GLShader::compile(const fs::path& shaderPath,
 #endif
                                 )
                           + std::string(GLSL_PREAMBLE);
+
+    for (const std::string& d : defines)
+    {
+        shaderSrc += "#define ";
+        shaderSrc += d;
+        shaderSrc += '\n';
+    }
+
     if (!includePath.empty())
     {
         shaderSrc += readFile(includePath);

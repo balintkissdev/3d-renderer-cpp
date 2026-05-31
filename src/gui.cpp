@@ -284,6 +284,7 @@ void Gui::rendererSection(const FrameRateInfo& frameRateInfo,
             selectableLightingModels{
                 "Classic Gouraud (per-vertex)",
                 "Classic Phong (per-pixel)",
+                "Classic Blinn-Phong (per-pixel with halfway vector)",
             };
         DrawCombo("Lighting model",
                   selectableLightingModels,
@@ -573,7 +574,7 @@ void Gui::sceneNodeSection(DrawProperties& drawProps, Scene& scene) const
             ImGui::ColorEdit3("Color", glm::value_ptr(sceneNode.color));
             ImGui::InputFloat("Specular reflectivity",
                               &sceneNode.specularReflectivity);
-            ImGui::DragFloat("Shininess",
+            ImGui::DragFloat("Shininess exponent",
                              &sceneNode.shininess,
                              1.0f,
                              1.0f,
@@ -582,8 +583,8 @@ void Gui::sceneNodeSection(DrawProperties& drawProps, Scene& scene) const
             if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNone))
             {
                 ImGui::SetTooltip(
-                    "The higher the shininess, the more concentrated the "
-                    "specular highlight will be instead of being scattered "
+                    "The higher the shininess exponent, the more concentrated "
+                    "the specular highlight will be instead of being scattered "
                     "around.");
             }
         }

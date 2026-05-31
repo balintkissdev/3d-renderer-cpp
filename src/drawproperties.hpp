@@ -30,6 +30,7 @@ enum class LightingModel : uint8_t
 {
     Gouraud,
     Phong,
+    BlinnPhong,
 
     Count,
 };

@@ -41,9 +41,10 @@ public:
 private:
     enum class ShaderInstance : uint8_t
     {
-        GouraudModelShader,
-        PhongModelShader,
-        SkyboxShader,
+        Gouraud,
+        Phong,
+        BlinnPhong,
+        Skybox,
 
         Count,
     };
