@@ -25,7 +25,7 @@ public:
 
     [[nodiscard]] const D3D12_VERTEX_BUFFER_VIEW& vertexBuffer() const;
     [[nodiscard]] const D3D12_INDEX_BUFFER_VIEW& indexBuffer() const;
-    [[nodiscard]] size_t indexCount() const;
+    [[nodiscard]] UINT indexCount() const;
 
 private:
     D3D12Model();
@@ -34,7 +34,7 @@ private:
     winrt::com_ptr<ID3D12Resource> indexBuffer_;
     D3D12_VERTEX_BUFFER_VIEW vertexBufferView_;
     D3D12_INDEX_BUFFER_VIEW indexBufferView_;
-    size_t indexCount_;
+    UINT indexCount_;
 };
 
 inline const D3D12_VERTEX_BUFFER_VIEW& D3D12Model::vertexBuffer() const
@@ -47,7 +47,7 @@ inline const D3D12_INDEX_BUFFER_VIEW& D3D12Model::indexBuffer() const
     return indexBufferView_;
 }
 
-inline size_t D3D12Model::indexCount() const
+inline UINT D3D12Model::indexCount() const
 {
     return indexCount_;
 }

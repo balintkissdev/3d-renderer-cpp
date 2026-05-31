@@ -1,12 +1,9 @@
 #include "app.hpp"
 
+#include "direct3d12/d3d12_renderer.hpp"
 #include "gl/gl_renderer.hpp"
 #include "globals.hpp"
 #include "utils.hpp"
-
-#if defined(WINDOW_PLATFORM_WIN32)
-#include "direct3d12/d3d12_renderer.hpp"
-#endif
 
 #ifndef __EMSCRIPTEN__
 #include <chrono>
@@ -123,7 +120,7 @@ bool App::initSystems(const RenderingAPI newRenderingAPI)
                                                      camera_,
                                                      currentRenderingAPI_);
             break;
-#if defined(WINDOW_PLATFORM_WIN32)
+#ifdef WINDOW_PLATFORM_WIN32
         case RenderingAPI::Direct3D12:
             renderer_
                 = std::make_unique<D3D12Renderer>(window_, drawProps_, camera_);

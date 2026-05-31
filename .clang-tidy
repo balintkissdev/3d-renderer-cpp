@@ -2,10 +2,12 @@
 Checks: >
   bugprone-*,
   -bugprone-easily-swappable-parameters,
+  -bugprone-macro-parentheses,
   -bugprone-reserved-identifier,
   clang-diagnostic-*,
   clang-analyzer-*,
   modernize-*,
+  -modernize-avoid-c-arrays,
   -modernize-use-default-member-init,
   -modernize-use-trailing-return-type,
   performance-*,
@@ -20,16 +22,10 @@ Checks: >
 WarningsAsErrors: ""
 HeaderFilterRegex: ""
 CheckOptions:
-  - key: readability-identifier-naming.LocalConstantCase
-    value: "camelBack"
-  - key: readability-identifier-naming.ConstantParameterCase
-    value: "camelBack"
   - key: readability-identifier-naming.GlobalConstantCase
     value: "UPPER_CASE"
   - key: readability-identifier-naming.StaticConstantCase
     value: "UPPER_CASE"
-  - key: readability-identifier-naming.VariableCase
-    value: "camelBack"
   - key: readability-identifier-naming.StaticVariablePrefix
     value: "s_"
   - key: readability-identifier-naming.ProtectedMemberSuffix

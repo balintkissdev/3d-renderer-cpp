@@ -49,7 +49,7 @@ public:
 
     bool init(const uint16_t width,
               const uint16_t height,
-              std::string_view title
+              const char* title
 #ifndef __EMSCRIPTEN__
               ,
               const RenderingAPI renderingAPI

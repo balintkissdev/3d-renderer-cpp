@@ -45,7 +45,7 @@ std::wstring ToWideString(std::string_view str);
 /// Log a formatted error message accepting any number of arguments to console.
 /// An error message box is displayed on Windows and WebAssembly builds.
 template <typename... Args>
-inline void showErrorMessage(Args... args)
+inline void showErrorMessage(const Args&... args)
 {
     std::ostringstream msgStream;
     msgStream << "ERROR: ";

@@ -1,6 +1,8 @@
 #ifndef D3D12_RENDERER_HPP_
 #define D3D12_RENDERER_HPP_
 
+#ifdef WINDOW_PLATFORM_WIN32
+
 #include "d3d12_model.hpp"
 #include "d3d12_skybox.hpp"
 #include "renderer.hpp"
@@ -30,7 +32,12 @@ public:
     void setVSyncEnabled(const bool vsyncEnabled) final;
 
 private:
+    // See this link for HLSL Constant Buffer layout rules:
+    // https://maraneshi.github.io/HLSL-ConstantBufferLayoutVisualizer/
     static constexpr size_t CONSTANT_BUFFER_ALIGNMENT = 256;
+#define CB_ALIGNMENT_ASSERT(cb, name)                            \
+    static_assert((sizeof(cb) % CONSTANT_BUFFER_ALIGNMENT) == 0, \
+                  name " size must be 256-byte aligned")
     struct alignas(CONSTANT_BUFFER_ALIGNMENT) MVPConstantBuffer
     {
         DirectX::XMFLOAT4X4 model;
@@ -38,11 +45,8 @@ private:
         DirectX::XMFLOAT4X4 projection;
         DirectX::XMFLOAT4X4 normalMatrix;
     };
-    static_assert((sizeof(MVPConstantBuffer) % CONSTANT_BUFFER_ALIGNMENT) == 0,
-                  "MVP Constant Buffer size must be 256-byte aligned");
+    CB_ALIGNMENT_ASSERT(MVPConstantBuffer, "MVP Constant Buffer");
 
-    // See this link for HLSL Constant Buffer layout rules:
-    // https://maraneshi.github.io/HLSL-ConstantBufferLayoutVisualizer/
     struct alignas(CONSTANT_BUFFER_ALIGNMENT) MaterialConstantBuffer
     {
         DirectX::XMFLOAT3 color;
@@ -50,15 +54,14 @@ private:
         DirectX::XMFLOAT3 viewPos;
         float shininess;
         DirectX::XMFLOAT3 lightDirection;
+        uint8_t padding[212];
     };
-    static_assert((sizeof(MaterialConstantBuffer) % CONSTANT_BUFFER_ALIGNMENT)
-                      == 0,
-                  "Material Constant Buffer size must be 256-byte aligned");
+    CB_ALIGNMENT_ASSERT(MaterialConstantBuffer, "Material Constant Buffer");
 
-    static constexpr UINT FRAME_COUNT = 2;
+    static constexpr auto FRAME_COUNT = 2;
     static constexpr DXGI_FORMAT DEPTH_STENCIL_FORMAT
         = DXGI_FORMAT_D24_UNORM_S8_UINT;
-    static constexpr size_t MAX_MODEL_SCENE_NODE_COUNT = 256;
+    static constexpr auto MAX_MODEL_SCENE_NODE_COUNT = 256;
 
     CD3DX12_VIEWPORT viewport_;
     CD3DX12_RECT scissorRect_;
@@ -69,18 +72,18 @@ private:
     winrt::com_ptr<ID3D12CommandAllocator> commandAllocator_;
     winrt::com_ptr<ID3D12GraphicsCommandList> commandList_;
     winrt::com_ptr<ID3D12DescriptorHeap> rtvDescriptorHeap_;
-    size_t rtvDescriptorHeapSize_;
+    UINT rtvDescriptorHeapSize_;
     winrt::com_ptr<ID3D12DescriptorHeap> dsvDescriptorHeap_;
 
-    static constexpr size_t NULL_CBV_COUNT = 1;
-    static constexpr size_t CB_PER_MODEL_COUNT = 2;
-    static constexpr size_t SKYBOX_TEXTURE_SRV_COUNT = 1;
-    static constexpr size_t IMGUI_FONT_TEXTURE_SRV_COUNT = 1;
-    static constexpr UINT MAX_CBV_SRV_UAV_DESCRIPTOR_COUNT
+    static constexpr auto NULL_CBV_COUNT = 1;
+    static constexpr auto CB_PER_MODEL_COUNT = 2;
+    static constexpr auto SKYBOX_TEXTURE_SRV_COUNT = 1;
+    static constexpr auto IMGUI_FONT_TEXTURE_SRV_COUNT = 1;
+    static constexpr auto MAX_CBV_SRV_UAV_DESCRIPTOR_COUNT
         = NULL_CBV_COUNT + (MAX_MODEL_SCENE_NODE_COUNT * CB_PER_MODEL_COUNT)
         + SKYBOX_TEXTURE_SRV_COUNT + IMGUI_FONT_TEXTURE_SRV_COUNT;
     winrt::com_ptr<ID3D12DescriptorHeap> cbvSrvUavDescriptorHeap_;
-    size_t cbvSrvUavDescriptorHeapSize_;
+    UINT cbvSrvUavDescriptorHeapSize_;
 
     std::array<winrt::com_ptr<ID3D12Resource>, FRAME_COUNT> renderTargets_;
     winrt::com_ptr<ID3D12Resource> depthStencil_;
@@ -122,7 +125,7 @@ private:
     bool createConstantBufferAndView(
         const CD3DX12_HEAP_PROPERTIES& heapProperties,
         winrt::com_ptr<ID3D12Resource>& constantBuffer,
-        UINT cbvDescriptorHeapIndex,
+        INT cbvDescriptorHeapIndex,
         uint8_t*& cbvDataBegin);
     bool createModelRootSignature();
     bool createModelPSO();
@@ -142,4 +145,5 @@ inline void D3D12Renderer::setVSyncEnabled(const bool vsyncEnabled)
     vsyncEnabled_ = vsyncEnabled;
 }
 
-#endif
+#endif  // WINDOW_PLATFORM_WIN32
+#endif  // D3D12_RENDERER_HPP_

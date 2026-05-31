@@ -12,9 +12,9 @@
 #include "glm/glm.hpp"
 #include "glm/gtc/quaternion.hpp"
 
-#if defined(WINDOW_PLATFORM_WIN32)
+#ifdef WINDOW_PLATFORM_WIN32
 #include "imgui_impl_win32.h"
-#elif defined(WINDOW_PLATFORM_GLFW)
+#elifdef WINDOW_PLATFORM_GLFW
 #include "imgui_impl_glfw.h"
 #endif
 
@@ -78,7 +78,7 @@ bool GLRenderer::loadShaders()
     std::array<ShaderPathNames, static_cast<size_t>(ShaderInstance::Count)>
         pathNames{{{.sourceName = "gouraud", .includeName = "classic_ads"},
                    {.sourceName = "phong", .includeName = "classic_ads"},
-                   {.sourceName = "skybox"}}};
+                   {.sourceName = "skybox", .includeName = {}}}};
     for (const ShaderPathNames& p : pathNames)
     {
         std::optional<GLShader> shader
@@ -135,9 +135,9 @@ bool GLRenderer::loadAssets()
 
 void GLRenderer::initImGuiBackend()
 {
-#if defined(WINDOW_PLATFORM_WIN32)
+#ifdef WINDOW_PLATFORM_WIN32
     ImGui_ImplWin32_InitForOpenGL(window_.raw());
-#elif defined(WINDOW_PLATFORM_GLFW)
+#elifdef WINDOW_PLATFORM_GLFW
     ImGui_ImplGlfw_InitForOpenGL(window_.raw(), true);
 #endif
 
@@ -249,6 +249,10 @@ void GLRenderer::drawModels(const Scene& scene)
             model = &models_[sceneNode.modelID];
             glBindVertexArray(model->vertexArray());
         }
+        else
+        {
+            continue;
+        }
 
         // Model transform
         // Translate
@@ -342,8 +346,9 @@ void GLRenderer::screenshot()
     glPixelStorei(GL_PACK_ALIGNMENT, 1);
 
     const auto [width, height] = window_.frameBufferSize();
-    constexpr int rgbChannelCount = 3;
-    std::vector<GLubyte> frameBufferData(width * height * rgbChannelCount);
+    constexpr auto rgbChannelCount = 3;
+    std::vector<GLubyte> frameBufferData(
+        static_cast<size_t>(width * height * rgbChannelCount));
     glReadPixels(0,
                  0,
                  width,

@@ -37,8 +37,6 @@ else()
     message(STATUS "Using GLFW window implementation (required for non-Windows)")
 endif()
 
-option(WEBBUILD_CI "Specify if an Emscripten build is running in CI" OFF)
-
 option(WITH_GAMEINPUT "Use Microsoft GameInput API (available only with native Win32 window implementation)" OFF)
 if(WITH_GAMEINPUT)
     if(WINDOW_PLATFORM_WIN32)
@@ -62,7 +60,6 @@ endif()
 # Command Prompt to verify required DLLs to ship) not for just app but
 # dependencies built by this project too.
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>" CACHE STRING "" FORCE)
-# set(MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>" CACHE STRING "" FORCE)
 
 add_executable(${PROJECT_NAME} "")
 
@@ -160,6 +157,7 @@ set(LINKER_LIBS
     glad
     glm::glm
     imgui
+    stb_image_write
     # "-sUSE_GLFW=3" linker option uses Emscripten GLFW package for WebAssembly
 )
 if(WINDOW_PLATFORM_GLFW)

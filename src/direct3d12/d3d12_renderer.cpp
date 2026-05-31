@@ -332,7 +332,7 @@ bool D3D12Renderer::createDSV()
 bool D3D12Renderer::createCBVs()
 {
     // Null resource CBV (for debugging)
-    UINT cbvIndexOffset = 0;
+    INT cbvIndexOffset = 0;
     CD3DX12_CPU_DESCRIPTOR_HANDLE nullCbvCpuHandle(
         cbvSrvUavDescriptorHeap_->GetCPUDescriptorHandleForHeapStart(),
         cbvIndexOffset,
@@ -350,7 +350,7 @@ bool D3D12Renderer::createCBVs()
     materialConstantBuffers_.resize(MAX_MODEL_SCENE_NODE_COUNT);
     materialCbvDataBegin_.resize(MAX_MODEL_SCENE_NODE_COUNT);
     const CD3DX12_HEAP_PROPERTIES heapProperties(D3D12_HEAP_TYPE_UPLOAD);
-    for (size_t i = 0; i < MAX_MODEL_SCENE_NODE_COUNT; ++i)
+    for (int i = 0; i < MAX_MODEL_SCENE_NODE_COUNT; ++i)
     {
         // Create MVP constant buffer and view
         if (!createConstantBufferAndView<MVPConstantBuffer>(
@@ -380,7 +380,7 @@ template <typename ConstantBufferType>
 bool D3D12Renderer::createConstantBufferAndView(
     const CD3DX12_HEAP_PROPERTIES& heapProperties,
     winrt::com_ptr<ID3D12Resource>& constantBuffer,
-    UINT cbvDescriptorHeapIndex,
+    INT cbvDescriptorHeapIndex,
     uint8_t*& cbvDataBegin)
 {
     // Create Constant Buffer
@@ -405,7 +405,7 @@ bool D3D12Renderer::createConstantBufferAndView(
     cbvDesc.SizeInBytes = constantBufferSize;
     CD3DX12_CPU_DESCRIPTOR_HANDLE cbvCpuHandle(
         cbvSrvUavDescriptorHeap_->GetCPUDescriptorHandleForHeapStart(),
-        static_cast<int>(cbvDescriptorHeapIndex),
+        cbvDescriptorHeapIndex,
         cbvSrvUavDescriptorHeapSize_);
     device_->CreateConstantBufferView(&cbvDesc, cbvCpuHandle);
 
@@ -456,7 +456,7 @@ bool D3D12Renderer::createModelRootSignature()
     constexpr D3D12_ROOT_SIGNATURE_FLAGS rootSignatureFlags
         = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
     CD3DX12_VERSIONED_ROOT_SIGNATURE_DESC rootSignatureDesc;
-    rootSignatureDesc.Init_1_1(rootParameters.size(),
+    rootSignatureDesc.Init_1_1(static_cast<UINT>(rootParameters.size()),
                                rootParameters.data(),
                                0,
                                nullptr,
@@ -509,8 +509,9 @@ bool D3D12Renderer::createModelPSO()
                                  D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
                                  0},
     };
-    psoDesc.InputLayout = D3D12_INPUT_LAYOUT_DESC{inputElementDesc.data(),
-                                                  inputElementDesc.size()};
+    psoDesc.InputLayout
+        = D3D12_INPUT_LAYOUT_DESC{inputElementDesc.data(),
+                                  static_cast<UINT>(inputElementDesc.size())};
 
     // Topology type
     psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
@@ -583,7 +584,7 @@ bool D3D12Renderer::createSyncObjects()
     if (FAILED(hr))
     {
         HRESULT removedReason = E_FAIL;
-        if (!device_.get())
+        if (!device_)
         {
             removedReason = device_->GetDeviceRemovedReason();
         }
@@ -732,7 +733,7 @@ void D3D12Renderer::draw(const Scene& scene)
     // CBV/SRV/UAV heaps
     const std::array<ID3D12DescriptorHeap*, 1> cbvSrvUavHeaps
         = {cbvSrvUavDescriptorHeap_.get()};
-    commandList_->SetDescriptorHeaps(cbvSrvUavHeaps.size(),
+    commandList_->SetDescriptorHeaps(static_cast<UINT>(cbvSrvUavHeaps.size()),
                                      cbvSrvUavHeaps.data());
 
     // Set Rasterizer Stage state
@@ -788,7 +789,7 @@ void D3D12Renderer::draw(const Scene& scene)
     commandList_->Close();
 
     const std::array<ID3D12CommandList*, 1> commandLists = {commandList_.get()};
-    commandQueue_->ExecuteCommandLists(commandLists.size(),
+    commandQueue_->ExecuteCommandLists(static_cast<UINT>(commandLists.size()),
                                        commandLists.data());
 
     if (Globals::takingScreenshot)

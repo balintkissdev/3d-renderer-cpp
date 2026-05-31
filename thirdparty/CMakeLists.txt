@@ -73,6 +73,9 @@ target_include_directories(imgui
     PRIVATE
         "${IMGUI_INCLUDE_DIRS}"
 )
+target_compile_options(imgui INTERFACE
+    $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wno-nontrivial-memcall>
+)
 
 if(WINDOW_PLATFORM_WIN32)
     # DirectXTex
@@ -106,7 +109,9 @@ if(WINDOW_PLATFORM_WIN32)
 endif()
 
 # stb_image_write
-target_sources(${PROJECT_NAME}
+add_library(stb_image_write STATIC "${THIRDPARTY_DIR}stb_image_write.c")
+target_include_directories(stb_image_write
+    SYSTEM
     PRIVATE
-        "${THIRDPARTY_DIR}stb_image_write.c"
+        "${THIRDPARTY_DIR}"
 )

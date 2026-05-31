@@ -24,7 +24,7 @@ Window::~Window()
 
 bool Window::init(const uint16_t width,
                   const uint16_t height,
-                  std::string_view title
+                  const char* title
 #ifndef __EMSCRIPTEN__
                   ,
                   const RenderingAPI renderingAPI
@@ -57,7 +57,7 @@ bool Window::init(const uint16_t width,
 #endif
     glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
 
-    window_ = glfwCreateWindow(width, height, title.data(), nullptr, nullptr);
+    window_ = glfwCreateWindow(width, height, title, nullptr, nullptr);
     if (!window_)
     {
         return false;

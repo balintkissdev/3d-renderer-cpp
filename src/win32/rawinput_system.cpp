@@ -24,8 +24,8 @@ bool init(const HWND hWnd)
     rawDevices[1].hwndTarget = hWnd;
 
     return ::RegisterRawInputDevices(rawDevices.data(),
-                                     rawDevices.size(),
-                                     sizeof(rawDevices[0]));
+                                     static_cast<UINT>(rawDevices.size()),
+                                     static_cast<UINT>(sizeof(rawDevices[0])));
 }
 
 void process(const LPARAM lParam,
@@ -93,7 +93,7 @@ void process(const LPARAM lParam,
         USHORT virtualKey = keyboard.VKey;
         if (virtualKey < INVALID_VIRTUALKEY)
         {
-            uint8_t vk8 = static_cast<uint8_t>(virtualKey);
+            auto vk8 = static_cast<uint8_t>(virtualKey);
             normalizeRightShiftNumLock(keyboard.MakeCode, vk8);
 
             // The flag that is active during key press is RI_KEY_MAKE.

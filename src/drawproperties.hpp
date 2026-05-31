@@ -15,14 +15,6 @@ enum class RenderingAPI : uint8_t
     Count,
 };
 
-enum class LightingModel : uint8_t
-{
-    Gouraud,
-    Phong,
-
-    Count,
-};
-
 /// Information for displaying framerate measurements
 struct FrameRateInfo
 {
@@ -33,6 +25,14 @@ struct FrameRateInfo
     float msPerFrame;
 };
 #endif
+
+enum class LightingModel : uint8_t
+{
+    Gouraud,
+    Phong,
+
+    Count,
+};
 
 /// Parameter object for user to customize selected model, model transformations
 /// and rendering properties from UI.

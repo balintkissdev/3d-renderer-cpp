@@ -106,7 +106,7 @@ bool D3D12SkyboxBuilder::createRootSignature(ID3D12Device* device,
     // Root Signature
     CD3DX12_VERSIONED_ROOT_SIGNATURE_DESC versionedDesc;
     versionedDesc.Init_1_1(
-        rootParameters.size(),
+        static_cast<UINT>(rootParameters.size()),
         rootParameters.data(),
         1,
         &sampler,
@@ -146,8 +146,9 @@ bool D3D12SkyboxBuilder::createPSO(ID3D12Device* device, D3D12Skybox& skybox)
                                     0,
                                     D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
                                     0}};
-    psoDesc.InputLayout = D3D12_INPUT_LAYOUT_DESC{inputElementDesc.data(),
-                                                  inputElementDesc.size()};
+    psoDesc.InputLayout
+        = D3D12_INPUT_LAYOUT_DESC{inputElementDesc.data(),
+                                  static_cast<UINT>(inputElementDesc.size())};
 
     // Shaders
     com_ptr<ID3DBlob> vertexShader;
@@ -332,7 +333,7 @@ bool D3D12SkyboxBuilder::createIndexBuffer(
     };
     // clang-format on
 
-    skybox.indexCount_ = indices.size();
+    skybox.indexCount_ = static_cast<UINT>(indices.size());
     const UINT indexBufferSize = sizeof(indices);
 
     D3D12_HEAP_PROPERTIES heapProperties{};
@@ -427,13 +428,13 @@ bool D3D12SkyboxBuilder::createTexture(
 
     // Texture heap
     CD3DX12_HEAP_PROPERTIES textureHeapProperties(D3D12_HEAP_TYPE_DEFAULT);
-    constexpr int cubemapFaceCount = 6;
+    constexpr UINT16 cubemapFaceCount = 6;
     CD3DX12_RESOURCE_DESC textureDesc
         = CD3DX12_RESOURCE_DESC::Tex2D(metadata.format,
                                        metadata.width,
-                                       metadata.height,
+                                       static_cast<UINT>(metadata.height),
                                        cubemapFaceCount,
-                                       metadata.mipLevels);
+                                       static_cast<UINT16>(metadata.mipLevels));
     hr = device->CreateCommittedResource(
         &textureHeapProperties,
         D3D12_HEAP_FLAG_NONE,
@@ -461,7 +462,7 @@ bool D3D12SkyboxBuilder::createTexture(
     const UINT64 uploadBufferSize
         = ::GetRequiredIntermediateSize(skybox.textureResource_.get(),
                                         0,
-                                        subresources.size());
+                                        static_cast<UINT>(subresources.size()));
     CD3DX12_HEAP_PROPERTIES textureUploadHeapProperties(D3D12_HEAP_TYPE_UPLOAD);
     CD3DX12_RESOURCE_DESC uploadDesc
         = CD3DX12_RESOURCE_DESC::Buffer(uploadBufferSize);
@@ -482,7 +483,7 @@ bool D3D12SkyboxBuilder::createTexture(
                          skybox.textureUploadBuffer_.get(),
                          0,
                          0,
-                         subresources.size(),
+                         static_cast<UINT>(subresources.size()),
                          subresources.data());
 
     CD3DX12_RESOURCE_BARRIER uploadToSrvTransition

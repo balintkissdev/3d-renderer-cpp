@@ -13,7 +13,7 @@ constexpr uint8_t INVALID_VIRTUALKEY = 0xff;
 
 using MouseOffsetFn = std::function<void(const float, const float)>;
 
-inline void normalizeRightShiftNumLock(const uint8_t scanCode,
+inline void normalizeRightShiftNumLock(const uint16_t scanCode,
                                        uint8_t& virtualKey)
 {
     if (virtualKey == 0)

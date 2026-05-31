@@ -10,10 +10,9 @@
 #include "imgui_impl_opengl3.h"
 
 #include <cassert>
-#include <string>
-#include <string_view>
+#include <utility>
 
-#if defined(WINDOW_PLATFORM_WIN32)
+#ifdef WINDOW_PLATFORM_WIN32
 #include "imgui_impl_dx12.h"
 #include "imgui_impl_win32.h"
 
@@ -25,7 +24,7 @@ namespace
 constexpr bool DIRECT3D12_SUPPORTED = true;
 }
 
-#elif defined(WINDOW_PLATFORM_GLFW)
+#elifdef WINDOW_PLATFORM_GLFW
 #include "imgui_impl_glfw.h"
 
 #define ImGui_Impl_NewFrame ImGui_ImplGlfw_NewFrame
@@ -44,14 +43,14 @@ namespace
 const std::array SELECTABLE_MODELS{"Cube", "Utah Teapot", "Stanford Bunny"};
 
 template <size_t selectionSize, typename E, typename DisablePred>
-void DrawCombo(std::string_view label,
-               const std::array<std::string_view, selectionSize>& selections,
+void DrawCombo(const char* label,
+               const std::array<const char*, selectionSize>& selections,
                E& selectedOut,
                DisablePred disabledPred)
 {
-    size_t selectionIndex = static_cast<size_t>(selectedOut);
-    std::string_view preview = selections[selectionIndex];
-    if (ImGui::BeginCombo(label.data(), preview.data()))
+    const auto selectionIndex = static_cast<size_t>(selectedOut);
+    const char* preview = selections[selectionIndex];
+    if (ImGui::BeginCombo(label, preview))
     {
         for (size_t i = 0; i < selectionSize; ++i)
         {
@@ -62,7 +61,7 @@ void DrawCombo(std::string_view label,
             }
 
             const bool selected = (selectionIndex == i);
-            if (ImGui::Selectable(selections[i].data(), selected))
+            if (ImGui::Selectable(selections[i], selected))
             {
                 selectedOut = static_cast<E>(i);
             }
@@ -81,8 +80,8 @@ void DrawCombo(std::string_view label,
 }
 
 template <size_t selectionSize, typename E>
-void DrawCombo(std::string_view label,
-               const std::array<std::string_view, selectionSize>& selections,
+void DrawCombo(const char* label,
+               const std::array<const char*, selectionSize>& selections,
                E& selectedOut)
 {
     auto nopDisablePred = [](size_t) { return false; };
@@ -142,7 +141,7 @@ void Gui::prepareDraw(
         case RenderingAPI::OpenGL46:
             ImGui_ImplOpenGL3_NewFrame();
             break;
-#if defined(WINDOW_PLATFORM_WIN32)
+#ifdef WINDOW_PLATFORM_WIN32
         case RenderingAPI::Direct3D12:
             ImGui_ImplDX12_NewFrame();
             break;
@@ -188,7 +187,7 @@ void Gui::cleanup(
         case RenderingAPI::OpenGL46:
             ImGui_ImplOpenGL3_Shutdown();
             break;
-#if defined(WINDOW_PLATFORM_WIN32)
+#ifdef WINDOW_PLATFORM_WIN32
         case RenderingAPI::Direct3D12:
             ImGui_ImplDX12_Shutdown();
             break;
@@ -265,11 +264,13 @@ void Gui::rendererSection(const FrameRateInfo& frameRateInfo,
         ImGui::Text("%.2f FPS, %.6f ms/frame",
                     frameRateInfo.framesPerSecond,
                     frameRateInfo.msPerFrame);
-        constexpr std::array<std::string_view, static_cast<size_t>(RenderingAPI::Count)> selectableAPIs{
-            "OpenGL 4.6",
-            "OpenGL 3.3",
-            "Direct3D 12",
-        };
+        constexpr std::array<const char*,
+                             static_cast<size_t>(RenderingAPI::Count)>
+            selectableAPIs{
+                "OpenGL 4.6",
+                "OpenGL 3.3",
+                "Direct3D 12",
+            };
         DrawCombo("Rendering API",
                   selectableAPIs,
                   selectedRenderingAPI_,
@@ -278,10 +279,12 @@ void Gui::rendererSection(const FrameRateInfo& frameRateInfo,
 
         ImGui::Checkbox("Vertical sync", &drawProps.vsyncEnabled);
 
-        constexpr std::array<std::string_view, static_cast<size_t>(LightingModel::Count)> selectableLightingModels{
-            "Classic Gouraud (per-vertex)",
-            "Classic Phong (per-pixel)",
-        };
+        constexpr std::array<const char*,
+                             static_cast<size_t>(LightingModel::Count)>
+            selectableLightingModels{
+                "Classic Gouraud (per-vertex)",
+                "Classic Phong (per-pixel)",
+            };
         DrawCombo("Lighting model",
                   selectableLightingModels,
                   drawProps.lightingModel);
@@ -436,7 +439,7 @@ void Gui::populateTreeFromSceneNodes(Scene& scene)
             if (deleteFlag)
             {
                 if (selectionStart <= selectedSceneItem_
-                    && selectedSceneItem_ == static_cast<int>(selectionIndex))
+                    && std::cmp_equal(selectedSceneItem_, selectionIndex))
                 {
                     selectedSceneItem_ = -selectionStart;
                 }
@@ -454,7 +457,7 @@ void Gui::populateTreeFromSceneNodes(Scene& scene)
 ImGuiTreeNodeFlags Gui::highlightIfSelected(const size_t selectionIndex) const
 {
     ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_Leaf;
-    if (selectedSceneItem_ == static_cast<int>(selectionIndex))
+    if (std::cmp_equal(selectedSceneItem_, selectionIndex))
     {
         flags |= ImGuiTreeNodeFlags_Selected;
     }

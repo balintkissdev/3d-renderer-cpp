@@ -24,7 +24,8 @@ std::optional<D3D12Model> D3D12Model::create(ID3D12Device* device,
     }
 
     // Vertex buffer
-    const UINT vertexBufferSize = sizeof(vertices[0]) * vertices.size();
+    const UINT vertexBufferSize
+        = static_cast<UINT>(sizeof(vertices[0]) * vertices.size());
     const UINT stride = sizeof(Vertex);
 
     // TODO: Research better (default) heap usage
@@ -54,7 +55,8 @@ std::optional<D3D12Model> D3D12Model::create(ID3D12Device* device,
     model.vertexBufferView_.SizeInBytes = vertexBufferSize;
 
     // Index buffer
-    const UINT indexBufferSize = sizeof(indices[0]) * indices.size();
+    const UINT indexBufferSize
+        = static_cast<UINT>(sizeof(indices[0]) * indices.size());
 
     heapProperties = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
     bufferDesc = CD3DX12_RESOURCE_DESC::Buffer(indexBufferSize);
@@ -79,7 +81,7 @@ std::optional<D3D12Model> D3D12Model::create(ID3D12Device* device,
     // like the Stanford Bunny becomes an eldritch abomination.
     model.indexBufferView_.Format = DXGI_FORMAT_R32_UINT;
     model.indexBufferView_.SizeInBytes = indexBufferSize;
-    model.indexCount_ = indices.size();
+    model.indexCount_ = static_cast<UINT>(indices.size());
 
     return model;
 }

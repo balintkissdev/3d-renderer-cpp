@@ -2,10 +2,8 @@
 #define GLOBALS_HPP_
 
 #include <cstdint>
-#include <string_view>
 
-// NOLINTNEXTLINE(readability-identifier-naming)
-constexpr std::string_view WINDOW_TITLE = "3D Renderer by Bálint Kiss";
+constexpr const char* WINDOW_TITLE = "3D Renderer by Bálint Kiss";
 
 constexpr uint16_t WINDOW_WIDTH = 1024;
 constexpr uint16_t WINDOW_HEIGHT = 768;
