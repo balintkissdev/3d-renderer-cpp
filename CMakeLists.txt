@@ -61,6 +61,15 @@ endif()
 # dependencies built by this project too.
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>" CACHE STRING "" FORCE)
 
+# Enable Link-Time Optimization (LTO) for everything by default
+include(CheckIPOSupported)
+check_ipo_supported(RESULT IPO_SUPPORTED_RESULT OUTPUT IPO_SUPPORT_ERROR)
+if(IPO_SUPPORTED_RESULT)
+    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
+else()
+    message(WARNING "IPO is not supported: ${IPO_SUPPORT_ERROR}")
+endif()
+
 add_executable(${PROJECT_NAME} "")
 
 # Set executable compiler flags
