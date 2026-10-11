@@ -98,15 +98,15 @@ private:
                                     WPARAM wParam,
                                     LPARAM lParam);
 
-    App& app_;
-    bool shouldQuit_;
-    HWND hWnd_;
-    WGLContext wglContext_;
-    std::array<bool, 256> keys_;
-    bool rightMouseButton_;
-    bool cursorVisible_;
+    App& m_app;
+    bool m_shouldQuit;
+    HWND m_hWnd;
+    WGLContext m_wglContext;
+    std::array<bool, 256> m_keys;
+    bool m_rightMouseButton;
+    bool m_cursorVisible;
 
-    MouseOffsetCallback onMouseMove_;
+    MouseOffsetCallback m_onMouseMove;
 
     bool createWindow(HINSTANCE hInstance,
                       const uint16_t width,
@@ -118,47 +118,47 @@ private:
 
 inline void Window::swapBuffers()
 {
-    wglContext_.swapBuffers();
+    m_wglContext.swapBuffers();
 }
 
 inline void Window::hide()
 {
-    ::ShowWindow(hWnd_, SW_HIDE);
+    ::ShowWindow(m_hWnd, SW_HIDE);
 }
 
 inline bool Window::shouldQuit() const
 {
-    return shouldQuit_;
+    return m_shouldQuit;
 }
 
 inline void Window::setShouldQuit(const bool quit)
 {
-    shouldQuit_ = quit;
+    m_shouldQuit = quit;
 }
 
 inline void Window::setVSyncEnabled(const bool vsyncEnabled)
 {
-    wglContext_.setVSyncEnabled(vsyncEnabled);
+    m_wglContext.setVSyncEnabled(vsyncEnabled);
 }
 
 inline bool Window::keyPressed(const char key) const
 {
-    return keys_[key];
+    return m_keys[key];
 }
 
 inline bool Window::rightMouseButtonPressed() const
 {
-    return rightMouseButton_;
+    return m_rightMouseButton;
 }
 
 inline void Window::setOnMouseMove(const MouseOffsetCallback& callback)
 {
-    onMouseMove_ = callback;
+    m_onMouseMove = callback;
 }
 
 inline Window::Raw Window::raw() const
 {
-    return hWnd_;
+    return m_hWnd;
 }
 
 #endif

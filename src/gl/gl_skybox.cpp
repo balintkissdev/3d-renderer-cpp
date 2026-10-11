@@ -14,25 +14,25 @@
 namespace fs = std::filesystem;
 
 GLSkybox::GLSkybox()
-    : textureID_{0}
-    , vertexArray_{0}
-    , vertexBuffer_{0}
-    , indexBuffer_{0}
+    : m_textureID{0}
+    , m_vertexArray{0}
+    , m_vertexBuffer{0}
+    , m_indexBuffer{0}
 {}
 
 GLSkybox::GLSkybox(GLSkybox&& other) noexcept
-    : textureID_{std::exchange(other.textureID_, 0)}
-    , vertexArray_{std::exchange(other.vertexArray_, 0)}
-    , vertexBuffer_{std::exchange(other.vertexBuffer_, 0)}
-    , indexBuffer_{std::exchange(other.indexBuffer_, 0)}
+    : m_textureID{std::exchange(other.m_textureID, 0)}
+    , m_vertexArray{std::exchange(other.m_vertexArray, 0)}
+    , m_vertexBuffer{std::exchange(other.m_vertexBuffer, 0)}
+    , m_indexBuffer{std::exchange(other.m_indexBuffer, 0)}
 {}
 
 GLSkybox& GLSkybox::operator=(GLSkybox&& other) noexcept
 {
-    std::swap(textureID_, other.textureID_);
-    std::swap(vertexArray_, other.vertexArray_);
-    std::swap(vertexBuffer_, other.vertexBuffer_);
-    std::swap(indexBuffer_, other.indexBuffer_);
+    std::swap(m_textureID, other.m_textureID);
+    std::swap(m_vertexArray, other.m_vertexArray);
+    std::swap(m_vertexBuffer, other.m_vertexBuffer);
+    std::swap(m_indexBuffer, other.m_indexBuffer);
     return *this;
 }
 
@@ -44,49 +44,49 @@ GLSkybox::~GLSkybox()
 void GLSkybox::cleanup()
 {
     // Existing 0s are silently ignored
-    glDeleteTextures(1, &textureID_);
-    glDeleteVertexArrays(1, &vertexArray_);
-    glDeleteBuffers(1, &indexBuffer_);
-    glDeleteBuffers(1, &vertexBuffer_);
-    textureID_ = 0;
-    vertexArray_ = 0;
-    vertexBuffer_ = 0;
-    indexBuffer_ = 0;
+    glDeleteTextures(1, &m_textureID);
+    glDeleteVertexArrays(1, &m_vertexArray);
+    glDeleteBuffers(1, &m_indexBuffer);
+    glDeleteBuffers(1, &m_vertexBuffer);
+    m_textureID = 0;
+    m_vertexArray = 0;
+    m_vertexBuffer = 0;
+    m_indexBuffer = 0;
 }
 
 GLSkyboxBuilder& GLSkyboxBuilder::setRight(const fs::path& rightFacePath)
 {
-    rightFacePath_ = rightFacePath;
+    m_rightFacePath = rightFacePath;
     return *this;
 }
 
 GLSkyboxBuilder& GLSkyboxBuilder::setLeft(const fs::path& leftFacePath)
 {
-    leftFacePath_ = leftFacePath;
+    m_leftFacePath = leftFacePath;
     return *this;
 }
 
 GLSkyboxBuilder& GLSkyboxBuilder::setTop(const fs::path& topFacePath)
 {
-    topFacePath_ = topFacePath;
+    m_topFacePath = topFacePath;
     return *this;
 }
 
 GLSkyboxBuilder& GLSkyboxBuilder::setBottom(const fs::path& bottomFacePath)
 {
-    bottomFacePath_ = bottomFacePath;
+    m_bottomFacePath = bottomFacePath;
     return *this;
 }
 
 GLSkyboxBuilder& GLSkyboxBuilder::setFront(const fs::path& frontFacePath)
 {
-    frontFacePath_ = frontFacePath;
+    m_frontFacePath = frontFacePath;
     return *this;
 }
 
 GLSkyboxBuilder& GLSkyboxBuilder::setBack(const fs::path& backFacePath)
 {
-    backFacePath_ = backFacePath;
+    m_backFacePath = backFacePath;
     return *this;
 }
 
@@ -94,16 +94,16 @@ std::optional<GLSkybox> GLSkyboxBuilder::build()
 {
     GLSkybox skybox;
     // Create texture
-    glGenTextures(1, &skybox.textureID_);
-    glBindTexture(GL_TEXTURE_CUBE_MAP, skybox.textureID_);
+    glGenTextures(1, &skybox.m_textureID);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, skybox.m_textureID);
 
     // Load texture images
-    const std::array textureFacePaths{rightFacePath_,
-                                      leftFacePath_,
-                                      topFacePath_,
-                                      bottomFacePath_,
-                                      frontFacePath_,
-                                      backFacePath_};
+    const std::array textureFacePaths{m_rightFacePath,
+                                      m_leftFacePath,
+                                      m_topFacePath,
+                                      m_bottomFacePath,
+                                      m_frontFacePath,
+                                      m_backFacePath};
     for (size_t i = 0; i < textureFacePaths.size(); ++i)
     {
         int width, height, channelCount;
@@ -174,20 +174,20 @@ std::optional<GLSkybox> GLSkyboxBuilder::build()
     // clang-format on
 
     // Create vertex array
-    glGenVertexArrays(1, &skybox.vertexArray_);
-    glBindVertexArray(skybox.vertexArray_);
+    glGenVertexArrays(1, &skybox.m_vertexArray);
+    glBindVertexArray(skybox.m_vertexArray);
 
     // Create vertex buffer
-    glGenBuffers(1, &skybox.vertexBuffer_);
-    glBindBuffer(GL_ARRAY_BUFFER, skybox.vertexBuffer_);
+    glGenBuffers(1, &skybox.m_vertexBuffer);
+    glBindBuffer(GL_ARRAY_BUFFER, skybox.m_vertexBuffer);
     glBufferData(GL_ARRAY_BUFFER,
                  sizeof(skyboxVertices),
                  skyboxVertices.data(),
                  GL_STATIC_DRAW);
 
     // Create index buffer
-    glGenBuffers(1, &skybox.indexBuffer_);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, skybox.indexBuffer_);
+    glGenBuffers(1, &skybox.m_indexBuffer);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, skybox.m_indexBuffer);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER,
                  sizeof(skyboxIndices),
                  skyboxIndices.data(),

@@ -64,18 +64,18 @@ private:
         = DXGI_FORMAT_D24_UNORM_S8_UINT;
     static constexpr auto MAX_MODEL_SCENE_NODE_COUNT = 256;
 
-    CD3DX12_VIEWPORT viewport_;
-    CD3DX12_RECT scissorRect_;
+    CD3DX12_VIEWPORT m_viewport;
+    CD3DX12_RECT m_scissorRect;
 
-    winrt::com_ptr<ID3D12Device> device_;
-    winrt::com_ptr<IDXGISwapChain3> swapChain_;
-    winrt::com_ptr<ID3D12CommandQueue> commandQueue_;
+    winrt::com_ptr<ID3D12Device> m_device;
+    winrt::com_ptr<IDXGISwapChain3> m_swapChain;
+    winrt::com_ptr<ID3D12CommandQueue> m_commandQueue;
     std::array<winrt::com_ptr<ID3D12CommandAllocator>, MAX_FRAME_COUNT>
-        commandAllocators_;
-    winrt::com_ptr<ID3D12GraphicsCommandList> commandList_;
-    winrt::com_ptr<ID3D12DescriptorHeap> rtvDescriptorHeap_;
-    UINT rtvDescriptorHeapSize_;
-    winrt::com_ptr<ID3D12DescriptorHeap> dsvDescriptorHeap_;
+        m_commandAllocators;
+    winrt::com_ptr<ID3D12GraphicsCommandList> m_commandList;
+    winrt::com_ptr<ID3D12DescriptorHeap> m_rtvDescriptorHeap;
+    UINT m_rtvDescriptorHeapSize;
+    winrt::com_ptr<ID3D12DescriptorHeap> m_dsvDescriptorHeap;
 
     static constexpr auto NULL_CBV_COUNT = 1;
     static constexpr auto CB_PER_MODEL_COUNT = 2;
@@ -84,13 +84,13 @@ private:
     static constexpr auto MAX_CBV_SRV_UAV_DESCRIPTOR_COUNT
         = NULL_CBV_COUNT + (MAX_MODEL_SCENE_NODE_COUNT * CB_PER_MODEL_COUNT)
         + SKYBOX_TEXTURE_SRV_COUNT + IMGUI_FONT_TEXTURE_SRV_COUNT;
-    winrt::com_ptr<ID3D12DescriptorHeap> cbvSrvUavDescriptorHeap_;
-    UINT cbvSrvUavDescriptorHeapSize_;
+    winrt::com_ptr<ID3D12DescriptorHeap> m_cbvSrvUavDescriptorHeap;
+    UINT m_cbvSrvUavDescriptorHeapSize;
 
-    std::array<winrt::com_ptr<ID3D12Resource>, MAX_FRAME_COUNT> renderTargets_;
-    winrt::com_ptr<ID3D12Resource> depthStencil_;
+    std::array<winrt::com_ptr<ID3D12Resource>, MAX_FRAME_COUNT> m_renderTargets;
+    winrt::com_ptr<ID3D12Resource> m_depthStencil;
     // TODO: Move model PSO out of D3D12Renderer
-    winrt::com_ptr<ID3D12RootSignature> modelRootSignature_;
+    winrt::com_ptr<ID3D12RootSignature> m_modelRootSignature;
 
     enum class ModelPSOInstance : uint8_t
     {
@@ -102,23 +102,23 @@ private:
     };
     std::array<winrt::com_ptr<ID3D12PipelineState>,
                static_cast<size_t>(ModelPSOInstance::Count)>
-        modelPsos_;
+        m_modelPsos;
 
-    std::vector<winrt::com_ptr<ID3D12Resource>> mvpConstantBuffers_;
-    std::vector<winrt::com_ptr<ID3D12Resource>> materialConstantBuffers_;
-    std::vector<uint8_t*> mvpCbvDataBegin_;
-    std::vector<uint8_t*> materialCbvDataBegin_;
+    std::vector<winrt::com_ptr<ID3D12Resource>> m_mvpConstantBuffers;
+    std::vector<winrt::com_ptr<ID3D12Resource>> m_materialConstantBuffers;
+    std::vector<uint8_t*> m_mvpCbvDataBegin;
+    std::vector<uint8_t*> m_materialCbvDataBegin;
 
-    winrt::com_ptr<ID3D12Fence> fence_;
-    UINT currentFrameIndex_;
-    UINT64 fenceValues_[MAX_FRAME_COUNT];
-    HANDLE fenceEvent_;
+    winrt::com_ptr<ID3D12Fence> m_fence;
+    UINT m_currentFrameIndex;
+    UINT64 m_fenceValues[MAX_FRAME_COUNT];
+    HANDLE m_fenceEvent;
 
-    std::vector<D3D12Model> models_;
-    D3D12Skybox skybox_;
+    std::vector<D3D12Model> m_models;
+    D3D12Skybox m_skybox;
 
-    bool tearingEnabled_;
-    bool vsyncEnabled_;
+    bool m_tearingEnabled;
+    bool m_vsyncEnabled;
 
     bool createDevice();
     bool createDescriptorHeaps();
@@ -153,7 +153,7 @@ private:
 
 inline void D3D12Renderer::setVSyncEnabled(const bool vsyncEnabled)
 {
-    vsyncEnabled_ = vsyncEnabled;
+    m_vsyncEnabled = vsyncEnabled;
 }
 
 #endif  // WINDOW_PLATFORM_WIN32

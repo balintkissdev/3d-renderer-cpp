@@ -3,9 +3,9 @@
 Renderer::Renderer(Window& window,
                    const DrawProperties& drawProps,
                    const Camera& camera)
-    : window_{window}
-    , drawProps_{drawProps}
-    , camera_{camera}
+    : m_window{window}
+    , m_drawProps{drawProps}
+    , m_camera{camera}
 {
 }
 

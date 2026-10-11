@@ -30,26 +30,26 @@ public:
 private:
     D3D12Model();
 
-    winrt::com_ptr<ID3D12Resource> vertexBuffer_;
-    winrt::com_ptr<ID3D12Resource> indexBuffer_;
-    D3D12_VERTEX_BUFFER_VIEW vertexBufferView_;
-    D3D12_INDEX_BUFFER_VIEW indexBufferView_;
-    UINT indexCount_;
+    winrt::com_ptr<ID3D12Resource> m_vertexBuffer;
+    winrt::com_ptr<ID3D12Resource> m_indexBuffer;
+    D3D12_VERTEX_BUFFER_VIEW m_vertexBufferView;
+    D3D12_INDEX_BUFFER_VIEW m_indexBufferView;
+    UINT m_indexCount;
 };
 
 inline const D3D12_VERTEX_BUFFER_VIEW& D3D12Model::vertexBuffer() const
 {
-    return vertexBufferView_;
+    return m_vertexBufferView;
 }
 
 inline const D3D12_INDEX_BUFFER_VIEW& D3D12Model::indexBuffer() const
 {
-    return indexBufferView_;
+    return m_indexBufferView;
 }
 
 inline UINT D3D12Model::indexCount() const
 {
-    return indexCount_;
+    return m_indexCount;
 }
 
 #endif

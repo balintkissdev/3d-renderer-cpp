@@ -66,13 +66,13 @@ private:
 
     static void* GLFuncLoader(const char* name);
 
-    HDC deviceContext_;
-    HGLRC renderingContext_;
+    HDC m_deviceContext;
+    HGLRC m_renderingContext;
 };
 
 inline void WGLContext::swapBuffers()
 {
-    ::SwapBuffers(deviceContext_);
+    ::SwapBuffers(m_deviceContext);
 }
 
 #endif

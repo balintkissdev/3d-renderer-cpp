@@ -10,8 +10,8 @@
 HMODULE WGLContext::s_openGLDLL = nullptr;
 
 WGLContext::WGLContext()
-    : deviceContext_{nullptr}
-    , renderingContext_{nullptr}
+    : m_deviceContext{nullptr}
+    , m_renderingContext{nullptr}
 {
 }
 
@@ -96,7 +96,7 @@ bool WGLContext::create(const HWND hWnd, const RenderingAPI renderingAPI)
 {
     // Device Context contains the pixel format specification for the draw
     // buffer.
-    deviceContext_ = ::GetDC(hWnd);
+    m_deviceContext = ::GetDC(hWnd);
 
     // Select pixel format that is suitable for an OpenGL surface. OpenGL
     // Context requires information about window color bit sizes, buffering
@@ -119,7 +119,7 @@ bool WGLContext::create(const HWND hWnd, const RenderingAPI renderingAPI)
     // clang-format on
     int pixelFormat;
     UINT foundFormatCount;
-    bool ok = wglChoosePixelFormatARB(deviceContext_,
+    bool ok = wglChoosePixelFormatARB(m_deviceContext,
                                       pixelAttribs.data(),
                                       nullptr,
                                       1U,
@@ -132,9 +132,9 @@ bool WGLContext::create(const HWND hWnd, const RenderingAPI renderingAPI)
 
     // Fill PIXELFORMATDESCRIPTOR with information queried by WGL
     PIXELFORMATDESCRIPTOR pfd;
-    ::DescribePixelFormat(deviceContext_, pixelFormat, sizeof(pfd), &pfd);
+    ::DescribePixelFormat(m_deviceContext, pixelFormat, sizeof(pfd), &pfd);
     // Set finalized pixelformat to Device Context
-    if (!::SetPixelFormat(deviceContext_, pixelFormat, &pfd))
+    if (!::SetPixelFormat(m_deviceContext, pixelFormat, &pfd))
     {
         return false;
     }
@@ -153,17 +153,17 @@ bool WGLContext::create(const HWND hWnd, const RenderingAPI renderingAPI)
     };
     // clang-format on
 
-    renderingContext_ = wglCreateContextAttribsARB(deviceContext_,
-                                                   nullptr,
-                                                   contextAttribs.data());
-    if (!renderingContext_)
+    m_renderingContext = wglCreateContextAttribsARB(m_deviceContext,
+                                                    nullptr,
+                                                    contextAttribs.data());
+    if (!m_renderingContext)
     {
         return false;
     }
 
     // An OpenGL state/Rendering Context is implicit and global to window
     // belonging to the current thread.
-    if (!wglMakeCurrent(deviceContext_, renderingContext_))
+    if (!wglMakeCurrent(m_deviceContext, m_renderingContext))
     {
         return false;
     }
@@ -188,8 +188,8 @@ bool WGLContext::create(const HWND hWnd, const RenderingAPI renderingAPI)
 
 void WGLContext::cleanup(HWND hWnd)
 {
-    wglDeleteContext(renderingContext_);
-    ::ReleaseDC(hWnd, deviceContext_);
+    wglDeleteContext(m_renderingContext);
+    ::ReleaseDC(hWnd, m_deviceContext);
 }
 
 void* WGLContext::GLFuncLoader(const char* name)

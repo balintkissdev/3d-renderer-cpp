@@ -12,8 +12,8 @@
 #endif
 
 Window::Window(App& app)
-    : window_{nullptr}
-    , app_{app}
+    : m_window{nullptr}
+    , m_app{app}
 {
 }
 
@@ -57,12 +57,12 @@ bool Window::init(const uint16_t width,
 #endif
     glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
 
-    window_ = glfwCreateWindow(width, height, title, nullptr, nullptr);
-    if (!window_)
+    m_window = glfwCreateWindow(width, height, title, nullptr, nullptr);
+    if (!m_window)
     {
         return false;
     }
-    glfwMakeContextCurrent(window_);
+    glfwMakeContextCurrent(m_window);
 
 #ifdef __EMSCRIPTEN__
     if (!gladLoadGLES2(glfwGetProcAddress))
@@ -83,36 +83,36 @@ bool Window::init(const uint16_t width,
 
 void Window::cleanup()
 {
-    glfwDestroyWindow(window_);
-    window_ = nullptr;
+    glfwDestroyWindow(m_window);
+    m_window = nullptr;
     glfwTerminate();  // TODO: Like glfwInit(), only cleanup once per
                       // application lifetime
 }
 
 void Window::setOnMouseMove(const MouseOffsetCallback& callback)
 {
-    mouseMoveCallback_ = callback;
-    glfwSetWindowUserPointer(window_, this);
-    glfwSetCursorPosCallback(window_, OnMouseMove);
+    m_mouseMoveCallback = callback;
+    glfwSetWindowUserPointer(m_window, this);
+    glfwSetCursorPosCallback(m_window, OnMouseMove);
 }
 
 void Window::setCursorEnabled(const bool enabled)
 {
     if (!enabled
-        && glfwGetInputMode(window_, GLFW_CURSOR) == GLFW_CURSOR_NORMAL)
+        && glfwGetInputMode(m_window, GLFW_CURSOR) == GLFW_CURSOR_NORMAL)
     {
 #ifndef __EMSCRIPTEN__
         // HACK: Hide cursor to prevent flicker at center before disabling
         //
         // GLFW_CURSOR_HIDDEN is not implemented in JS Emscripten port
         // of GLFW, resulting in an error console.log() display.
-        glfwSetInputMode(window_, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
+        glfwSetInputMode(m_window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
 #endif
-        glfwSetInputMode(window_, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+        glfwSetInputMode(m_window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
     }
     else if (enabled)
     {
-        glfwSetInputMode(window_, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+        glfwSetInputMode(m_window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
     }
 }
 
@@ -120,7 +120,7 @@ std::pair<int, int> Window::frameBufferSize() const
 {
     int frameBufferWidth;
     int frameBufferHeight;
-    glfwGetFramebufferSize(window_, &frameBufferWidth, &frameBufferHeight);
+    glfwGetFramebufferSize(m_window, &frameBufferWidth, &frameBufferHeight);
     return {frameBufferWidth, frameBufferHeight};
 }
 
@@ -129,18 +129,18 @@ void Window::OnMouseMove(GLFWwindow* window,
                          double currentMousePosY)
 {
     auto* impl = static_cast<Window*>(glfwGetWindowUserPointer(window));
-    assert(impl->mouseMoveCallback_);
+    assert(impl->m_mouseMoveCallback);
 
     const glm::vec2 currentMousePosFloat{
         static_cast<float>(currentMousePosX),
         static_cast<float>(currentMousePosY),
     };
-    glm::vec2& lastMousePos = impl->lastMousePos_;
+    glm::vec2& lastMousePos = impl->m_lastMousePos;
     const float xOffset = currentMousePosFloat.x - lastMousePos.x;
     // Reversed because Y is bottom to up in OpenGL
     const float yOffset = lastMousePos.y - currentMousePosFloat.y;
 
-    impl->mouseMoveCallback_(impl->app_, xOffset, yOffset);
+    impl->m_mouseMoveCallback(impl->m_app, xOffset, yOffset);
 
     lastMousePos = currentMousePosFloat;
 }

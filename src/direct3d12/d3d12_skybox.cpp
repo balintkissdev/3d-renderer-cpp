@@ -15,7 +15,7 @@ using namespace winrt;
 namespace fs = std::filesystem;
 
 D3D12Skybox::D3D12Skybox()
-    : indexCount_{0}
+    : m_indexCount{0}
 {
 }
 
@@ -24,20 +24,20 @@ void D3D12Skybox::draw(ID3D12GraphicsCommandList* commandList,
 {
     PIX_EVENT(commandList, "D3D12Skybox::draw");
 
-    commandList->SetGraphicsRootSignature(rootSignature_.get());
-    commandList->SetPipelineState(pso_.get());
+    commandList->SetGraphicsRootSignature(m_rootSignature.get());
+    commandList->SetPipelineState(m_pso.get());
 
     // Root CBV
     commandList->SetGraphicsRootConstantBufferView(
         0,
         mvpConstantBuffer->GetGPUVirtualAddress());
     // Skybox texture SRV
-    commandList->SetGraphicsRootDescriptorTable(1, textureSrvGpuHandle_);
+    commandList->SetGraphicsRootDescriptorTable(1, m_textureSrvGpuHandle);
 
     commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-    commandList->IASetVertexBuffers(0, 1, &vertexBufferView_);
-    commandList->IASetIndexBuffer(&indexBufferView_);
-    commandList->DrawIndexedInstanced(indexCount_, 1, 0, 0, 0);
+    commandList->IASetVertexBuffers(0, 1, &m_vertexBufferView);
+    commandList->IASetIndexBuffer(&m_indexBufferView);
+    commandList->DrawIndexedInstanced(m_indexCount, 1, 0, 0, 0);
 }
 
 std::optional<D3D12Skybox> D3D12SkyboxBuilder::build(
@@ -123,10 +123,11 @@ bool D3D12SkyboxBuilder::createRootSignature(ID3D12Device* device,
         return false;
     }
 
-    hr = device->CreateRootSignature(0,
-                                     signature->GetBufferPointer(),
-                                     signature->GetBufferSize(),
-                                     IID_PPV_ARGS(skybox.rootSignature_.put()));
+    hr = device->CreateRootSignature(
+        0,
+        signature->GetBufferPointer(),
+        signature->GetBufferSize(),
+        IID_PPV_ARGS(skybox.m_rootSignature.put()));
     return SUCCEEDED(hr);
 }
 
@@ -135,7 +136,7 @@ bool D3D12SkyboxBuilder::createPSO(ID3D12Device* device, D3D12Skybox& skybox)
     D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc{};
 
     // Root Signature
-    psoDesc.pRootSignature = skybox.rootSignature_.get();
+    psoDesc.pRootSignature = skybox.m_rootSignature.get();
 
     // Input Layout
     const std::array<D3D12_INPUT_ELEMENT_DESC, 1> inputElementDesc
@@ -199,7 +200,7 @@ bool D3D12SkyboxBuilder::createPSO(ID3D12Device* device, D3D12Skybox& skybox)
 
     HRESULT hr
         = device->CreateGraphicsPipelineState(&psoDesc,
-                                              IID_PPV_ARGS(skybox.pso_.put()));
+                                              IID_PPV_ARGS(skybox.m_pso.put()));
     return SUCCEEDED(hr);
 }
 
@@ -257,7 +258,7 @@ bool D3D12SkyboxBuilder::createVertexBuffer(
         &bufferDesc,
         D3D12_RESOURCE_STATE_COPY_DEST,
         nullptr,
-        IID_PPV_ARGS(skybox.vertexBuffer_.put()));
+        IID_PPV_ARGS(skybox.m_vertexBuffer.put()));
     if (FAILED(hr))
     {
         return false;
@@ -271,38 +272,39 @@ bool D3D12SkyboxBuilder::createVertexBuffer(
         &bufferDesc,
         D3D12_RESOURCE_STATE_GENERIC_READ,
         nullptr,
-        IID_PPV_ARGS(skybox.vertexUploadBuffer_.put()));
+        IID_PPV_ARGS(skybox.m_vertexUploadBuffer.put()));
     if (FAILED(hr))
     {
         return false;
     }
 
     uint8_t* mappedData = nullptr;
-    hr = skybox.vertexUploadBuffer_->Map(0,
-                                         nullptr,
-                                         reinterpret_cast<void**>(&mappedData));
+    hr = skybox.m_vertexUploadBuffer->Map(
+        0,
+        nullptr,
+        reinterpret_cast<void**>(&mappedData));
     if (FAILED(hr))
     {
         return false;
     }
     std::memcpy(mappedData, vertices, vertexBufferSize);
-    skybox.vertexUploadBuffer_->Unmap(0, nullptr);
+    skybox.m_vertexUploadBuffer->Unmap(0, nullptr);
 
-    commandList->CopyResource(skybox.vertexBuffer_.get(),
-                              skybox.vertexUploadBuffer_.get());
+    commandList->CopyResource(skybox.m_vertexBuffer.get(),
+                              skybox.m_vertexUploadBuffer.get());
 
     CD3DX12_RESOURCE_BARRIER uploadToVertexBufferTransition
         = CD3DX12_RESOURCE_BARRIER::Transition(
-            skybox.vertexBuffer_.get(),
+            skybox.m_vertexBuffer.get(),
             D3D12_RESOURCE_STATE_COPY_DEST,
             D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
     commandList->ResourceBarrier(1, &uploadToVertexBufferTransition);
 
     // Vertex buffer view
-    skybox.vertexBufferView_.BufferLocation
-        = skybox.vertexBuffer_->GetGPUVirtualAddress();
-    skybox.vertexBufferView_.StrideInBytes = sizeof(XMFLOAT3);
-    skybox.vertexBufferView_.SizeInBytes = vertexBufferSize;
+    skybox.m_vertexBufferView.BufferLocation
+        = skybox.m_vertexBuffer->GetGPUVirtualAddress();
+    skybox.m_vertexBufferView.StrideInBytes = sizeof(XMFLOAT3);
+    skybox.m_vertexBufferView.SizeInBytes = vertexBufferSize;
 
     return true;
 }
@@ -335,7 +337,7 @@ bool D3D12SkyboxBuilder::createIndexBuffer(
     };
     // clang-format on
 
-    skybox.indexCount_ = static_cast<UINT>(indices.size());
+    skybox.m_indexCount = static_cast<UINT>(indices.size());
     const UINT indexBufferSize = sizeof(indices);
 
     D3D12_HEAP_PROPERTIES heapProperties{};
@@ -351,7 +353,7 @@ bool D3D12SkyboxBuilder::createIndexBuffer(
         &bufferDesc,
         D3D12_RESOURCE_STATE_COPY_DEST,
         nullptr,
-        IID_PPV_ARGS(skybox.indexBuffer_.put()));
+        IID_PPV_ARGS(skybox.m_indexBuffer.put()));
     if (FAILED(hr))
     {
         return false;
@@ -365,37 +367,37 @@ bool D3D12SkyboxBuilder::createIndexBuffer(
         &bufferDesc,
         D3D12_RESOURCE_STATE_GENERIC_READ,
         nullptr,
-        IID_PPV_ARGS(skybox.indexUploadBuffer_.put()));
+        IID_PPV_ARGS(skybox.m_indexUploadBuffer.put()));
     if (FAILED(hr))
     {
         return false;
     }
 
     uint8_t* mappedData = nullptr;
-    hr = skybox.indexUploadBuffer_->Map(0,
-                                        nullptr,
-                                        reinterpret_cast<void**>(&mappedData));
+    hr = skybox.m_indexUploadBuffer->Map(0,
+                                         nullptr,
+                                         reinterpret_cast<void**>(&mappedData));
     if (FAILED(hr))
     {
         return false;
     }
     std::memcpy(mappedData, indices.data(), indexBufferSize);
-    skybox.indexUploadBuffer_->Unmap(0, nullptr);
-    commandList->CopyResource(skybox.indexBuffer_.get(),
-                              skybox.indexUploadBuffer_.get());
+    skybox.m_indexUploadBuffer->Unmap(0, nullptr);
+    commandList->CopyResource(skybox.m_indexBuffer.get(),
+                              skybox.m_indexUploadBuffer.get());
 
     CD3DX12_RESOURCE_BARRIER uploadToIndexBufferTransition
         = CD3DX12_RESOURCE_BARRIER::Transition(
-            skybox.indexBuffer_.get(),
+            skybox.m_indexBuffer.get(),
             D3D12_RESOURCE_STATE_COPY_DEST,
             D3D12_RESOURCE_STATE_INDEX_BUFFER);
     commandList->ResourceBarrier(1, &uploadToIndexBufferTransition);
 
     // Index buffer view
-    skybox.indexBufferView_.BufferLocation
-        = skybox.indexBuffer_->GetGPUVirtualAddress();
-    skybox.indexBufferView_.Format = DXGI_FORMAT_R32_UINT;
-    skybox.indexBufferView_.SizeInBytes = indexBufferSize;
+    skybox.m_indexBufferView.BufferLocation
+        = skybox.m_indexBuffer->GetGPUVirtualAddress();
+    skybox.m_indexBufferView.Format = DXGI_FORMAT_R32_UINT;
+    skybox.m_indexBufferView.SizeInBytes = indexBufferSize;
 
     return true;
 }
@@ -443,7 +445,7 @@ bool D3D12SkyboxBuilder::createTexture(
         &textureDesc,
         D3D12_RESOURCE_STATE_COPY_DEST,
         nullptr,
-        IID_PPV_ARGS(skybox.textureResource_.put()));
+        IID_PPV_ARGS(skybox.m_textureResource.put()));
     if (FAILED(hr))
     {
         return false;
@@ -462,7 +464,7 @@ bool D3D12SkyboxBuilder::createTexture(
 
     // Upload buffer
     const UINT64 uploadBufferSize
-        = ::GetRequiredIntermediateSize(skybox.textureResource_.get(),
+        = ::GetRequiredIntermediateSize(skybox.m_textureResource.get(),
                                         0,
                                         static_cast<UINT>(subresources.size()));
     CD3DX12_HEAP_PROPERTIES textureUploadHeapProperties(D3D12_HEAP_TYPE_UPLOAD);
@@ -474,15 +476,15 @@ bool D3D12SkyboxBuilder::createTexture(
         &uploadDesc,
         D3D12_RESOURCE_STATE_GENERIC_READ,
         nullptr,
-        IID_PPV_ARGS(skybox.textureUploadBuffer_.put()));
+        IID_PPV_ARGS(skybox.m_textureUploadBuffer.put()));
     if (FAILED(hr))
     {
         return false;
     }
 
     ::UpdateSubresources(commandList,
-                         skybox.textureResource_.get(),
-                         skybox.textureUploadBuffer_.get(),
+                         skybox.m_textureResource.get(),
+                         skybox.m_textureUploadBuffer.get(),
                          0,
                          0,
                          static_cast<UINT>(subresources.size()),
@@ -490,7 +492,7 @@ bool D3D12SkyboxBuilder::createTexture(
 
     CD3DX12_RESOURCE_BARRIER uploadToSrvTransition
         = CD3DX12_RESOURCE_BARRIER::Transition(
-            skybox.textureResource_.get(),
+            skybox.m_textureResource.get(),
             D3D12_RESOURCE_STATE_COPY_DEST,
             D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
     commandList->ResourceBarrier(1, &uploadToSrvTransition);
@@ -503,10 +505,10 @@ bool D3D12SkyboxBuilder::createTexture(
     srvDesc.TextureCube.MipLevels = 1;
     srvDesc.TextureCube.MostDetailedMip = 0;
     srvDesc.TextureCube.ResourceMinLODClamp = 0.0f;
-    device->CreateShaderResourceView(skybox.textureResource_.get(),
+    device->CreateShaderResourceView(skybox.m_textureResource.get(),
                                      &srvDesc,
                                      srvCpuHandle);
-    skybox.textureSrvGpuHandle_ = srvGpuHandle;
+    skybox.m_textureSrvGpuHandle = srvGpuHandle;
 
     return true;
 }

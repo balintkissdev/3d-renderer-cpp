@@ -73,10 +73,10 @@ public:
     [[nodiscard]] Raw raw() const;
 
 private:
-    GLFWwindow* window_;
-    App& app_;
-    MouseOffsetCallback mouseMoveCallback_;
-    glm::vec2 lastMousePos_;
+    GLFWwindow* m_window;
+    App& m_app;
+    MouseOffsetCallback m_mouseMoveCallback;
+    glm::vec2 m_lastMousePos;
 
     static void OnMouseMove(GLFWwindow* window,
                             double currentMousePosX,
@@ -90,22 +90,22 @@ inline void Window::poll()
 
 inline void Window::swapBuffers()
 {
-    glfwSwapBuffers(window_);
+    glfwSwapBuffers(m_window);
 }
 
 inline void Window::hide()
 {
-    glfwHideWindow(window_);
+    glfwHideWindow(m_window);
 }
 
 inline bool Window::shouldQuit() const
 {
-    return glfwWindowShouldClose(window_);
+    return glfwWindowShouldClose(m_window);
 }
 
 inline void Window::setShouldQuit(const bool quit)
 {
-    glfwSetWindowShouldClose(window_, quit);
+    glfwSetWindowShouldClose(m_window, quit);
 }
 
 inline void Window::setVSyncEnabled(const bool vSyncEnabled)
@@ -115,17 +115,17 @@ inline void Window::setVSyncEnabled(const bool vSyncEnabled)
 
 inline bool Window::keyPressed(const int key) const
 {
-    return glfwGetKey(window_, key) == GLFW_PRESS;
+    return glfwGetKey(m_window, key) == GLFW_PRESS;
 }
 
 inline bool Window::rightMouseButtonPressed() const
 {
-    return glfwGetMouseButton(window_, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS;
+    return glfwGetMouseButton(m_window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS;
 }
 
 inline Window::Raw Window::raw() const
 {
-    return window_;
+    return m_window;
 }
 
 #endif

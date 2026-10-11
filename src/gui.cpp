@@ -91,9 +91,9 @@ void DrawCombo(const char* label,
 
 // TODO: This preprocessor soup is getting ludicrous
 Gui::Gui()
-    : selectedSceneItem_{-1}
+    : m_selectedSceneItem{-1}
 #ifndef __EMSCRIPTEN__
-    , supportedRenderingAPIs_{true, true, DIRECT3D12_SUPPORTED}
+    , m_supportedRenderingAPIs{true, true, DIRECT3D12_SUPPORTED}
 #endif
 {
 }
@@ -106,8 +106,8 @@ void Gui::init(Renderer& renderer
 )
 {
 #ifndef __EMSCRIPTEN__
-    currentRenderingAPI_ = newRenderingAPI;
-    selectedRenderingAPI_ = newRenderingAPI;
+    m_currentRenderingAPI = newRenderingAPI;
+    m_selectedRenderingAPI = newRenderingAPI;
 #endif
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
@@ -135,7 +135,7 @@ void Gui::prepareDraw(
 {
 #ifndef __EMSCRIPTEN__
     // HACK
-    switch (currentRenderingAPI_)
+    switch (m_currentRenderingAPI)
     {
         case RenderingAPI::OpenGL33:
         case RenderingAPI::OpenGL46:
@@ -160,7 +160,7 @@ void Gui::prepareDraw(
 #ifdef __EMSCRIPTEN__
     propertiesDialog(camera, drawProps, scene);
 #else
-    if (selectedRenderingAPI_ != drawProps.renderingAPI)
+    if (m_selectedRenderingAPI != drawProps.renderingAPI)
     {
         confirmRestartDialog(drawProps.renderingAPI);
     }
@@ -253,7 +253,7 @@ void Gui::propertiesDialog(
 #ifndef __EMSCRIPTEN__
 void Gui::disallowRenderingAPIOption(const RenderingAPI renderingAPI)
 {
-    supportedRenderingAPIs_[static_cast<size_t>(renderingAPI)] = false;
+    m_supportedRenderingAPIs[static_cast<size_t>(renderingAPI)] = false;
 }
 
 void Gui::rendererSection(const FrameRateInfo& frameRateInfo,
@@ -273,9 +273,9 @@ void Gui::rendererSection(const FrameRateInfo& frameRateInfo,
             };
         DrawCombo("Rendering API",
                   selectableAPIs,
-                  selectedRenderingAPI_,
+                  m_selectedRenderingAPI,
                   [this](size_t apiIndex)
-                  { return !supportedRenderingAPIs_[apiIndex]; });
+                  { return !m_supportedRenderingAPIs[apiIndex]; });
 
         ImGui::Checkbox("Vertical sync", &drawProps.vsyncEnabled);
 
@@ -333,21 +333,21 @@ void Gui::confirmRestartDialog(RenderingAPI& renderingAPI)
 
     if (ImGui::Button("Yes", ImVec2(buttonWidth, 0)))
     {
-        renderingAPI = selectedRenderingAPI_;
+        renderingAPI = m_selectedRenderingAPI;
     }
 
     ImGui::SameLine();
 
     if (ImGui::Button("No", ImVec2(buttonWidth, 0)))
     {
-        selectedRenderingAPI_ = renderingAPI;
+        m_selectedRenderingAPI = renderingAPI;
     }
     ImGui::End();
 }
 
 bool Gui::isDirect3DEnabled() const
 {
-    return currentRenderingAPI_ == RenderingAPI::Direct3D12;
+    return m_currentRenderingAPI == RenderingAPI::Direct3D12;
 }
 #endif
 
@@ -401,7 +401,7 @@ void Gui::sceneContextMenu(Scene& scene)
                 if (ImGui::MenuItem(SELECTABLE_MODELS[i]))
                 {
                     scene.add({"Model", i});
-                    selectedSceneItem_
+                    m_selectedSceneItem
                         = static_cast<int>(scene.children().size())
                         + LightingTreeIndex;
                 }
@@ -439,10 +439,10 @@ void Gui::populateTreeFromSceneNodes(Scene& scene)
 
             if (deleteFlag)
             {
-                if (selectionStart <= selectedSceneItem_
-                    && std::cmp_equal(selectedSceneItem_, selectionIndex))
+                if (selectionStart <= m_selectedSceneItem
+                    && std::cmp_equal(m_selectedSceneItem, selectionIndex))
                 {
-                    selectedSceneItem_ = -selectionStart;
+                    m_selectedSceneItem = -selectionStart;
                 }
                 scene.remove(sceneNodeIndex);
                 continue;  // Avoid accidentally advancing iterator
@@ -458,7 +458,7 @@ void Gui::populateTreeFromSceneNodes(Scene& scene)
 ImGuiTreeNodeFlags Gui::highlightIfSelected(const size_t selectionIndex) const
 {
     ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_Leaf;
-    if (std::cmp_equal(selectedSceneItem_, selectionIndex))
+    if (std::cmp_equal(m_selectedSceneItem, selectionIndex))
     {
         flags |= ImGuiTreeNodeFlags_Selected;
     }
@@ -469,14 +469,14 @@ void Gui::selectIfClicked(const size_t selectionIndex)
 {
     if (ImGui::IsItemClicked())
     {
-        selectedSceneItem_ = static_cast<int>(selectionIndex);
+        m_selectedSceneItem = static_cast<int>(selectionIndex);
     }
 }
 
 void Gui::sceneNodeSection(DrawProperties& drawProps, Scene& scene) const
 {
     // Skybox
-    if (selectedSceneItem_ == SkyboxTreeIndex
+    if (m_selectedSceneItem == SkyboxTreeIndex
         && ImGui::CollapsingHeader("Skybox/Background",
                                    ImGuiTreeNodeFlags_DefaultOpen))
     {
@@ -487,7 +487,7 @@ void Gui::sceneNodeSection(DrawProperties& drawProps, Scene& scene) const
     }
 
     // Lighting
-    if (selectedSceneItem_ == LightingTreeIndex
+    if (m_selectedSceneItem == LightingTreeIndex
         && ImGui::CollapsingHeader("Lighting", ImGuiTreeNodeFlags_DefaultOpen))
     {
         ImGui::SliderFloat3("Direction",
@@ -497,9 +497,9 @@ void Gui::sceneNodeSection(DrawProperties& drawProps, Scene& scene) const
     }
 
     // Model
-    if (LightingTreeIndex < selectedSceneItem_)
+    if (LightingTreeIndex < m_selectedSceneItem)
     {
-        SceneNode& sceneNode = scene.get(selectedSceneItem_ - 2);
+        SceneNode& sceneNode = scene.get(m_selectedSceneItem - 2);
         if (ImGui::CollapsingHeader("Transform",
                                     ImGuiTreeNodeFlags_DefaultOpen))
         {

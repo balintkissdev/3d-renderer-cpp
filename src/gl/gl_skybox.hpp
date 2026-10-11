@@ -42,20 +42,20 @@ public:
     [[nodiscard]] GLuint vertexArray() const;
 
 private:
-    GLuint textureID_;
-    GLuint vertexArray_;
-    GLuint vertexBuffer_;
-    GLuint indexBuffer_;
+    GLuint m_textureID;
+    GLuint m_vertexArray;
+    GLuint m_vertexBuffer;
+    GLuint m_indexBuffer;
 };
 
 inline GLuint GLSkybox::textureID() const
 {
-    return textureID_;
+    return m_textureID;
 }
 
 inline GLuint GLSkybox::vertexArray() const
 {
-    return vertexArray_;
+    return m_vertexArray;
 }
 
 /// Builder pattern for skybox creation, avoiding mistakes from specifying
@@ -74,12 +74,12 @@ public:
     std::optional<GLSkybox> build();
 
 private:
-    std::filesystem::path rightFacePath_;
-    std::filesystem::path leftFacePath_;
-    std::filesystem::path topFacePath_;
-    std::filesystem::path bottomFacePath_;
-    std::filesystem::path frontFacePath_;
-    std::filesystem::path backFacePath_;
+    std::filesystem::path m_rightFacePath;
+    std::filesystem::path m_leftFacePath;
+    std::filesystem::path m_topFacePath;
+    std::filesystem::path m_bottomFacePath;
+    std::filesystem::path m_frontFacePath;
+    std::filesystem::path m_backFacePath;
 };
 
 #endif

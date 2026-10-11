@@ -31,9 +31,9 @@ public:
     virtual void setVSyncEnabled(const bool vsyncEnabled) = 0;
 
 protected:
-    Window& window_;
-    const DrawProperties& drawProps_;
-    const Camera& camera_;
+    Window& m_window;
+    const DrawProperties& m_drawProps;
+    const Camera& m_camera;
 };
 
 #endif

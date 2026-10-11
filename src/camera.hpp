@@ -34,40 +34,40 @@ public:
 private:
     /// Camera location in world coordinate space. Also known as "eye
     /// position".
-    glm::vec3 position_;
+    glm::vec3 m_position;
     /// Rotation elements are stored as Euler angles, then applied to direction
     /// transformation. Looking along X axis (left/right, snapped around Y axis)
     /// is known as "yaw". Looking along Y axis (up/down, snapped around X axis)
     /// us known as "pitch".
     ///
     /// Rolling around Z axis (like an aeroplane or spaceship) is omitted.
-    glm::vec2 rotation_;
+    glm::vec2 m_rotation;
     /// Direction vector storing the rotations computed from mouse movements.
     /// Determines where the camera should point at. Always normalized and has
     /// length of 1.
-    glm::vec3 direction_;
+    glm::vec3 m_direction;
 
-    mutable glm::vec3 cachedPosition_;
-    glm::vec2 cachedRotation_;
-    mutable glm::vec3 cachedDirection_;
-    mutable glm::mat4 cachedView_;
+    mutable glm::vec3 m_cachedPosition;
+    glm::vec2 m_cachedRotation;
+    mutable glm::vec3 m_cachedDirection;
+    mutable glm::mat4 m_cachedView;
 
     void updateDirection();
 };
 
 inline glm::vec3 Camera::position() const
 {
-    return position_;
+    return m_position;
 }
 
 inline glm::vec2 Camera::rotation() const
 {
-    return rotation_;
+    return m_rotation;
 }
 
 inline glm::vec3 Camera::direction() const
 {
-    return direction_;
+    return m_direction;
 }
 
 #endif

@@ -22,8 +22,8 @@ constexpr glm::vec3 UP_VECTOR{0.0f, 1.0f, 0.0f};
 }  // namespace
 
 Camera::Camera(const glm::vec3& position, const glm::vec2& rotation)
-    : position_(position)
-    , rotation_(rotation)
+    : m_position(position)
+    , m_rotation(rotation)
 {
     // Avoid camera jump on first mouselook.
     updateDirection();
@@ -32,77 +32,79 @@ Camera::Camera(const glm::vec3& position, const glm::vec2& rotation)
 
 void Camera::moveForward(const float deltaTime)
 {
-    position_ += MOVEMENT_SPEED * direction_ * deltaTime;
+    m_position += MOVEMENT_SPEED * m_direction * deltaTime;
 }
 
 void Camera::moveBackward(const float deltaTime)
 {
-    position_ -= MOVEMENT_SPEED * direction_ * deltaTime;
+    m_position -= MOVEMENT_SPEED * m_direction * deltaTime;
 }
 
 void Camera::strafeLeft(const float deltaTime)
 {
     // If you don't normalize, you move fast or slow depending on camera
     // direction.
-    position_ -= glm::normalize(glm::cross(direction_, UP_VECTOR))
-               * MOVEMENT_SPEED * deltaTime;
+    m_position -= glm::normalize(glm::cross(m_direction, UP_VECTOR))
+                * MOVEMENT_SPEED * deltaTime;
 }
 
 void Camera::strafeRight(const float deltaTime)
 {
-    position_ += glm::normalize(glm::cross(direction_, UP_VECTOR))
-               * MOVEMENT_SPEED * deltaTime;
+    m_position += glm::normalize(glm::cross(m_direction, UP_VECTOR))
+                * MOVEMENT_SPEED * deltaTime;
 }
 
 void Camera::ascend(const float deltaTime)
 {
-    position_ += MOVEMENT_SPEED * UP_VECTOR * deltaTime;
+    m_position += MOVEMENT_SPEED * UP_VECTOR * deltaTime;
 }
 
 void Camera::descend(const float deltaTime)
 {
-    position_ -= MOVEMENT_SPEED * UP_VECTOR * deltaTime;
+    m_position -= MOVEMENT_SPEED * UP_VECTOR * deltaTime;
 }
 
 void Camera::look(const float xOffset, const float yOffset)
 {
-    rotation_.x += xOffset * LOOK_SENSITIVITY;
+    m_rotation.x += xOffset * LOOK_SENSITIVITY;
     // Wrap to keep rotation degrees displayed between 0 and 360 on debug UI
-    utils::wrap(rotation_.x, 0.0f, 359.9f);
-    rotation_.y += yOffset * LOOK_SENSITIVITY;
+    utils::wrap(m_rotation.x, 0.0f, 359.9f);
+    m_rotation.y += yOffset * LOOK_SENSITIVITY;
     // Avoid user to do a backflip
-    rotation_.y = glm::clamp(rotation_.y, -ROTATION_Y_LIMIT, ROTATION_Y_LIMIT);
+    m_rotation.y
+        = glm::clamp(m_rotation.y, -ROTATION_Y_LIMIT, ROTATION_Y_LIMIT);
 
-    if (rotation_ != cachedRotation_)
+    if (m_rotation != m_cachedRotation)
     {
         updateDirection();
-        cachedRotation_ = rotation_;
+        m_cachedRotation = m_rotation;
     }
 }
 
 glm::mat4 Camera::calculateViewMatrix() const
 {
-    if (position_ == cachedPosition_ && direction_ == cachedDirection_)
+    if (m_position == m_cachedPosition && m_direction == m_cachedDirection)
     {
-        return cachedView_;
+        return m_cachedView;
     }
 
-    cachedPosition_ = position_;
-    cachedDirection_ = direction_;
-    cachedView_ = glm::lookAtRH(position_, position_ + direction_, UP_VECTOR);
-    return cachedView_;
+    m_cachedPosition = m_position;
+    m_cachedDirection = m_direction;
+    m_cachedView
+        = glm::lookAtRH(m_position, m_position + m_direction, UP_VECTOR);
+    return m_cachedView;
 }
 
 void Camera::updateDirection()
 {
-    const float rotationXRadian = glm::radians(rotation_.x);
+    const float rotationXRadian = glm::radians(m_rotation.x);
     const float rotationXSin = glm::sin(rotationXRadian);
     const float rotationXCos = glm::cos(rotationXRadian);
-    const float rotationYRadian = glm::radians(rotation_.y);
+    const float rotationYRadian = glm::radians(m_rotation.y);
     const float rotationYSin = glm::sin(rotationYRadian);
     const float rotationYCos = glm::cos(rotationYRadian);
-    direction_.x = rotationXCos * rotationYCos;
-    direction_.y = rotationYSin;
-    direction_.z = rotationXSin * rotationYCos;
-    direction_ = glm::normalize(direction_);
+    m_direction.x = rotationXCos * rotationYCos;
+    m_direction.y = rotationYSin;
+    m_direction.z = rotationXSin * rotationYCos;
+    m_direction = glm::normalize(m_direction);
 }

@@ -37,22 +37,22 @@ std::optional<D3D12Model> D3D12Model::create(ID3D12Device* device,
                                     &bufferDesc,
                                     D3D12_RESOURCE_STATE_GENERIC_READ,
                                     nullptr,
-                                    IID_PPV_ARGS(model.vertexBuffer_.put()));
+                                    IID_PPV_ARGS(model.m_vertexBuffer.put()));
 
     // Copy data to vertex buffer
     Vertex* vertexDataBegin;
     CD3DX12_RANGE readRange(0, 0);
-    model.vertexBuffer_->Map(0,
-                             &readRange,
-                             reinterpret_cast<void**>(&vertexDataBegin));
+    model.m_vertexBuffer->Map(0,
+                              &readRange,
+                              reinterpret_cast<void**>(&vertexDataBegin));
     std::memcpy(vertexDataBegin, vertices.data(), vertexBufferSize);
-    model.vertexBuffer_->Unmap(0, nullptr);
+    model.m_vertexBuffer->Unmap(0, nullptr);
 
     // Init vertex buffer view
-    model.vertexBufferView_.BufferLocation
-        = model.vertexBuffer_->GetGPUVirtualAddress();
-    model.vertexBufferView_.StrideInBytes = stride;
-    model.vertexBufferView_.SizeInBytes = vertexBufferSize;
+    model.m_vertexBufferView.BufferLocation
+        = model.m_vertexBuffer->GetGPUVirtualAddress();
+    model.m_vertexBufferView.StrideInBytes = stride;
+    model.m_vertexBufferView.SizeInBytes = vertexBufferSize;
 
     // Index buffer
     const UINT indexBufferSize
@@ -65,29 +65,29 @@ std::optional<D3D12Model> D3D12Model::create(ID3D12Device* device,
                                     &bufferDesc,
                                     D3D12_RESOURCE_STATE_GENERIC_READ,
                                     nullptr,
-                                    IID_PPV_ARGS(model.indexBuffer_.put()));
+                                    IID_PPV_ARGS(model.m_indexBuffer.put()));
 
     uint32_t* indexDataBegin;
     readRange = CD3DX12_RANGE(0, 0);
-    model.indexBuffer_->Map(0,
-                            &readRange,
-                            reinterpret_cast<void**>(&indexDataBegin));
+    model.m_indexBuffer->Map(0,
+                             &readRange,
+                             reinterpret_cast<void**>(&indexDataBegin));
     std::memcpy(indexDataBegin, indices.data(), indexBufferSize);
-    model.indexBuffer_->Unmap(0, nullptr);
+    model.m_indexBuffer->Unmap(0, nullptr);
 
-    model.indexBufferView_.BufferLocation
-        = model.indexBuffer_->GetGPUVirtualAddress();
+    model.m_indexBufferView.BufferLocation
+        = model.m_indexBuffer->GetGPUVirtualAddress();
     // Keep the index buffer format 32-bit instead of 16-bit, otherwise mesh
     // like the Stanford Bunny becomes an eldritch abomination.
-    model.indexBufferView_.Format = DXGI_FORMAT_R32_UINT;
-    model.indexBufferView_.SizeInBytes = indexBufferSize;
-    model.indexCount_ = static_cast<UINT>(indices.size());
+    model.m_indexBufferView.Format = DXGI_FORMAT_R32_UINT;
+    model.m_indexBufferView.SizeInBytes = indexBufferSize;
+    model.m_indexCount = static_cast<UINT>(indices.size());
 
     return model;
 }
 
 D3D12Model::D3D12Model()
-    : indexCount_{0}
+    : m_indexCount{0}
 {
 }
 

@@ -87,12 +87,12 @@ std::optional<GLShader> GLShader::createFromFile(const Params& params
 }
 
 GLShader::GLShader()
-    : shaderProgram_{0}
+    : m_shaderProgram{0}
 {
 }
 
 GLShader::GLShader(const GLuint shaderProgram)
-    : shaderProgram_{shaderProgram}
+    : m_shaderProgram{shaderProgram}
 {
     if (shaderProgram)
     {
@@ -106,35 +106,35 @@ GLShader::~GLShader()
 }
 
 GLShader::GLShader(GLShader&& other) noexcept
-    : shaderProgram_{std::exchange(other.shaderProgram_, 0)}
-    , uniformCache_{std::move(other.uniformCache_)}
+    : m_shaderProgram{std::exchange(other.m_shaderProgram, 0)}
+    , m_uniformCache{std::move(other.m_uniformCache)}
 #ifndef __EMSCRIPTEN__
-    , subroutineIndices_{std::move(other.subroutineIndices_)}
+    , m_subroutineIndices{std::move(other.m_subroutineIndices)}
 #endif
 {
 }
 
 GLShader& GLShader::operator=(GLShader&& other) noexcept
 {
-    std::swap(shaderProgram_, other.shaderProgram_);
-    uniformCache_ = std::move(other.uniformCache_);
+    std::swap(m_shaderProgram, other.m_shaderProgram);
+    m_uniformCache = std::move(other.m_uniformCache);
 #ifndef __EMSCRIPTEN__
-    subroutineIndices_ = std::move(other.subroutineIndices_);
+    m_subroutineIndices = std::move(other.m_subroutineIndices);
 #endif
     return *this;
 }
 
 void GLShader::use() const
 {
-    glUseProgram(shaderProgram_);
+    glUseProgram(m_shaderProgram);
 }
 
 void GLShader::cleanup()
 {
-    if (shaderProgram_ != 0)
+    if (m_shaderProgram != 0)
     {
-        glDeleteShader(shaderProgram_);
-        shaderProgram_ = 0;
+        glDeleteShader(m_shaderProgram);
+        m_shaderProgram = 0;
     }
 }
 
@@ -142,21 +142,21 @@ template <>
 void GLShader::setUniform(const std::string& name, const int& v)
 {
     ASSERT_UNIFORM(name);
-    glUniform1i(uniformCache_.at(name), v);
+    glUniform1i(m_uniformCache.at(name), v);
 }
 
 template <>
 void GLShader::setUniform(const std::string& name, const float& v)
 {
     ASSERT_UNIFORM(name);
-    glUniform1f(uniformCache_.at(name), v);
+    glUniform1f(m_uniformCache.at(name), v);
 }
 
 template <>
 void GLShader::setUniform(const std::string& name, const bool& v)
 {
     ASSERT_UNIFORM(name);
-    glUniform1i(uniformCache_.at(name), v);
+    glUniform1i(m_uniformCache.at(name), v);
 }
 
 template <>
@@ -164,28 +164,28 @@ void GLShader::setUniform(const std::string& name,
                           const std::array<float, 3>& v)
 {
     ASSERT_UNIFORM(name);
-    glUniform3fv(uniformCache_.at(name), 1, v.data());
+    glUniform3fv(m_uniformCache.at(name), 1, v.data());
 }
 
 template <>
 void GLShader::setUniform(const std::string& name, const glm::vec3& v)
 {
     ASSERT_UNIFORM(name);
-    glUniform3fv(uniformCache_.at(name), 1, glm::value_ptr(v));
+    glUniform3fv(m_uniformCache.at(name), 1, glm::value_ptr(v));
 }
 
 template <>
 void GLShader::setUniform(const std::string& name, const glm::mat3& v)
 {
     ASSERT_UNIFORM(name);
-    glUniformMatrix3fv(uniformCache_.at(name), 1, GL_FALSE, glm::value_ptr(v));
+    glUniformMatrix3fv(m_uniformCache.at(name), 1, GL_FALSE, glm::value_ptr(v));
 }
 
 template <>
 void GLShader::setUniform(const std::string& name, const glm::mat4& v)
 {
     ASSERT_UNIFORM(name);
-    glUniformMatrix4fv(uniformCache_.at(name), 1, GL_FALSE, glm::value_ptr(v));
+    glUniformMatrix4fv(m_uniformCache.at(name), 1, GL_FALSE, glm::value_ptr(v));
 }
 
 std::optional<GLuint> GLShader::compile(const fs::path& shaderPath,
@@ -284,22 +284,22 @@ void GLShader::updateSubroutines(const GLenum shaderType,
                                  const std::vector<std::string>& names)
 {
     // TODO: Clearing subroutine indices on every frame update is slow
-    subroutineIndices_.clear();
+    m_subroutineIndices.clear();
     for (const std::string& name : names)
     {
-        subroutineIndices_.push_back(
-            glGetSubroutineIndex(shaderProgram_, shaderType, name.c_str()));
+        m_subroutineIndices.push_back(
+            glGetSubroutineIndex(m_shaderProgram, shaderType, name.c_str()));
     }
     glUniformSubroutinesuiv(GL_FRAGMENT_SHADER,
-                            static_cast<GLsizei>(subroutineIndices_.size()),
-                            subroutineIndices_.data());
+                            static_cast<GLsizei>(m_subroutineIndices.size()),
+                            m_subroutineIndices.data());
 }
 #endif
 
 void GLShader::cacheActiveUniforms()
 {
     GLint uniformCount = 0;
-    glGetProgramiv(shaderProgram_, GL_ACTIVE_UNIFORMS, &uniformCount);
+    glGetProgramiv(m_shaderProgram, GL_ACTIVE_UNIFORMS, &uniformCount);
     if (uniformCount <= 0)
     {
         // No active uniforms present, skip
@@ -308,13 +308,13 @@ void GLShader::cacheActiveUniforms()
 
     constexpr size_t maxBufferSize = 64;
     std::array<char, maxBufferSize> uniformNameBuffer;
-    uniformCache_.reserve(uniformCount);
+    m_uniformCache.reserve(uniformCount);
     for (GLint i = 0; i < uniformCount; ++i)
     {
         GLsizei bufferSize;
         GLsizei uniformVarSize;
         GLenum uniformDataType;
-        glGetActiveUniform(shaderProgram_,
+        glGetActiveUniform(m_shaderProgram,
                            i,
                            maxBufferSize,
                            &bufferSize,
@@ -322,16 +322,17 @@ void GLShader::cacheActiveUniforms()
                            &uniformDataType,
                            uniformNameBuffer.data());
         const GLint uniformLocation
-            = glGetUniformLocation(shaderProgram_, uniformNameBuffer.data());
-        uniformCache_.emplace(std::string(uniformNameBuffer.data(), bufferSize),
-                              uniformLocation);
+            = glGetUniformLocation(m_shaderProgram, uniformNameBuffer.data());
+        m_uniformCache.emplace(
+            std::string(uniformNameBuffer.data(), bufferSize),
+            uniformLocation);
     }
 }
 
 #ifndef NDEBUG
 void GLShader::assertUniform(const std::string& name)
 {
-    if (!uniformCache_.contains(name))
+    if (!m_uniformCache.contains(name))
     {
         std::cerr
             << "uniform is not present in compiled shader code. Either "

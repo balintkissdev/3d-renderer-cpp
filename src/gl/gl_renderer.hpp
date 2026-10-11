@@ -50,14 +50,14 @@ private:
     };
 
 #ifndef __EMSCRIPTEN__
-    RenderingAPI glVersionAPI_;
+    RenderingAPI m_glVersionAPI;
 #endif
-    glm::mat4 view_;
-    glm::mat4 projection_;
+    glm::mat4 m_view;
+    glm::mat4 m_projection;
 
-    std::vector<GLShader> shaders_;
-    std::vector<GLModel> models_;
-    GLSkybox skybox_;
+    std::vector<GLShader> m_shaders;
+    std::vector<GLModel> m_models;
+    GLSkybox m_skybox;
 
     bool loadShaders();
     bool loadAssets();

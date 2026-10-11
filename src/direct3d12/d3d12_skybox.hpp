@@ -23,20 +23,20 @@ public:
               ID3D12Resource* mvpConstantBuffer);
 
 private:
-    winrt::com_ptr<ID3D12Resource> vertexBuffer_;
-    winrt::com_ptr<ID3D12Resource> indexBuffer_;
-    winrt::com_ptr<ID3D12Resource> vertexUploadBuffer_;
-    winrt::com_ptr<ID3D12Resource> indexUploadBuffer_;
-    D3D12_VERTEX_BUFFER_VIEW vertexBufferView_;
-    D3D12_INDEX_BUFFER_VIEW indexBufferView_;
-    UINT indexCount_;
+    winrt::com_ptr<ID3D12Resource> m_vertexBuffer;
+    winrt::com_ptr<ID3D12Resource> m_indexBuffer;
+    winrt::com_ptr<ID3D12Resource> m_vertexUploadBuffer;
+    winrt::com_ptr<ID3D12Resource> m_indexUploadBuffer;
+    D3D12_VERTEX_BUFFER_VIEW m_vertexBufferView;
+    D3D12_INDEX_BUFFER_VIEW m_indexBufferView;
+    UINT m_indexCount;
 
-    winrt::com_ptr<ID3D12Resource> textureResource_;
-    winrt::com_ptr<ID3D12Resource> textureUploadBuffer_;
-    D3D12_GPU_DESCRIPTOR_HANDLE textureSrvGpuHandle_;
+    winrt::com_ptr<ID3D12Resource> m_textureResource;
+    winrt::com_ptr<ID3D12Resource> m_textureUploadBuffer;
+    D3D12_GPU_DESCRIPTOR_HANDLE m_textureSrvGpuHandle;
 
-    winrt::com_ptr<ID3D12RootSignature> rootSignature_;
-    winrt::com_ptr<ID3D12PipelineState> pso_;
+    winrt::com_ptr<ID3D12RootSignature> m_rootSignature;
+    winrt::com_ptr<ID3D12PipelineState> m_pso;
 };
 
 class D3D12SkyboxBuilder

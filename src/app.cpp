@@ -39,23 +39,23 @@ constexpr float FIXED_UPDATE_TIMESTEP = 1.0f / MAX_LOGIC_UPDATE_PER_SECOND;
 }  // namespace
 
 App::App()
-    : window_{*this}
-    , renderer_{nullptr}
+    : m_window{*this}
+    , m_renderer{nullptr}
     // Positioning and rotation accidentally imitates a right-handed 3D
     // coordinate system with positive Z going farther from model, but this
     // setting is done because of initial orientation of the loaded Stanford
     // Bunny mesh.
-    , camera_{{1.7f, 1.3f, 4.0f}, {240.0f, -15.0f}}
-    , drawProps_{DrawProperties::createDefault()}
+    , m_camera{{1.7f, 1.3f, 4.0f}, {240.0f, -15.0f}}
+    , m_drawProps{DrawProperties::createDefault()}
 #ifndef __EMSCRIPTEN__
-    , frameRateInfo_{.framesPerSecond = 0.0f, .msPerFrame = 0.0f}
-    , vsyncEnabled_{false}
-    , currentRenderingAPI_{drawProps_.renderingAPI}
+    , m_frameRateInfo{.framesPerSecond = 0.0f, .msPerFrame = 0.0f}
+    , m_vsyncEnabled{false}
+    , m_currentRenderingAPI{m_drawProps.renderingAPI}
 #endif
 {
     // TODO: Rename to "Stanford Bunny" once scene node label renaming is
     // functional
-    scene_.add({"Model", Scene::Bunny});
+    m_scene.add({"Model", Scene::Bunny});
 }
 
 bool App::init()
@@ -64,7 +64,7 @@ bool App::init()
 #ifdef __EMSCRIPTEN__
         initSystems()
 #else
-        initSystems(currentRenderingAPI_)
+        initSystems(m_currentRenderingAPI)
 #endif
             ;
 }
@@ -73,13 +73,13 @@ bool App::init()
 bool App::reinit(const RenderingAPI previousRenderingAPI,
                  const RenderingAPI newRenderingAPI)
 {
-    window_.hide();
+    m_window.hide();
     // Important to release resources using current graphics context before
     // destroying it
-    gui_.cleanup(previousRenderingAPI);
-    renderer_.reset();
+    m_gui.cleanup(previousRenderingAPI);
+    m_renderer.reset();
     // TODO: Avoid full re-init, see TODO in win32_window.hpp
-    window_.cleanup();
+    m_window.cleanup();
 
     // TODO: Reloading assets on rendering backend change would normally not be
     // necessary, but in this current architecture the GPU buffer and texture
@@ -91,18 +91,18 @@ bool App::initSystems(const RenderingAPI newRenderingAPI)
 {
     if (createWindow(newRenderingAPI))
     {
-        currentRenderingAPI_ = newRenderingAPI;
+        m_currentRenderingAPI = newRenderingAPI;
     }
     else
     {
         utils::showErrorMessage(
             "Selected graphics API is not supported on your system. Falling "
             "back to more compatible OpenGL 3.3.");
-        gui_.disallowRenderingAPIOption(newRenderingAPI);
-        currentRenderingAPI_ = RenderingAPI::OpenGL33;
-        drawProps_.renderingAPI = currentRenderingAPI_;
+        m_gui.disallowRenderingAPIOption(newRenderingAPI);
+        m_currentRenderingAPI = RenderingAPI::OpenGL33;
+        m_drawProps.renderingAPI = m_currentRenderingAPI;
         const bool fallbackGLVersionSuccess
-            = createWindow(currentRenderingAPI_);
+            = createWindow(m_currentRenderingAPI);
         if (!fallbackGLVersionSuccess)
         {
             utils::showErrorMessage("unable to create graphics context. ",
@@ -111,19 +111,20 @@ bool App::initSystems(const RenderingAPI newRenderingAPI)
         }
     }
 
-    switch (currentRenderingAPI_)
+    switch (m_currentRenderingAPI)
     {
         case RenderingAPI::OpenGL33:
         case RenderingAPI::OpenGL46:
-            renderer_ = std::make_unique<GLRenderer>(window_,
-                                                     drawProps_,
-                                                     camera_,
-                                                     currentRenderingAPI_);
+            m_renderer = std::make_unique<GLRenderer>(m_window,
+                                                      m_drawProps,
+                                                      m_camera,
+                                                      m_currentRenderingAPI);
             break;
 #ifdef WINDOW_PLATFORM_WIN32
         case RenderingAPI::Direct3D12:
-            renderer_
-                = std::make_unique<D3D12Renderer>(window_, drawProps_, camera_);
+            m_renderer = std::make_unique<D3D12Renderer>(m_window,
+                                                         m_drawProps,
+                                                         m_camera);
             break;
 #endif
         default:
@@ -132,14 +133,14 @@ bool App::initSystems(const RenderingAPI newRenderingAPI)
                 "graphics backend");
     }
 
-    if (!renderer_->init())
+    if (!m_renderer->init())
     {
         utils::showErrorMessage("unable to initialize renderer. ",
                                 GPU_REQUIREMENTS_MESSAGE);
         return false;
     }
 
-    gui_.init(*renderer_, currentRenderingAPI_);
+    m_gui.init(*m_renderer, m_currentRenderingAPI);
 
     return true;
 }
@@ -153,15 +154,15 @@ bool App::initSystems()
         return false;
     }
 
-    renderer_ = std::make_unique<GLRenderer>(window_, drawProps_, camera_);
-    if (!renderer_->init())
+    m_renderer = std::make_unique<GLRenderer>(m_window, m_drawProps, m_camera);
+    if (!m_renderer->init())
     {
         utils::showErrorMessage("unable to initialize renderer. ",
                                 GPU_REQUIREMENTS_MESSAGE);
         return false;
     }
 
-    gui_.init(*renderer_);
+    m_gui.init(*m_renderer);
 
     return true;
 }
@@ -173,28 +174,28 @@ bool App::createWindow()
 bool App::createWindow(const RenderingAPI renderingAPI)
 #endif
 {
-    if (!window_.init(WINDOW_WIDTH,
-                      WINDOW_HEIGHT,
-                      WINDOW_TITLE
+    if (!m_window.init(WINDOW_WIDTH,
+                       WINDOW_HEIGHT,
+                       WINDOW_TITLE
 #ifndef __EMSCRIPTEN__
-                      ,
-                      renderingAPI
+                       ,
+                       renderingAPI
 #endif
-                      ))
+                       ))
     {
         return false;
     }
 
-    window_.setOnMouseMove(MouseOffsetCallback);
+    m_window.setOnMouseMove(MouseOffsetCallback);
 
     return true;
 }
 
 void App::cleanup()
 {
-    gui_.cleanup(
+    m_gui.cleanup(
 #ifndef __EMSCRIPTEN__
-        currentRenderingAPI_
+        m_currentRenderingAPI
 #endif
     );
 }
@@ -225,7 +226,7 @@ void App::run()
     // How much application "clock" is behind real time. Also known as
     // "accumulator"
     float lag = 0.0f;
-    while (!window_.shouldQuit())
+    while (!m_window.shouldQuit())
     {
         const auto currentTime = std::chrono::steady_clock::now();
         const float elapsedTime
@@ -242,8 +243,8 @@ void App::run()
         while (lag >= FIXED_UPDATE_TIMESTEP)
         {
             // Switch rendering context and reinitialize if changed from GUI
-            if ((currentRenderingAPI_ != drawProps_.renderingAPI)
-                && !reinit(currentRenderingAPI_, drawProps_.renderingAPI))
+            if ((m_currentRenderingAPI != m_drawProps.renderingAPI)
+                && !reinit(m_currentRenderingAPI, m_drawProps.renderingAPI))
             {
                 // Exit on rendering context switch error
                 return;
@@ -257,9 +258,9 @@ void App::run()
         // Update framerate display every 1 second
         if (1.0 <= elapsedFrameTime)
         {
-            frameRateInfo_.framesPerSecond
+            m_frameRateInfo.framesPerSecond
                 = static_cast<float>(frameCount) / elapsedFrameTime;
-            frameRateInfo_.msPerFrame
+            m_frameRateInfo.msPerFrame
                 = 1000.0f / static_cast<float>(frameCount);
 
             // Reset framerate counter
@@ -284,78 +285,78 @@ void App::MouseOffsetCallback(App& app,
                               const float offsetX,
                               const float offsetY)
 {
-    if (app.window_.rightMouseButtonPressed())
+    if (app.m_window.rightMouseButtonPressed())
     {
-        app.camera_.look(offsetX, offsetY);
+        app.m_camera.look(offsetX, offsetY);
     }
 }
 
 void App::processInput()
 {
-    window_.poll();
+    m_window.poll();
     // No need to exit application from a web browser.
 #ifndef __EMSCRIPTEN__
     // Exiting here instead of update() avoids delay.
     // BUG: Pressing ESC while editing ImGui textbox should cancel, not exit
     // app.
-    if (window_.keyPressed(Key::ESCAPE))
+    if (m_window.keyPressed(Key::ESCAPE))
     {
-        window_.setShouldQuit(true);
+        m_window.setShouldQuit(true);
     }
 #endif
 }
 
 void App::update()
 {
-    window_.setCursorEnabled(!window_.rightMouseButtonPressed());
+    m_window.setCursorEnabled(!m_window.rightMouseButtonPressed());
 
     // Update camera here instead of processInput(), otherwise camera movement
     // will be too fast on fast computers.
-    if (window_.keyPressed(Key::W))
+    if (m_window.keyPressed(Key::W))
     {
-        camera_.moveForward(FIXED_UPDATE_TIMESTEP);
+        m_camera.moveForward(FIXED_UPDATE_TIMESTEP);
     }
-    if (window_.keyPressed(Key::S))
+    if (m_window.keyPressed(Key::S))
     {
-        camera_.moveBackward(FIXED_UPDATE_TIMESTEP);
+        m_camera.moveBackward(FIXED_UPDATE_TIMESTEP);
     }
-    if (window_.keyPressed(Key::A))
+    if (m_window.keyPressed(Key::A))
     {
-        camera_.strafeLeft(FIXED_UPDATE_TIMESTEP);
+        m_camera.strafeLeft(FIXED_UPDATE_TIMESTEP);
     }
-    if (window_.keyPressed(Key::D))
+    if (m_window.keyPressed(Key::D))
     {
-        camera_.strafeRight(FIXED_UPDATE_TIMESTEP);
+        m_camera.strafeRight(FIXED_UPDATE_TIMESTEP);
     }
 
-    if (window_.keyPressed(Key::SPACE))
+    if (m_window.keyPressed(Key::SPACE))
     {
-        camera_.ascend(FIXED_UPDATE_TIMESTEP);
+        m_camera.ascend(FIXED_UPDATE_TIMESTEP);
     }
-    if (window_.keyPressed(Key::C))
+    if (m_window.keyPressed(Key::C))
     {
-        camera_.descend(FIXED_UPDATE_TIMESTEP);
+        m_camera.descend(FIXED_UPDATE_TIMESTEP);
     }
 
 #ifndef __EMSCRIPTEN__
     // Update VSync option if changed from GUI
-    if (vsyncEnabled_ != drawProps_.vsyncEnabled)
+    if (m_vsyncEnabled != m_drawProps.vsyncEnabled)
     {
-        vsyncEnabled_ = drawProps_.vsyncEnabled;
-        renderer_->setVSyncEnabled(vsyncEnabled_);
+        m_vsyncEnabled = m_drawProps.vsyncEnabled;
+        m_renderer->setVSyncEnabled(m_vsyncEnabled);
     }
 #endif
 }
 
 void App::render()
 {
-    gui_.prepareDraw(
+    m_gui.prepareDraw(
 #ifndef __EMSCRIPTEN__
-        frameRateInfo_,
+        m_frameRateInfo,
 #endif
-        camera_,
-        drawProps_,
-        scene_);
-    renderer_->draw(scene_);
+        m_camera,
+        m_drawProps,
+        m_scene);
+    m_renderer->draw(m_scene);
 }
 

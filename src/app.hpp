@@ -37,17 +37,17 @@ private:
                                     const float offsetX,
                                     const float offsetY);
 
-    Window window_;
-    std::unique_ptr<Renderer> renderer_;
-    Gui gui_;
-    Camera camera_;
-    DrawProperties drawProps_;
+    Window m_window;
+    std::unique_ptr<Renderer> m_renderer;
+    Gui m_gui;
+    Camera m_camera;
+    DrawProperties m_drawProps;
 #ifndef __EMSCRIPTEN__
-    FrameRateInfo frameRateInfo_;
-    bool vsyncEnabled_;
-    RenderingAPI currentRenderingAPI_;
+    FrameRateInfo m_frameRateInfo;
+    bool m_vsyncEnabled;
+    RenderingAPI m_currentRenderingAPI;
 #endif
-    Scene scene_;
+    Scene m_scene;
 
 #ifdef __EMSCRIPTEN__
     bool initSystems();

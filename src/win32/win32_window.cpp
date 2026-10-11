@@ -22,12 +22,12 @@ const wchar_t* APPLICATION_NAME = L"3DRenderer";
 }  // namespace
 
 Window::Window(App& app)
-    : app_{app}
-    , shouldQuit_{false}
-    , hWnd_{nullptr}
-    , keys_{false}
-    , rightMouseButton_{false}
-    , cursorVisible_{true}
+    : m_app{app}
+    , m_shouldQuit{false}
+    , m_hWnd{nullptr}
+    , m_keys{false}
+    , m_rightMouseButton{false}
+    , m_cursorVisible{true}
 {
 }
 
@@ -61,7 +61,7 @@ bool Window::init(const uint16_t width,
     }
 
     if (renderingAPI != RenderingAPI::Direct3D12
-        && !wglContext_.enableWglExtensions(hInstance, windowClass))
+        && !m_wglContext.enableWglExtensions(hInstance, windowClass))
     {
         utils::showErrorMessage("unable enable WGL extensions for OpenGL");
         return false;
@@ -74,7 +74,7 @@ bool Window::init(const uint16_t width,
     }
 
     if (renderingAPI != RenderingAPI::Direct3D12
-        && !wglContext_.create(hWnd_, renderingAPI))
+        && !m_wglContext.create(m_hWnd, renderingAPI))
     {
         utils::showErrorMessage("unable create OpenGL Rendering Context");
         return false;
@@ -90,7 +90,7 @@ bool Window::init(const uint16_t width,
             "the the redistributable using GameInputRedist.msi");
 #endif  // GAMEINPUT_ENABLED
 
-        if (!RawInputSystem::init(hWnd_))
+        if (!RawInputSystem::init(m_hWnd))
         {
             utils::showErrorMessage(
                 "Raw Input API is not supported on this system");
@@ -98,8 +98,8 @@ bool Window::init(const uint16_t width,
         }
     }
 
-    ::ShowWindow(hWnd_, SW_SHOW);
-    ::UpdateWindow(hWnd_);
+    ::ShowWindow(m_hWnd, SW_SHOW);
+    ::UpdateWindow(m_hWnd);
 
     return true;
 }
@@ -121,36 +121,36 @@ bool Window::createWindow(HINSTANCE hInstance,
     const int windowFramedHeight
         = windowFramedRect.bottom - windowFramedRect.top;
 
-    hWnd_ = ::CreateWindowExW(0,
-                              APPLICATION_NAME,
-                              utils::ToWideString(title).data(),
-                              WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU
-                                  | WS_MINIMIZEBOX | WS_CLIPSIBLINGS
-                                  | WS_CLIPCHILDREN,
-                              CW_USEDEFAULT,
-                              CW_USEDEFAULT,
-                              windowFramedWidth,
-                              windowFramedHeight,
-                              nullptr,
-                              nullptr,
-                              hInstance,
-                              nullptr);
-    if (!hWnd_)
+    m_hWnd = ::CreateWindowExW(0,
+                               APPLICATION_NAME,
+                               utils::ToWideString(title).data(),
+                               WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU
+                                   | WS_MINIMIZEBOX | WS_CLIPSIBLINGS
+                                   | WS_CLIPCHILDREN,
+                               CW_USEDEFAULT,
+                               CW_USEDEFAULT,
+                               windowFramedWidth,
+                               windowFramedHeight,
+                               nullptr,
+                               nullptr,
+                               hInstance,
+                               nullptr);
+    if (!m_hWnd)
     {
         ::UnregisterClassW(APPLICATION_NAME, ::GetModuleHandle(nullptr));
         return false;
     }
     // Save for use inside window procedure
-    ::SetWindowLongPtr(hWnd_, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(this));
+    ::SetWindowLongPtr(m_hWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(this));
 
     return true;
 }
 
 void Window::cleanup()
 {
-    wglContext_.cleanup(hWnd_);
+    m_wglContext.cleanup(m_hWnd);
 
-    ::DestroyWindow(hWnd_);
+    ::DestroyWindow(m_hWnd);
     ::UnregisterClassW(APPLICATION_NAME, ::GetModuleHandle(nullptr));
 }
 
@@ -164,7 +164,7 @@ void Window::poll()
         // end.
         if (msg.message == WM_QUIT)
         {
-            shouldQuit_ = true;
+            m_shouldQuit = true;
             return;
         }
 
@@ -176,13 +176,13 @@ void Window::poll()
     if (GameInputSystem::valid())
     {
         GameInputSystem::process(
-            keys_,
-            rightMouseButton_,
+            m_keys,
+            m_rightMouseButton,
             [this](const float offsetX, const float offsetY)
             {
                 // Inverted Y because it's bottom to up in OpenGL
                 // TODO: And what about Direct3D?
-                onMouseMove_(app_, offsetX, -offsetY);
+                m_onMouseMove(m_app, offsetX, -offsetY);
             });
     }
 #endif  // GAMEINPUT_ENABLED
@@ -246,14 +246,14 @@ void Window::handleRawInput(const LPARAM lParam)
 #endif
 
     RawInputSystem::process(lParam,
-                            keys_,
-                            rightMouseButton_,
+                            m_keys,
+                            m_rightMouseButton,
                             [this](const float offsetX, const float offsetY)
                             {
                                 // Inverted Y because it's bottom to up in
                                 // OpenGL
                                 // TODO: And what about Direct3D?
-                                onMouseMove_(app_, offsetX, -offsetY);
+                                m_onMouseMove(m_app, offsetX, -offsetY);
                             });
 }
 
@@ -277,7 +277,7 @@ void Window::setCursorEnabled(const bool enabled)
 std::pair<int, int> Window::frameBufferSize() const
 {
     RECT renderArea;
-    ::GetClientRect(hWnd_, &renderArea);
+    ::GetClientRect(m_hWnd, &renderArea);
     return {renderArea.right, renderArea.bottom};
 }
 
@@ -294,10 +294,10 @@ void Window::setCursorVisible(const bool visible)
     //
     // See:
     // https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-showcursor#remarks
-    if (visible != cursorVisible_)
+    if (visible != m_cursorVisible)
     {
         ::ShowCursor(visible);
-        cursorVisible_ = visible;
+        m_cursorVisible = visible;
     }
 }
 

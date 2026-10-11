@@ -38,21 +38,21 @@ public:
 private:
     GLModel();
 
-    GLuint vertexArray_;
-    std::vector<GLuint> indices_;
-    GLuint vertexBuffer_;
-    GLuint indexBuffer_;  /// Index buffer avoids duplication of vertices in
-                          /// vertex buffer
+    GLuint m_vertexArray;
+    std::vector<GLuint> m_indices;
+    GLuint m_vertexBuffer;
+    GLuint m_indexBuffer;  /// Index buffer avoids duplication of vertices in
+                           /// vertex buffer
 };
 
 inline GLuint GLModel::vertexArray() const
 {
-    return vertexArray_;
+    return m_vertexArray;
 }
 
 inline const std::vector<GLuint>& GLModel::indices() const
 {
-    return indices_;
+    return m_indices;
 }
 
 #endif

@@ -35,23 +35,23 @@ D3D12Renderer::D3D12Renderer(Window& window,
                              const DrawProperties& drawProps,
                              const Camera& camera)
     : Renderer{window, drawProps, camera}
-    , viewport_{CD3DX12_VIEWPORT(
+    , m_viewport{CD3DX12_VIEWPORT(
           0.0f,
           0.0f,
-          static_cast<float>(window_.frameBufferSize().first),
-          static_cast<float>(window_.frameBufferSize().second))}
-    , scissorRect_{0,
-                   0,
-                   window_.frameBufferSize().first,
-                   window_.frameBufferSize().second}
-    , rtvDescriptorHeapSize_{0}
-    , cbvSrvUavDescriptorHeapSize_{0}
-    , currentFrameIndex_{0}
-    , fenceValues_{}
-    , tearingEnabled_{false}
-    , vsyncEnabled_{drawProps.vsyncEnabled}
+          static_cast<float>(m_window.frameBufferSize().first),
+          static_cast<float>(m_window.frameBufferSize().second))}
+    , m_scissorRect{0,
+                    0,
+                    m_window.frameBufferSize().first,
+                    m_window.frameBufferSize().second}
+    , m_rtvDescriptorHeapSize{0}
+    , m_cbvSrvUavDescriptorHeapSize{0}
+    , m_currentFrameIndex{0}
+    , m_fenceValues{}
+    , m_tearingEnabled{false}
+    , m_vsyncEnabled{drawProps.vsyncEnabled}
 {
-    models_.reserve(3);
+    m_models.reserve(3);
 }
 
 D3D12Renderer::~D3D12Renderer()
@@ -72,14 +72,14 @@ bool D3D12Renderer::init()
     // Wait for setup to complete
     waitForGPU();
 
-    setVSyncEnabled(drawProps_.vsyncEnabled);
+    setVSyncEnabled(m_drawProps.vsyncEnabled);
     return true;
 }
 
 void D3D12Renderer::cleanup()
 {
     waitForGPU();  // Avoid corruption of resources
-    ::CloseHandle(fenceEvent_);
+    ::CloseHandle(m_fenceEvent);
 
 #if defined(DEBUG) || defined(_DEBUG)
     // If debug layer is kept being enabled when switching from OpenGL back to
@@ -151,7 +151,7 @@ bool D3D12Renderer::createDevice()
 
     hr = D3D12CreateDevice(adapter.get(),
                            D3D_FEATURE_LEVEL_11_1,
-                           IID_PPV_ARGS(device_.put()));
+                           IID_PPV_ARGS(m_device.put()));
     if (FAILED(hr))
     {
         utils::showErrorMessage("unable to initialize Direct3D 12 device");
@@ -162,8 +162,8 @@ bool D3D12Renderer::createDevice()
     D3D12_COMMAND_QUEUE_DESC commandQueueDesc{};
     commandQueueDesc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
     commandQueueDesc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
-    hr = device_->CreateCommandQueue(&commandQueueDesc,
-                                     IID_PPV_ARGS(commandQueue_.put()));
+    hr = m_device->CreateCommandQueue(&commandQueueDesc,
+                                      IID_PPV_ARGS(m_commandQueue.put()));
     if (FAILED(hr))
     {
         utils::showErrorMessage("unable to create Command Queue");
@@ -180,13 +180,13 @@ bool D3D12Renderer::createDevice()
                                        sizeof(allowTearing));
     assert(hr != DXGI_ERROR_INVALID_CALL
            && "invalid call for tearing support query detected");
-    tearingEnabled_ = SUCCEEDED(hr) && allowTearing;
+    m_tearingEnabled = SUCCEEDED(hr) && allowTearing;
 
     // Create Swap Chain
     DXGI_SWAP_CHAIN_DESC1 swapChainDesc{};
     swapChainDesc.BufferCount = MAX_FRAME_COUNT;
-    swapChainDesc.Width = window_.frameBufferSize().first;
-    swapChainDesc.Height = window_.frameBufferSize().second;
+    swapChainDesc.Width = m_window.frameBufferSize().first;
+    swapChainDesc.Height = m_window.frameBufferSize().second;
     swapChainDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
     swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
 
@@ -203,7 +203,7 @@ bool D3D12Renderer::createDevice()
     // https://learn.microsoft.com/en-us/windows/win32/direct3ddxgi/dxgi-flip-model
     swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
     swapChainDesc.Flags
-        = tearingEnabled_ ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING : 0;
+        = m_tearingEnabled ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING : 0;
 
     swapChainDesc.SampleDesc.Count = 1;
     swapChainDesc.SampleDesc.Quality = 0;
@@ -211,8 +211,8 @@ bool D3D12Renderer::createDevice()
     com_ptr<IDXGISwapChain1> swapChain;
     // From Direct3D 11.1 and onwards, Microsoft recommends using
     // CreateSwapChainForHwnd instead of CreateSwapChain
-    hr = factory->CreateSwapChainForHwnd(commandQueue_.get(),
-                                         window_.raw(),
+    hr = factory->CreateSwapChainForHwnd(m_commandQueue.get(),
+                                         m_window.raw(),
                                          &swapChainDesc,
                                          nullptr,
                                          nullptr,
@@ -222,36 +222,37 @@ bool D3D12Renderer::createDevice()
         utils::showErrorMessage("unable to create Swap Chain");
         return false;
     }
-    swapChain_ = swapChain.try_as<IDXGISwapChain3>();
-    if (!swapChain_)
+    m_swapChain = swapChain.try_as<IDXGISwapChain3>();
+    if (!m_swapChain)
     {
         utils::showErrorMessage("unable to create Swap Chain");
         return false;
     }
     // Fullscreen transitions not supported
-    factory->MakeWindowAssociation(window_.raw(), DXGI_MWA_NO_ALT_ENTER);
-    currentFrameIndex_ = swapChain_->GetCurrentBackBufferIndex();
+    factory->MakeWindowAssociation(m_window.raw(), DXGI_MWA_NO_ALT_ENTER);
+    m_currentFrameIndex = m_swapChain->GetCurrentBackBufferIndex();
     return true;
 }
 
 bool D3D12Renderer::createFrameResources()
 {
     CD3DX12_CPU_DESCRIPTOR_HANDLE rtvCpuHandle(
-        rtvDescriptorHeap_->GetCPUDescriptorHandleForHeapStart());
+        m_rtvDescriptorHeap->GetCPUDescriptorHandleForHeapStart());
 
-    for (size_t frame = 0; frame < commandAllocators_.size(); ++frame)
+    for (size_t frame = 0; frame < m_commandAllocators.size(); ++frame)
     {
         // Render Target View (RTV) for each frame
-        swapChain_->GetBuffer(frame, IID_PPV_ARGS(renderTargets_[frame].put()));
-        device_->CreateRenderTargetView(renderTargets_[frame].get(),
-                                        nullptr,
-                                        rtvCpuHandle);
-        rtvCpuHandle.Offset(1, rtvDescriptorHeapSize_);
+        m_swapChain->GetBuffer(frame,
+                               IID_PPV_ARGS(m_renderTargets[frame].put()));
+        m_device->CreateRenderTargetView(m_renderTargets[frame].get(),
+                                         nullptr,
+                                         rtvCpuHandle);
+        rtvCpuHandle.Offset(1, m_rtvDescriptorHeapSize);
 
         // Command Allocator for each frame
-        HRESULT hr = device_->CreateCommandAllocator(
+        HRESULT hr = m_device->CreateCommandAllocator(
             D3D12_COMMAND_LIST_TYPE_DIRECT,
-            IID_PPV_ARGS(commandAllocators_[frame].put()));
+            IID_PPV_ARGS(m_commandAllocators[frame].put()));
         if (FAILED(hr))
         {
             utils::showErrorMessage(
@@ -271,15 +272,15 @@ bool D3D12Renderer::createDescriptorHeaps()
     rtvHeapDesc.NumDescriptors = MAX_FRAME_COUNT;
     rtvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
     rtvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
-    if (FAILED(device_->CreateDescriptorHeap(
+    if (FAILED(m_device->CreateDescriptorHeap(
             &rtvHeapDesc,
-            IID_PPV_ARGS(rtvDescriptorHeap_.put()))))
+            IID_PPV_ARGS(m_rtvDescriptorHeap.put()))))
     {
         utils::showErrorMessage(
             "unable to create Render Target View (RTV) descriptor heap");
         return false;
     }
-    rtvDescriptorHeapSize_ = device_->GetDescriptorHandleIncrementSize(
+    m_rtvDescriptorHeapSize = m_device->GetDescriptorHandleIncrementSize(
         D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 
     // Depth-Stencil View (DSV) descriptor heap
@@ -287,9 +288,9 @@ bool D3D12Renderer::createDescriptorHeaps()
     dsvHeapDesc.NumDescriptors = 1;
     dsvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
     dsvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
-    if (FAILED(device_->CreateDescriptorHeap(
+    if (FAILED(m_device->CreateDescriptorHeap(
             &dsvHeapDesc,
-            IID_PPV_ARGS(dsvDescriptorHeap_.put()))))
+            IID_PPV_ARGS(m_dsvDescriptorHeap.put()))))
     {
         utils::showErrorMessage(
             "unable to create Depth-Stencil View (DSV) descriptor heap");
@@ -301,14 +302,14 @@ bool D3D12Renderer::createDescriptorHeaps()
     cbvSrvUavHeapDesc.NumDescriptors = MAX_CBV_SRV_UAV_DESCRIPTOR_COUNT;
     cbvSrvUavHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
     cbvSrvUavHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-    if (FAILED(device_->CreateDescriptorHeap(
+    if (FAILED(m_device->CreateDescriptorHeap(
             &cbvSrvUavHeapDesc,
-            IID_PPV_ARGS(cbvSrvUavDescriptorHeap_.put()))))
+            IID_PPV_ARGS(m_cbvSrvUavDescriptorHeap.put()))))
     {
         utils::showErrorMessage("unable to create CBV/SRV/UAV descriptor heap");
         return false;
     }
-    cbvSrvUavDescriptorHeapSize_ = device_->GetDescriptorHandleIncrementSize(
+    m_cbvSrvUavDescriptorHeapSize = m_device->GetDescriptorHandleIncrementSize(
         D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
     return true;
@@ -320,8 +321,8 @@ bool D3D12Renderer::createDSV()
         D3D12_HEAP_TYPE_DEFAULT);
     const CD3DX12_RESOURCE_DESC depthStencilTextureDesc
         = CD3DX12_RESOURCE_DESC::Tex2D(DEPTH_STENCIL_FORMAT,
-                                       window_.frameBufferSize().first,
-                                       window_.frameBufferSize().second,
+                                       m_window.frameBufferSize().first,
+                                       m_window.frameBufferSize().second,
                                        1,
                                        0,
                                        1,
@@ -334,13 +335,13 @@ bool D3D12Renderer::createDSV()
             .Stencil = 0,
         },
     };
-    if (FAILED(device_->CreateCommittedResource(
+    if (FAILED(m_device->CreateCommittedResource(
             &depthStencilHeapProps,
             D3D12_HEAP_FLAG_NONE,
             &depthStencilTextureDesc,
             D3D12_RESOURCE_STATE_DEPTH_WRITE,
             &depthOptimizedClearValue,
-            IID_PPV_ARGS(depthStencil_.put()))))
+            IID_PPV_ARGS(m_depthStencil.put()))))
     {
         utils::showErrorMessage("unable to create Depth-Stencil texture");
         return false;
@@ -350,10 +351,10 @@ bool D3D12Renderer::createDSV()
     depthStencilViewDesc.Format = DEPTH_STENCIL_FORMAT;
     depthStencilViewDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
     depthStencilViewDesc.Flags = D3D12_DSV_FLAG_NONE;
-    device_->CreateDepthStencilView(
-        depthStencil_.get(),
+    m_device->CreateDepthStencilView(
+        m_depthStencil.get(),
         &depthStencilViewDesc,
-        dsvDescriptorHeap_->GetCPUDescriptorHandleForHeapStart());
+        m_dsvDescriptorHeap->GetCPUDescriptorHandleForHeapStart());
 
     return true;
 }
@@ -364,30 +365,30 @@ bool D3D12Renderer::createCBVs()
     // Null resource CBV (for debugging)
     INT cbvIndexOffset = 0;
     CD3DX12_CPU_DESCRIPTOR_HANDLE nullCbvCpuHandle(
-        cbvSrvUavDescriptorHeap_->GetCPUDescriptorHandleForHeapStart(),
+        m_cbvSrvUavDescriptorHeap->GetCPUDescriptorHandleForHeapStart(),
         cbvIndexOffset,
-        cbvSrvUavDescriptorHeapSize_);
+        m_cbvSrvUavDescriptorHeapSize);
     D3D12_CONSTANT_BUFFER_VIEW_DESC nullCbvDesc{};
-    device_->CreateConstantBufferView(&nullCbvDesc, nullCbvCpuHandle);
+    m_device->CreateConstantBufferView(&nullCbvDesc, nullCbvCpuHandle);
     s_nullCbvGpuHandle = CD3DX12_GPU_DESCRIPTOR_HANDLE(
-        cbvSrvUavDescriptorHeap_->GetGPUDescriptorHandleForHeapStart(),
+        m_cbvSrvUavDescriptorHeap->GetGPUDescriptorHandleForHeapStart(),
         cbvIndexOffset,
-        cbvSrvUavDescriptorHeapSize_);
+        m_cbvSrvUavDescriptorHeapSize);
     ++cbvIndexOffset;
 
-    mvpConstantBuffers_.resize(MAX_MODEL_SCENE_NODE_COUNT);
-    mvpCbvDataBegin_.resize(MAX_MODEL_SCENE_NODE_COUNT);
-    materialConstantBuffers_.resize(MAX_MODEL_SCENE_NODE_COUNT);
-    materialCbvDataBegin_.resize(MAX_MODEL_SCENE_NODE_COUNT);
+    m_mvpConstantBuffers.resize(MAX_MODEL_SCENE_NODE_COUNT);
+    m_mvpCbvDataBegin.resize(MAX_MODEL_SCENE_NODE_COUNT);
+    m_materialConstantBuffers.resize(MAX_MODEL_SCENE_NODE_COUNT);
+    m_materialCbvDataBegin.resize(MAX_MODEL_SCENE_NODE_COUNT);
     const CD3DX12_HEAP_PROPERTIES heapProperties(D3D12_HEAP_TYPE_UPLOAD);
     for (int i = 0; i < MAX_MODEL_SCENE_NODE_COUNT; ++i)
     {
         // Create MVP constant buffer and view
         if (!createConstantBufferAndView<MVPConstantBuffer>(
                 heapProperties,
-                mvpConstantBuffers_[i],
+                m_mvpConstantBuffers[i],
                 cbvIndexOffset + i,
-                mvpCbvDataBegin_[i]))
+                m_mvpCbvDataBegin[i]))
         {
             return false;
         }
@@ -395,9 +396,9 @@ bool D3D12Renderer::createCBVs()
         // Create Material constant buffer and view
         if (!createConstantBufferAndView<MaterialConstantBuffer>(
                 heapProperties,
-                materialConstantBuffers_[i],
+                m_materialConstantBuffers[i],
                 cbvIndexOffset + MAX_MODEL_SCENE_NODE_COUNT + i,
-                materialCbvDataBegin_[i]))
+                m_materialCbvDataBegin[i]))
         {
             return false;
         }
@@ -418,12 +419,12 @@ bool D3D12Renderer::createConstantBufferAndView(
     const CD3DX12_RESOURCE_DESC resourceDesc
         = CD3DX12_RESOURCE_DESC::Buffer(constantBufferSize);
     HRESULT hr
-        = device_->CreateCommittedResource(&heapProperties,
-                                           D3D12_HEAP_FLAG_NONE,
-                                           &resourceDesc,
-                                           D3D12_RESOURCE_STATE_GENERIC_READ,
-                                           nullptr,
-                                           IID_PPV_ARGS(constantBuffer.put()));
+        = m_device->CreateCommittedResource(&heapProperties,
+                                            D3D12_HEAP_FLAG_NONE,
+                                            &resourceDesc,
+                                            D3D12_RESOURCE_STATE_GENERIC_READ,
+                                            nullptr,
+                                            IID_PPV_ARGS(constantBuffer.put()));
     if (FAILED(hr))
     {
         return false;
@@ -434,10 +435,10 @@ bool D3D12Renderer::createConstantBufferAndView(
     cbvDesc.BufferLocation = constantBuffer->GetGPUVirtualAddress();
     cbvDesc.SizeInBytes = constantBufferSize;
     CD3DX12_CPU_DESCRIPTOR_HANDLE cbvCpuHandle(
-        cbvSrvUavDescriptorHeap_->GetCPUDescriptorHandleForHeapStart(),
+        m_cbvSrvUavDescriptorHeap->GetCPUDescriptorHandleForHeapStart(),
         cbvDescriptorHeapIndex,
-        cbvSrvUavDescriptorHeapSize_);
-    device_->CreateConstantBufferView(&cbvDesc, cbvCpuHandle);
+        m_cbvSrvUavDescriptorHeapSize);
+    m_device->CreateConstantBufferView(&cbvDesc, cbvCpuHandle);
 
     // Map and initialize Constant Buffer
     CD3DX12_RANGE readRange(
@@ -454,9 +455,9 @@ bool D3D12Renderer::createModelRootSignature()
     // pipeline, defining the parameters passed for the shaders.
     D3D12_FEATURE_DATA_ROOT_SIGNATURE featureData{};
     featureData.HighestVersion = D3D_ROOT_SIGNATURE_VERSION_1_1;
-    if (FAILED(device_->CheckFeatureSupport(D3D12_FEATURE_ROOT_SIGNATURE,
-                                            &featureData,
-                                            sizeof(featureData))))
+    if (FAILED(m_device->CheckFeatureSupport(D3D12_FEATURE_ROOT_SIGNATURE,
+                                             &featureData,
+                                             sizeof(featureData))))
     {
         featureData.HighestVersion = D3D_ROOT_SIGNATURE_VERSION_1_0;
     }
@@ -497,11 +498,11 @@ bool D3D12Renderer::createModelRootSignature()
                                           D3D_ROOT_SIGNATURE_VERSION_1,
                                           signature.put(),
                                           error.put());
-    HRESULT hr
-        = device_->CreateRootSignature(0,
-                                       signature->GetBufferPointer(),
-                                       signature->GetBufferSize(),
-                                       IID_PPV_ARGS(modelRootSignature_.put()));
+    HRESULT hr = m_device->CreateRootSignature(
+        0,
+        signature->GetBufferPointer(),
+        signature->GetBufferSize(),
+        IID_PPV_ARGS(m_modelRootSignature.put()));
     if (FAILED(hr))
     {
         utils::showErrorMessage("unable to create Root Signature");
@@ -515,7 +516,7 @@ bool D3D12Renderer::createModelPSO()
     D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc{};
 
     // Root Signature
-    psoDesc.pRootSignature = modelRootSignature_.get();
+    psoDesc.pRootSignature = m_modelRootSignature.get();
 
     // Input Layout
     struct VertexSpecification
@@ -560,8 +561,8 @@ bool D3D12Renderer::createModelPSO()
 
     psoDesc.SampleMask = UINT_MAX;
     psoDesc.NumRenderTargets = 1;
-    psoDesc.RTVFormats[0] = renderTargets_[0]->GetDesc().Format;
-    psoDesc.DSVFormat = depthStencil_->GetDesc().Format;
+    psoDesc.RTVFormats[0] = m_renderTargets[0]->GetDesc().Format;
+    psoDesc.DSVFormat = m_depthStencil->GetDesc().Format;
     psoDesc.SampleDesc.Count = 1;
     psoDesc.SampleDesc.Quality = 0;
 
@@ -594,9 +595,9 @@ bool D3D12Renderer::createModelPSO()
         }
         psoDesc.PS = CD3DX12_SHADER_BYTECODE(pixelShader.get());
 
-        HRESULT hr = device_->CreateGraphicsPipelineState(
+        HRESULT hr = m_device->CreateGraphicsPipelineState(
             &psoDesc,
-            IID_PPV_ARGS(modelPsos_[i].put()));
+            IID_PPV_ARGS(m_modelPsos[i].put()));
         if (FAILED(hr))
         {
             utils::showErrorMessage(
@@ -610,25 +611,25 @@ bool D3D12Renderer::createModelPSO()
 bool D3D12Renderer::createSyncObjects()
 {
     // Direct3D 12 GPU hardware fence
-    HRESULT hr = device_->CreateFence(0,
-                                      D3D12_FENCE_FLAG_NONE,
-                                      IID_PPV_ARGS(fence_.put()));
+    HRESULT hr = m_device->CreateFence(0,
+                                       D3D12_FENCE_FLAG_NONE,
+                                       IID_PPV_ARGS(m_fence.put()));
     if (FAILED(hr))
     {
         HRESULT removedReason = E_FAIL;
-        if (device_)
+        if (m_device)
         {
-            removedReason = device_->GetDeviceRemovedReason();
+            removedReason = m_device->GetDeviceRemovedReason();
         }
         utils::showErrorMessage("unable to create fence", hr, removedReason);
         return false;
     }
 
-    fenceValues_[currentFrameIndex_] = 1;
+    m_fenceValues[m_currentFrameIndex] = 1;
 
     // Win32 OS Event handle to make thread scheduler sleep or wake up the CPU
-    fenceEvent_ = ::CreateEvent(nullptr, false, false, nullptr);
-    if (!fenceEvent_)
+    m_fenceEvent = ::CreateEvent(nullptr, false, false, nullptr);
+    if (!m_fenceEvent)
     {
         const DWORD e = ::GetLastError();
         utils::showErrorMessage("unable to create fence event", e);
@@ -641,12 +642,12 @@ bool D3D12Renderer::createSyncObjects()
 bool D3D12Renderer::loadAssets()
 {
     // Command list
-    HRESULT hr = device_->CreateCommandList(
+    HRESULT hr = m_device->CreateCommandList(
         0,
         D3D12_COMMAND_LIST_TYPE_DIRECT,
-        commandAllocators_[currentFrameIndex_].get(),
+        m_commandAllocators[m_currentFrameIndex].get(),
         nullptr,
-        IID_PPV_ARGS(commandList_.put()));
+        IID_PPV_ARGS(m_commandList.put()));
     if (FAILED(hr))
     {
         utils::showErrorMessage("unable to create Command List");
@@ -663,31 +664,31 @@ bool D3D12Renderer::loadAssets()
     for (const auto& path : modelPaths)
     {
         std::optional<D3D12Model> model
-            = D3D12Model::create(device_.get(), path);
+            = D3D12Model::create(m_device.get(), path);
         if (!model)
         {
             utils::showErrorMessage("unable to create model from path ", path);
             return false;
         }
-        models_.emplace_back(std::move(model.value()));
+        m_models.emplace_back(std::move(model.value()));
     }
 
     // Skybox
     constexpr UINT skyboxSrvDescriptorOffset
         = MAX_MODEL_SCENE_NODE_COUNT * CB_PER_MODEL_COUNT;
     CD3DX12_CPU_DESCRIPTOR_HANDLE srvCpuHandle(
-        cbvSrvUavDescriptorHeap_->GetCPUDescriptorHandleForHeapStart(),
+        m_cbvSrvUavDescriptorHeap->GetCPUDescriptorHandleForHeapStart(),
         skyboxSrvDescriptorOffset,
-        cbvSrvUavDescriptorHeapSize_);
+        m_cbvSrvUavDescriptorHeapSize);
 
     CD3DX12_GPU_DESCRIPTOR_HANDLE srvGpuHandle(
-        cbvSrvUavDescriptorHeap_->GetGPUDescriptorHandleForHeapStart(),
+        m_cbvSrvUavDescriptorHeap->GetGPUDescriptorHandleForHeapStart(),
         skyboxSrvDescriptorOffset,
-        cbvSrvUavDescriptorHeapSize_);
+        m_cbvSrvUavDescriptorHeapSize);
 
     std::optional<D3D12Skybox> skybox
-        = D3D12SkyboxBuilder().build(device_.get(),
-                                     commandList_.get(),
+        = D3D12SkyboxBuilder().build(m_device.get(),
+                                     m_commandList.get(),
                                      srvCpuHandle,
                                      srvGpuHandle);
 
@@ -696,31 +697,31 @@ bool D3D12Renderer::loadAssets()
         utils::showErrorMessage("unable to create skybox for application");
         return false;
     }
-    skybox_ = std::move(skybox.value());
+    m_skybox = std::move(skybox.value());
 
     // Flush command list to apply texture uploads
-    commandList_->Close();
-    ID3D12CommandList* commandLists[] = {commandList_.get()};
-    commandQueue_->ExecuteCommandLists(1, commandLists);
+    m_commandList->Close();
+    ID3D12CommandList* commandLists[] = {m_commandList.get()};
+    m_commandQueue->ExecuteCommandLists(1, commandLists);
 
     return true;
 }
 
 void D3D12Renderer::initImGuiBackend()
 {
-    ImGui_ImplWin32_Init(window_.raw());
+    ImGui_ImplWin32_Init(m_window.raw());
 
     const UINT imguiSrvDescriptorOffset
         = MAX_CBV_SRV_UAV_DESCRIPTOR_COUNT - IMGUI_FONT_TEXTURE_SRV_COUNT;
     CD3DX12_CPU_DESCRIPTOR_HANDLE srvCpuHandle(
-        cbvSrvUavDescriptorHeap_->GetCPUDescriptorHandleForHeapStart(),
+        m_cbvSrvUavDescriptorHeap->GetCPUDescriptorHandleForHeapStart(),
         imguiSrvDescriptorOffset,
-        cbvSrvUavDescriptorHeapSize_);
+        m_cbvSrvUavDescriptorHeapSize);
 
     CD3DX12_GPU_DESCRIPTOR_HANDLE srvGpuHandle(
-        cbvSrvUavDescriptorHeap_->GetGPUDescriptorHandleForHeapStart(),
+        m_cbvSrvUavDescriptorHeap->GetGPUDescriptorHandleForHeapStart(),
         imguiSrvDescriptorOffset,
-        cbvSrvUavDescriptorHeapSize_);
+        m_cbvSrvUavDescriptorHeapSize);
 
     // TODO: This is the legacy way of initializing a Direct3D12 ImGui backend.
     // From version 1.91.6, all ImGui backend versions require specifying a
@@ -729,10 +730,10 @@ void D3D12Renderer::initImGuiBackend()
     //
     // See:
     // https://github.com/ocornut/imgui/blob/c0dfd65d6790b9b96872b64fa232f1fa80fcd3b3/examples/example_win32_directx12/main.cpp#L37
-    ImGui_ImplDX12_Init(device_.get(),
+    ImGui_ImplDX12_Init(m_device.get(),
                         MAX_FRAME_COUNT,
-                        renderTargets_[0]->GetDesc().Format,
-                        cbvSrvUavDescriptorHeap_.get(),
+                        m_renderTargets[0]->GetDesc().Format,
+                        m_cbvSrvUavDescriptorHeap.get(),
                         srvCpuHandle,
                         srvGpuHandle);
 }
@@ -743,7 +744,7 @@ void D3D12Renderer::draw(const Scene& scene)
     // GLRenderer
     MVPConstantBuffer mvpConstantBufferData;
     XMMATRIX projection
-        = XMMatrixPerspectiveFovRH(XMConvertToRadians(drawProps_.fieldOfView),
+        = XMMatrixPerspectiveFovRH(XMConvertToRadians(m_drawProps.fieldOfView),
                                    ASPECT_RATIO,
                                    NEAR_CLIP_DISTANCE_Z,
                                    FAR_CLIP_DISTANCE_Z);
@@ -752,7 +753,7 @@ void D3D12Renderer::draw(const Scene& scene)
 
     // TODO: Conversion between GLM and DXMath matrices is a performance
     // overhead
-    const glm::mat4 glmView = camera_.calculateViewMatrix();
+    const glm::mat4 glmView = m_camera.calculateViewMatrix();
     // clang-format off
     XMMATRIX dxView = XMMatrixSet(
         glmView[0][0], glmView[1][0], glmView[2][0], glmView[3][0],
@@ -764,70 +765,71 @@ void D3D12Renderer::draw(const Scene& scene)
     XMStoreFloat4x4(&mvpConstantBufferData.view, dxView);
 
     MaterialConstantBuffer materialConstantBufferData;
-    materialConstantBufferData.viewPos.x = camera_.position().x;
-    materialConstantBufferData.viewPos.y = camera_.position().y;
-    materialConstantBufferData.viewPos.z = camera_.position().z;
-    materialConstantBufferData.lightDirection.x = drawProps_.lightDirection[0];
-    materialConstantBufferData.lightDirection.y = drawProps_.lightDirection[1];
-    materialConstantBufferData.lightDirection.z = drawProps_.lightDirection[2];
+    materialConstantBufferData.viewPos.x = m_camera.position().x;
+    materialConstantBufferData.viewPos.y = m_camera.position().y;
+    materialConstantBufferData.viewPos.z = m_camera.position().z;
+    materialConstantBufferData.lightDirection.x = m_drawProps.lightDirection[0];
+    materialConstantBufferData.lightDirection.y = m_drawProps.lightDirection[1];
+    materialConstantBufferData.lightDirection.z = m_drawProps.lightDirection[2];
 
     // Begin frame
-    commandAllocators_[currentFrameIndex_]->Reset();
-    commandList_->Reset(commandAllocators_[currentFrameIndex_].get(), nullptr);
-    PIX_EVENT(commandList_.get(), "D3D12Renderer::draw");
+    m_commandAllocators[m_currentFrameIndex]->Reset();
+    m_commandList->Reset(m_commandAllocators[m_currentFrameIndex].get(),
+                         nullptr);
+    PIX_EVENT(m_commandList.get(), "D3D12Renderer::draw");
 
     // Set render state
-    commandList_->SetGraphicsRootSignature(modelRootSignature_.get());
-    commandList_->SetPipelineState(
-        modelPsos_[static_cast<size_t>(drawProps_.lightingModel)].get());
+    m_commandList->SetGraphicsRootSignature(m_modelRootSignature.get());
+    m_commandList->SetPipelineState(
+        m_modelPsos[static_cast<size_t>(m_drawProps.lightingModel)].get());
 
     // CBV/SRV/UAV heaps
     const std::array<ID3D12DescriptorHeap*, 1> cbvSrvUavHeaps
-        = {cbvSrvUavDescriptorHeap_.get()};
-    commandList_->SetDescriptorHeaps(static_cast<UINT>(cbvSrvUavHeaps.size()),
-                                     cbvSrvUavHeaps.data());
+        = {m_cbvSrvUavDescriptorHeap.get()};
+    m_commandList->SetDescriptorHeaps(static_cast<UINT>(cbvSrvUavHeaps.size()),
+                                      cbvSrvUavHeaps.data());
 
     // Set Rasterizer Stage state
-    commandList_->RSSetViewports(1, &viewport_);
-    commandList_->RSSetScissorRects(1, &scissorRect_);
+    m_commandList->RSSetViewports(1, &m_viewport);
+    m_commandList->RSSetScissorRects(1, &m_scissorRect);
 
     // Set backbuffer as render target
-    ID3D12Resource* renderTarget = renderTargets_[currentFrameIndex_].get();
+    ID3D12Resource* renderTarget = m_renderTargets[m_currentFrameIndex].get();
     CD3DX12_RESOURCE_BARRIER transitionBarrier
         = CD3DX12_RESOURCE_BARRIER::Transition(
             renderTarget,
             D3D12_RESOURCE_STATE_PRESENT,
             D3D12_RESOURCE_STATE_RENDER_TARGET);
-    commandList_->ResourceBarrier(1, &transitionBarrier);
+    m_commandList->ResourceBarrier(1, &transitionBarrier);
     CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(
-        rtvDescriptorHeap_->GetCPUDescriptorHandleForHeapStart(),
-        static_cast<int>(currentFrameIndex_),
-        rtvDescriptorHeapSize_);
+        m_rtvDescriptorHeap->GetCPUDescriptorHandleForHeapStart(),
+        static_cast<int>(m_currentFrameIndex),
+        m_rtvDescriptorHeapSize);
     CD3DX12_CPU_DESCRIPTOR_HANDLE dsvHandle(
-        dsvDescriptorHeap_->GetCPUDescriptorHandleForHeapStart());
-    commandList_->OMSetRenderTargets(1, &rtvHandle, false, &dsvHandle);
+        m_dsvDescriptorHeap->GetCPUDescriptorHandleForHeapStart());
+    m_commandList->OMSetRenderTargets(1, &rtvHandle, false, &dsvHandle);
 
     // Record drawing commands
-    const std::array<float, 4> clearColor = {drawProps_.backgroundColor[0],
-                                             drawProps_.backgroundColor[1],
-                                             drawProps_.backgroundColor[2],
+    const std::array<float, 4> clearColor = {m_drawProps.backgroundColor[0],
+                                             m_drawProps.backgroundColor[1],
+                                             m_drawProps.backgroundColor[2],
                                              1.0f};
-    commandList_->ClearRenderTargetView(rtvHandle,
-                                        clearColor.data(),
-                                        0,
-                                        nullptr);
-    commandList_->ClearDepthStencilView(dsvHandle,
-                                        D3D12_CLEAR_FLAG_DEPTH,
-                                        1.0f,
-                                        0,
-                                        0,
-                                        nullptr);
+    m_commandList->ClearRenderTargetView(rtvHandle,
+                                         clearColor.data(),
+                                         0,
+                                         nullptr);
+    m_commandList->ClearDepthStencilView(dsvHandle,
+                                         D3D12_CLEAR_FLAG_DEPTH,
+                                         1.0f,
+                                         0,
+                                         0,
+                                         nullptr);
 
     drawModels(scene, mvpConstantBufferData, materialConstantBufferData);
-    if (drawProps_.skyboxEnabled)
+    if (m_drawProps.skyboxEnabled)
     {
         // HACK: Don't pass model matrix to skybox shader
-        skybox_.draw(commandList_.get(), mvpConstantBuffers_[0].get());
+        m_skybox.draw(m_commandList.get(), m_mvpConstantBuffers[0].get());
     }
     drawGui();
 
@@ -836,12 +838,13 @@ void D3D12Renderer::draw(const Scene& scene)
         renderTarget,
         D3D12_RESOURCE_STATE_RENDER_TARGET,
         D3D12_RESOURCE_STATE_PRESENT);
-    commandList_->ResourceBarrier(1, &transitionBarrier);
-    commandList_->Close();
+    m_commandList->ResourceBarrier(1, &transitionBarrier);
+    m_commandList->Close();
 
-    const std::array<ID3D12CommandList*, 1> commandLists = {commandList_.get()};
-    commandQueue_->ExecuteCommandLists(static_cast<UINT>(commandLists.size()),
-                                       commandLists.data());
+    const std::array<ID3D12CommandList*, 1> commandLists
+        = {m_commandList.get()};
+    m_commandQueue->ExecuteCommandLists(static_cast<UINT>(commandLists.size()),
+                                        commandLists.data());
 
     if (Globals::takingScreenshot)
     {
@@ -855,9 +858,10 @@ void D3D12Renderer::draw(const Scene& scene)
     //
     // Presenting with tearing allowed while VSync is on is illegal and you will
     // go to rendering jail.
-    const UINT presentFlags
-        = (!vsyncEnabled_ && tearingEnabled_) ? DXGI_PRESENT_ALLOW_TEARING : 0;
-    HRESULT hr = swapChain_->Present(vsyncEnabled_, presentFlags);
+    const UINT presentFlags = (!m_vsyncEnabled && m_tearingEnabled)
+                                ? DXGI_PRESENT_ALLOW_TEARING
+                                : 0;
+    HRESULT hr = m_swapChain->Present(m_vsyncEnabled, presentFlags);
     assert(SUCCEEDED(hr) && "invalid swapchain present call detected");
     waitForPreviousFrame();
 }
@@ -867,12 +871,12 @@ void D3D12Renderer::drawModels(
     MVPConstantBuffer& mvpConstantBufferData,
     MaterialConstantBuffer& materialConstantBufferData)
 {
-    PIX_EVENT(commandList_.get(), "D3D12Renderer::drawModels");
+    PIX_EVENT(m_commandList.get(), "D3D12Renderer::drawModels");
 
     for (size_t i = 0; i < scene.children().size(); ++i)
     {
         const SceneNode& sceneNode = scene.children()[i];
-        const D3D12Model* model = &models_[sceneNode.modelID];
+        const D3D12Model* model = &m_models[sceneNode.modelID];
 
         // Model transform
         // Translate
@@ -904,14 +908,14 @@ void D3D12Renderer::drawModels(
         XMStoreFloat4x4(&mvpConstantBufferData.normalMatrix, normalMatrix);
 
         // MVP constant buffer
-        std::memcpy(mvpCbvDataBegin_[i],
+        std::memcpy(m_mvpCbvDataBegin[i],
                     &mvpConstantBufferData,
                     sizeof(mvpConstantBufferData));
         CD3DX12_GPU_DESCRIPTOR_HANDLE mvpCbvGpuHandle(
-            cbvSrvUavDescriptorHeap_->GetGPUDescriptorHandleForHeapStart(),
+            m_cbvSrvUavDescriptorHeap->GetGPUDescriptorHandleForHeapStart(),
             NULL_CBV_COUNT + static_cast<int>(i),
-            cbvSrvUavDescriptorHeapSize_);
-        commandList_->SetGraphicsRootDescriptorTable(0, mvpCbvGpuHandle);
+            m_cbvSrvUavDescriptorHeapSize);
+        m_commandList->SetGraphicsRootDescriptorTable(0, mvpCbvGpuHandle);
 
         // Material constant buffer
         materialConstantBufferData.color.x = sceneNode.color.r;
@@ -921,31 +925,31 @@ void D3D12Renderer::drawModels(
             = sceneNode.specularReflectivity;
         materialConstantBufferData.shininess = sceneNode.shininess;
 
-        std::memcpy(materialCbvDataBegin_[i],
+        std::memcpy(m_materialCbvDataBegin[i],
                     &materialConstantBufferData,
                     sizeof(materialConstantBufferData));
         CD3DX12_GPU_DESCRIPTOR_HANDLE materialCbvGpuHandle(
-            cbvSrvUavDescriptorHeap_->GetGPUDescriptorHandleForHeapStart(),
-            NULL_CBV_COUNT + static_cast<int>(mvpConstantBuffers_.size() + i),
-            cbvSrvUavDescriptorHeapSize_);
-        commandList_->SetGraphicsRootDescriptorTable(1, materialCbvGpuHandle);
+            m_cbvSrvUavDescriptorHeap->GetGPUDescriptorHandleForHeapStart(),
+            NULL_CBV_COUNT + static_cast<int>(m_mvpConstantBuffers.size() + i),
+            m_cbvSrvUavDescriptorHeapSize);
+        m_commandList->SetGraphicsRootDescriptorTable(1, materialCbvGpuHandle);
 
         // Issue draw call
         // TODO: Wireframe fill mode requires creation of a separate PSO with
         // rasterizer fill mode set to D3D12_FILL_MODE_WIREFRAME. Do not use
         // D3D_PRIMITIVE_TOPOLOGY_LINELIST, because it will have missing edges.
-        commandList_->IASetPrimitiveTopology(
+        m_commandList->IASetPrimitiveTopology(
             D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-        commandList_->IASetVertexBuffers(0, 1, &model->vertexBuffer());
-        commandList_->IASetIndexBuffer(&model->indexBuffer());
-        commandList_->DrawIndexedInstanced(model->indexCount(), 1, 0, 0, 0);
+        m_commandList->IASetVertexBuffers(0, 1, &model->vertexBuffer());
+        m_commandList->IASetIndexBuffer(&model->indexBuffer());
+        m_commandList->DrawIndexedInstanced(model->indexCount(), 1, 0, 0, 0);
     }
 }
 
 void D3D12Renderer::drawGui()
 {
-    PIX_EVENT(commandList_.get(), "D3D12Renderer::drawGui");
-    ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), commandList_.get());
+    PIX_EVENT(m_commandList.get(), "D3D12Renderer::drawGui");
+    ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), m_commandList.get());
 }
 
 void D3D12Renderer::screenshot()
@@ -953,13 +957,14 @@ void D3D12Renderer::screenshot()
     // Wait for drawing to finish
     waitForGPU();
 
-    commandAllocators_[currentFrameIndex_]->Reset();
-    commandList_->Reset(commandAllocators_[currentFrameIndex_].get(), nullptr);
+    m_commandAllocators[m_currentFrameIndex]->Reset();
+    m_commandList->Reset(m_commandAllocators[m_currentFrameIndex].get(),
+                         nullptr);
 
     // Backbuffer (GPU)
     com_ptr<ID3D12Resource> backBuffer;
-    HRESULT hr = swapChain_->GetBuffer(currentFrameIndex_,
-                                       IID_PPV_ARGS(backBuffer.put()));
+    HRESULT hr = m_swapChain->GetBuffer(m_currentFrameIndex,
+                                        IID_PPV_ARGS(backBuffer.put()));
     if (FAILED(hr))
     {
         utils::showErrorMessage("unable to query backbuffer for screenshot");
@@ -971,26 +976,26 @@ void D3D12Renderer::screenshot()
     UINT rowCount;
     UINT64 rowByteSize;
     UINT64 totalByteCount;
-    device_->GetCopyableFootprints(&backBufferDesc,
-                                   0,
-                                   1,
-                                   0,
-                                   &footprint,
-                                   &rowCount,
-                                   &rowByteSize,
-                                   &totalByteCount);
+    m_device->GetCopyableFootprints(&backBufferDesc,
+                                    0,
+                                    1,
+                                    0,
+                                    &footprint,
+                                    &rowCount,
+                                    &rowByteSize,
+                                    &totalByteCount);
 
     // Readback buffer (readback Heap, CPU, also known as Staging Texture)
     const CD3DX12_HEAP_PROPERTIES readbackHeapProps(D3D12_HEAP_TYPE_READBACK);
     CD3DX12_RESOURCE_DESC readbackBufferDesc
         = CD3DX12_RESOURCE_DESC::Buffer(totalByteCount);
     com_ptr<ID3D12Resource> readbackBuffer;
-    hr = device_->CreateCommittedResource(&readbackHeapProps,
-                                          D3D12_HEAP_FLAG_NONE,
-                                          &readbackBufferDesc,
-                                          D3D12_RESOURCE_STATE_COPY_DEST,
-                                          nullptr,
-                                          IID_PPV_ARGS(readbackBuffer.put()));
+    hr = m_device->CreateCommittedResource(&readbackHeapProps,
+                                           D3D12_HEAP_FLAG_NONE,
+                                           &readbackBufferDesc,
+                                           D3D12_RESOURCE_STATE_COPY_DEST,
+                                           nullptr,
+                                           IID_PPV_ARGS(readbackBuffer.put()));
     if (FAILED(hr))
     {
         utils::showErrorMessage(
@@ -1004,21 +1009,21 @@ void D3D12Renderer::screenshot()
             backBuffer.get(),
             D3D12_RESOURCE_STATE_PRESENT,
             D3D12_RESOURCE_STATE_COPY_SOURCE);
-    commandList_->ResourceBarrier(1, &transitionBarrier);
+    m_commandList->ResourceBarrier(1, &transitionBarrier);
 
     const CD3DX12_TEXTURE_COPY_LOCATION src(backBuffer.get(), 0);
     const CD3DX12_TEXTURE_COPY_LOCATION dst(readbackBuffer.get(), footprint);
-    commandList_->CopyTextureRegion(&dst, 0, 0, 0, &src, nullptr);
+    m_commandList->CopyTextureRegion(&dst, 0, 0, 0, &src, nullptr);
 
     transitionBarrier
         = CD3DX12_RESOURCE_BARRIER::Transition(backBuffer.get(),
                                                D3D12_RESOURCE_STATE_COPY_SOURCE,
                                                D3D12_RESOURCE_STATE_PRESENT);
-    commandList_->ResourceBarrier(1, &transitionBarrier);
+    m_commandList->ResourceBarrier(1, &transitionBarrier);
 
-    commandList_->Close();
-    ID3D12CommandList* commandLists[] = {commandList_.get()};
-    commandQueue_->ExecuteCommandLists(1, commandLists);
+    m_commandList->Close();
+    ID3D12CommandList* commandLists[] = {m_commandList.get()};
+    m_commandQueue->ExecuteCommandLists(1, commandLists);
 
     // Wait until copy is finished
     waitForGPU();
@@ -1066,45 +1071,45 @@ void D3D12Renderer::waitForGPU()
 {
     // Ask GPU to write fence value when commands that were submitted before
     // "signal" command are done.
-    commandQueue_->Signal(fence_.get(), fenceValues_[currentFrameIndex_]);
+    m_commandQueue->Signal(m_fence.get(), m_fenceValues[m_currentFrameIndex]);
 
     // Skip unnecessary CPU wait if GPU is already caught up with finished work.
     // GPU is faster then you think, it could have even finished processing the
     // command queue and reached the "signal" command right before CPU stepped
     // to the next code line in here.
-    if (fence_->GetCompletedValue() < fenceValues_[currentFrameIndex_])
+    if (m_fence->GetCompletedValue() < m_fenceValues[m_currentFrameIndex])
     {
         // Ask GPU fence to trigger Win32 Event when done
-        fence_->SetEventOnCompletion(fenceValues_[currentFrameIndex_],
-                                     fenceEvent_);
+        m_fence->SetEventOnCompletion(m_fenceValues[m_currentFrameIndex],
+                                      m_fenceEvent);
 
         // Sleep CPU until fence has been processed. This is not some
         // power-wasting spinlock, Windows thread scheduler suspends this thread
         // and yields control to other apps or OS tasks.
-        ::WaitForSingleObject(fenceEvent_, INFINITE);
+        ::WaitForSingleObject(m_fenceEvent, INFINITE);
     }
 
     // Fence value is incremented for next synchronization point in current
     // frame, not for next frame itself.
-    ++fenceValues_[currentFrameIndex_];
+    ++m_fenceValues[m_currentFrameIndex];
 }
 
 void D3D12Renderer::waitForPreviousFrame()
 {
     // Schedule "signal" command for CURRENT frame
-    const UINT64 currentFenceValue = fenceValues_[currentFrameIndex_];
-    commandQueue_->Signal(fence_.get(), currentFenceValue);
+    const UINT64 currentFenceValue = m_fenceValues[m_currentFrameIndex];
+    m_commandQueue->Signal(m_fence.get(), currentFenceValue);
 
     // Step to next frame
-    currentFrameIndex_ = swapChain_->GetCurrentBackBufferIndex();
+    m_currentFrameIndex = m_swapChain->GetCurrentBackBufferIndex();
 
-    if (fence_->GetCompletedValue() < fenceValues_[currentFrameIndex_])
+    if (m_fence->GetCompletedValue() < m_fenceValues[m_currentFrameIndex])
     {
-        fence_->SetEventOnCompletion(fenceValues_[currentFrameIndex_],
-                                     fenceEvent_);
-        ::WaitForSingleObject(fenceEvent_, INFINITE);
+        m_fence->SetEventOnCompletion(m_fenceValues[m_currentFrameIndex],
+                                      m_fenceEvent);
+        ::WaitForSingleObject(m_fenceEvent, INFINITE);
     }
 
     // Fence value for next frame
-    fenceValues_[currentFrameIndex_] = currentFenceValue + 1;
+    m_fenceValues[m_currentFrameIndex] = currentFenceValue + 1;
 }

@@ -42,14 +42,14 @@ GLRenderer::GLRenderer(Window& window,
                        )
     : Renderer{window, drawProps, camera}
 #ifndef __EMSCRIPTEN__
-    , glVersionAPI_{renderingAPI}
+    , m_glVersionAPI{renderingAPI}
 #endif
 {
 #ifndef __EMSCRIPTEN__
-    assert(glVersionAPI_ != RenderingAPI::Direct3D12);
+    assert(m_glVersionAPI != RenderingAPI::Direct3D12);
 #endif
-    shaders_.reserve(2);
-    models_.reserve(3);
+    m_shaders.reserve(2);
+    m_models.reserve(3);
 }
 
 bool GLRenderer::init()
@@ -63,7 +63,7 @@ bool GLRenderer::init()
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 #ifndef __EMSCRIPTEN__
-    setVSyncEnabled(drawProps_.vsyncEnabled);
+    setVSyncEnabled(m_drawProps.vsyncEnabled);
 #endif
     return true;
 }
@@ -89,7 +89,7 @@ bool GLRenderer::loadShaders()
         std::optional<GLShader> shader = GLShader::createFromFile(p
 #ifndef __EMSCRIPTEN__
                                                                   ,
-                                                                  glVersionAPI_
+                                                                  m_glVersionAPI
 #endif
         );
         if (!shader)
@@ -98,7 +98,7 @@ bool GLRenderer::loadShaders()
             return false;
         }
 
-        shaders_.emplace_back(std::move(shader.value()));
+        m_shaders.emplace_back(std::move(shader.value()));
     }
 
     return true;
@@ -119,7 +119,7 @@ bool GLRenderer::loadAssets()
         utils::showErrorMessage("unable to create skybox for application");
         return false;
     }
-    skybox_ = std::move(skybox.value());
+    m_skybox = std::move(skybox.value());
 
     const std::array<fs::path, 3> modelPaths{"assets/meshes/cube.obj",
                                              "assets/meshes/teapot.obj",
@@ -132,7 +132,7 @@ bool GLRenderer::loadAssets()
             utils::showErrorMessage("unable to create model from path ", path);
             return false;
         }
-        models_.emplace_back(std::move(model.value()));
+        m_models.emplace_back(std::move(model.value()));
     }
 
     return true;
@@ -141,14 +141,14 @@ bool GLRenderer::loadAssets()
 void GLRenderer::initImGuiBackend()
 {
 #ifdef WINDOW_PLATFORM_WIN32
-    ImGui_ImplWin32_InitForOpenGL(window_.raw());
+    ImGui_ImplWin32_InitForOpenGL(m_window.raw());
 #elifdef WINDOW_PLATFORM_GLFW
-    ImGui_ImplGlfw_InitForOpenGL(window_.raw(), true);
+    ImGui_ImplGlfw_InitForOpenGL(m_window.raw(), true);
 #endif
 
     const char* glslVersion = utils::RenderingAPIToGLSLDirective(
 #ifndef __EMSCRIPTEN__
-        glVersionAPI_
+        m_glVersionAPI
 #endif
     );
     ImGui_ImplOpenGL3_Init(glslVersion);
@@ -156,9 +156,9 @@ void GLRenderer::initImGuiBackend()
 
 void GLRenderer::cleanup()
 {
-    shaders_.clear();
-    skybox_.cleanup();
-    models_.clear();
+    m_shaders.clear();
+    m_skybox.cleanup();
+    m_models.clear();
 }
 
 void GLRenderer::draw(const Scene& scene)
@@ -169,7 +169,7 @@ void GLRenderer::draw(const Scene& scene)
     // You'll never know how framebuffer size might differ from window size,
     // especially on high-DPI displays. Not doing so can lead to display
     // bugs like clipping top part of the view.
-    const auto [width, height] = window_.frameBufferSize();
+    const auto [width, height] = m_window.frameBufferSize();
     if (width <= 0 || height <= 0)
     {
         // If frame buffer size is currently (0,0), that means window is
@@ -181,23 +181,23 @@ void GLRenderer::draw(const Scene& scene)
     }
 
     glViewport(0, 0, width, height);
-    projection_ = glm::perspectiveRH(
-        glm::radians(drawProps_.fieldOfView),
+    m_projection = glm::perspectiveRH(
+        glm::radians(m_drawProps.fieldOfView),
         static_cast<float>(width) / static_cast<float>(height),
         NEAR_CLIP_DISTANCE_Z,
         FAR_CLIP_DISTANCE_Z);
 
-    view_ = camera_.calculateViewMatrix();
+    m_view = m_camera.calculateViewMatrix();
 
     // Clear screen
-    glClearColor(drawProps_.backgroundColor[0],
-                 drawProps_.backgroundColor[1],
-                 drawProps_.backgroundColor[2],
+    glClearColor(m_drawProps.backgroundColor[0],
+                 m_drawProps.backgroundColor[1],
+                 m_drawProps.backgroundColor[2],
                  1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     drawModels(scene);
-    if (drawProps_.skyboxEnabled)
+    if (m_drawProps.skyboxEnabled)
     {
         drawSkybox();
     }
@@ -214,7 +214,7 @@ void GLRenderer::draw(const Scene& scene)
     // While Direct3D manages its own API-specific Swap Chain, buffer
     // swapping in this OpenGL code architecture is delegated to the
     // Win32/GLFW window.
-    window_.swapBuffers();
+    m_window.swapBuffers();
 }
 
 void GLRenderer::drawModels(const Scene& scene)
@@ -225,18 +225,19 @@ void GLRenderer::drawModels(const Scene& scene)
     }
 
     // Set model draw shader
-    GLShader& shader = shaders_[static_cast<size_t>(drawProps_.lightingModel)];
+    GLShader& shader
+        = m_shaders[static_cast<size_t>(m_drawProps.lightingModel)];
     shader.use();
 
     // Setup uniform values shared by all scene nodes, avoiding doing
     // unnecessary work during iteration
-    shader.setUniform("u_light.direction", drawProps_.lightDirection);
-    shader.setUniform("u_viewPos", camera_.position());
+    shader.setUniform("u_light.direction", m_drawProps.lightDirection);
+    shader.setUniform("u_viewPos", m_camera.position());
 
 #ifndef __EMSCRIPTEN__
     // glPolygonMode is not supported in OpenGL ES 3.0
     glPolygonMode(GL_FRONT_AND_BACK,
-                  drawProps_.wireframeModeEnabled ? GL_LINE : GL_FILL);
+                  m_drawProps.wireframeModeEnabled ? GL_LINE : GL_FILL);
 #endif
 
     // TODO: Introduce instanced rendering
@@ -247,7 +248,7 @@ void GLRenderer::drawModels(const Scene& scene)
         // Only bind vertex array if model changes
         if (sceneNode.modelID != cachedModelID)
         {
-            model = &models_[sceneNode.modelID];
+            model = &m_models[sceneNode.modelID];
             glBindVertexArray(model->vertexArray());
         }
         else
@@ -276,7 +277,7 @@ void GLRenderer::drawModels(const Scene& scene)
         // Concat matrix transformations on CPU to avoid unnecessary
         // multiplications in GLSL. Results would be the same for all
         // vertices.
-        const glm::mat4 mvp = projection_ * view_ * modelMatrix;
+        const glm::mat4 mvp = m_projection * m_view * modelMatrix;
         const glm::mat3 normalMatrix
             = glm::mat3(glm::transpose(glm::inverse(modelMatrix)));
 
@@ -312,22 +313,22 @@ void GLRenderer::drawSkybox()
     // skybox will be displayed in front of skybox.
     glDepthFunc(GL_LEQUAL);
     // Set skybox shader
-    auto& shader = shaders_[static_cast<std::uint8_t>(ShaderInstance::Skybox)];
+    auto& shader = m_shaders[static_cast<std::uint8_t>(ShaderInstance::Skybox)];
     shader.use();
-    glBindVertexArray(skybox_.vertexArray());
+    glBindVertexArray(m_skybox.vertexArray());
 
     // Set skybox texture
     glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_CUBE_MAP, skybox_.textureID());
+    glBindTexture(GL_TEXTURE_CUBE_MAP, m_skybox.textureID());
 
     // Remove camera position transformations by nullifying column 4, but
     // keep rotation in the view matrix. If you don't do this, skybox will
     // be shown as a shrinked down cube around model.
-    glm::mat4 normalizedView = view_;
+    glm::mat4 normalizedView = m_view;
     normalizedView[3] = glm::vec4(0.0f, 0.0f, 0.0f, 0.0f);
     // Concat matrix transformations on CPU to avoid unnecessary
     // multiplications in GLSL. Results would be the same for all vertices.
-    const glm::mat4 projectionView = projection_ * normalizedView;
+    const glm::mat4 projectionView = m_projection * normalizedView;
 
     // Transfer uniforms
     shader.setUniform("u_projectionView", projectionView);
@@ -345,7 +346,7 @@ void GLRenderer::screenshot()
     // Disable padding on GPU->CPU copy
     glPixelStorei(GL_PACK_ALIGNMENT, 1);
 
-    const auto [width, height] = window_.frameBufferSize();
+    const auto [width, height] = m_window.frameBufferSize();
     constexpr auto rgbChannelCount = 3;
     std::vector<GLubyte> frameBufferData(
         static_cast<size_t>(width * height * rgbChannelCount));
@@ -378,6 +379,6 @@ void GLRenderer::screenshot()
 
 void GLRenderer::setVSyncEnabled(const bool vsyncEnabled)
 {
-    window_.setVSyncEnabled(vsyncEnabled);
+    m_window.setVSyncEnabled(vsyncEnabled);
 }
 

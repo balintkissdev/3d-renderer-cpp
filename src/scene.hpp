@@ -57,18 +57,18 @@ public:
     [[nodiscard]] const SceneNodeCollection& children() const;
 
 private:
-    SceneNodeCollection children_;
-    std::unordered_map<std::string, size_t> duplicateLabelResolver_;
+    SceneNodeCollection m_children;
+    std::unordered_map<std::string, size_t> m_duplicateLabelResolver;
 };
 
 inline SceneNode& Scene::get(const size_t nodeIndex)
 {
-    return children_[nodeIndex];
+    return m_children[nodeIndex];
 }
 
 inline const SceneNodeCollection& Scene::children() const
 {
-    return children_;
+    return m_children;
 }
 
 #endif

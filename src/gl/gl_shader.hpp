@@ -87,11 +87,11 @@ private:
     GLShader();
     explicit GLShader(const GLuint shaderProgram);
 
-    GLuint shaderProgram_;
-    std::unordered_map<std::string, GLint> uniformCache_;
+    GLuint m_shaderProgram;
+    std::unordered_map<std::string, GLint> m_uniformCache;
 
 #ifndef __EMSCRIPTEN__
-    std::vector<GLuint> subroutineIndices_;
+    std::vector<GLuint> m_subroutineIndices;
 #endif
 
     /// Query all active uniforms on shader creation and cache uniform locations

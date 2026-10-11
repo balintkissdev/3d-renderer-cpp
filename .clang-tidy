@@ -28,7 +28,7 @@ CheckOptions:
     value: "UPPER_CASE"
   - key: readability-identifier-naming.StaticVariablePrefix
     value: "s_"
-  - key: readability-identifier-naming.ProtectedMemberSuffix
-    value: "_"
-  - key: readability-identifier-naming.PrivateMemberSuffix
-    value: "_"
+  - key: readability-identifier-naming.ProtectedMemberPrefix
+    value: "m_"
+  - key: readability-identifier-naming.PrivateMemberPrefix
+    value: "m_"

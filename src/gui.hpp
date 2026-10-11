@@ -61,7 +61,7 @@ private:
         LightingTreeIndex,
     };
 
-    int selectedSceneItem_;  // -1 means "unselected"
+    int m_selectedSceneItem;  // -1 means "unselected"
 
     void propertiesDialog(
 #ifndef __EMSCRIPTEN__
@@ -74,13 +74,13 @@ private:
 #ifndef __EMSCRIPTEN__
     /// Keeping track which rendering API should be selectable in the dropdown
     /// list. Opted for enum-indexed array instead of std::map.
-    std::array<bool, 3> supportedRenderingAPIs_;
+    std::array<bool, 3> m_supportedRenderingAPIs;
 
     // Maintain separate selected and currently used rendering API to avoid
-    // crash by calling prepareDraw() with new selectedRenderingAPI_ that is not
-    // even initialized yet.
-    RenderingAPI currentRenderingAPI_;
-    RenderingAPI selectedRenderingAPI_;
+    // crash by calling prepareDraw() with new m_selectedRenderingAPI that is
+    // not even initialized yet.
+    RenderingAPI m_currentRenderingAPI;
+    RenderingAPI m_selectedRenderingAPI;
     void rendererSection(const FrameRateInfo& frameRateInfo,
                          DrawProperties& drawProps);
     void confirmRestartDialog(RenderingAPI& renderingAPI);
