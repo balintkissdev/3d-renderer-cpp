@@ -39,6 +39,8 @@ bool Window::init(const uint16_t width,
     glfwSetErrorCallback([](int /*error*/, const char* description)
                          { utils::showErrorMessage(description); });
 
+    // Avoid accidentally stuck window hints on recreation
+    glfwDefaultWindowHints();
 #ifdef __EMSCRIPTEN__
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
