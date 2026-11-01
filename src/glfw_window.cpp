@@ -11,6 +11,11 @@
 #include "glad/gl.h"
 #endif
 
+namespace
+{
+bool s_glfwInitialized = false;
+}
+
 Window::Window(App& app)
     : m_window{nullptr}
     , m_app{app}
@@ -20,6 +25,10 @@ Window::Window(App& app)
 Window::~Window()
 {
     cleanup();
+    if (s_glfwInitialized)
+    {
+        glfwTerminate();
+    }
 }
 
 bool Window::init(const uint16_t width,
@@ -31,10 +40,13 @@ bool Window::init(const uint16_t width,
 #endif
 )
 {
-    // TODO: Init GLFW only once per application lifetime
-    if (!glfwInit())
+    if (!s_glfwInitialized)
     {
-        return false;
+        if (!glfwInit())
+        {
+            return false;
+        }
+        s_glfwInitialized = true;
     }
     glfwSetErrorCallback([](int /*error*/, const char* description)
                          { utils::showErrorMessage(description); });
@@ -87,8 +99,6 @@ void Window::cleanup()
 {
     glfwDestroyWindow(m_window);
     m_window = nullptr;
-    glfwTerminate();  // TODO: Like glfwInit(), only cleanup once per
-                      // application lifetime
 }
 
 void Window::setOnMouseMove(const MouseOffsetCallback& callback)
